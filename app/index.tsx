@@ -97,10 +97,10 @@ export default function IndexPage() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // REFERENCIAS
+  // Referencias para inputs de archivo (uno para nuevo registro, otro para editar)
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const modalFileInputRef = useRef<HTMLInputElement | null>(null); // NUEVA REF PARA EL MODAL
-
+  const editFileInputRef = useRef<HTMLInputElement | null>(null);
+  
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
 
@@ -189,6 +189,7 @@ export default function IndexPage() {
       const data = await getProjects();
       setProjects(data);
     } catch (error) {
+      //En caso de error se notifica al usuario
       window.alert("No se pudieron cargar proyectos.");
     } finally {
       setIsLoadingData(false);
@@ -262,6 +263,7 @@ export default function IndexPage() {
 
   //verificación de formulario y manejo de autenticación
   const handleSubmit = async () => {
+    //Verificamos que el gmail y la contraseña no esten vacios
     if (!isFormValid) {
       window.alert(
         authMode === "signup"
@@ -273,6 +275,7 @@ export default function IndexPage() {
 
     setIsAuthLoading(true);
     try {
+      //En modo signup enviamos a Supabase los datos para crear la cuenta
       if (authMode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -293,22 +296,29 @@ export default function IndexPage() {
           window.alert("Revisa tu correo para confirmar la cuenta.");
           return;
         }
+
+        //guardar la información del usuario en sesión
         setSessionUser({ email: data.user.email ?? "usuario", id: data.user.id });
       } else {
+        //En modo login enviamos a Supabase los datos para iniciar sesión
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password: password.trim(),
         });
 
+        //Mensaje de error en caso de credenciales incorrectas
         if (error || !data.user) {
           window.alert("Usuario o contraseña incorrectos.");
           return;
         }
+
+        //guardar la información del usuario en sesión
         setSessionUser({ email: data.user.email ?? "usuario", id: data.user.id });
       }
 
       await loadProjects();
       await loadProfile();
+      //cambiamos al "siguiente paso" que es seleccionar proyecto
       setStep("project");
     } catch (error) {
       window.alert("No se pudo iniciar sesión.");
@@ -317,7 +327,10 @@ export default function IndexPage() {
     }
   };
 
+  //Manejo de selección de proyecto, frente, localidad, detalle y actividad
   const handleSelectProject = async (projectId: number) => {
+    //Despues de seleccionar un proyecto, se resetean los estados relacionados y se guarda
+    //el ID del proyecto seleccionado para ir bajando dentro del "arbol" de selección
     setSelectedProjectId(projectId);
     setSelectedFrontId(null);
     setSelectedLocalityId(null);
@@ -326,20 +339,28 @@ export default function IndexPage() {
     setDetails([]);
     setActivities([]);
     await loadFronts(projectId);
+    //Se avanza al siguiente "paso" que es seleccionar frente
     setStep("front");
   };
 
+  //Manejo de selección de frente
   const handleSelectFront = async (frontId: number) => {
+    //Despues de seleccionar un frente, se resetean los estados relacionados y se guarda
+    //el ID del frente seleccionado para ir bajando dentro del "arbol" de selección
     setSelectedFrontId(frontId);
     setSelectedLocalityId(null);
     setLocalities([]);
     setDetails([]);
     setActivities([]);
     await loadLocalities(frontId);
+    //Se avanza al siguiente "paso" que es seleccionar localidad
     setStep("locality");
   };
 
+  //Manejo de selección de localidad
   const handleSelectLocality = async (localityId: number) => {
+    //Despues de seleccionar una localidad, se resetean los estados relacionados y se guarda
+    //el ID de la localidad seleccionada para ir bajando dentro del "arbol" de selección
     setSelectedLocalityId(localityId);
     setDetails([]);
     setActivities([]);
@@ -347,39 +368,57 @@ export default function IndexPage() {
     setSelectedActivity(null);
     setDetailSearch("");
     await loadDetails(localityId);
+    //Se avanza al siguiente "paso" que es seleccionar detalle
     setStep("detail");
   };
 
+  //Manejo de apertura de formulario de registro de evidencia
   const handleOpenForm = (detail: DetailWithActivity) => {
+    //Al abrir el formulario, se guarda el detalle y actividad seleccionados
     setSelectedDetail(detail);
     setSelectedActivity(activityMap.get(detail.ID_Actividad) ?? null);
     setEvidenceFile(null);
     setEvidencePreview(null);
+    //Avanzar al siguiente "paso" que es el formulario
     setStep("form");
   };
 
+  //Manejo de selección de detalle
   const handleSelectDetail = (detail: DetailWithActivity) => {
+    //Al seleccionar un detalle, se guarda el detalle y actividad seleccionados
     setSelectedDetail(detail);
     setSelectedActivity(activityMap.get(detail.ID_Actividad) ?? null);
+    //Avanzar al siguiente "paso" que es confirmar la actividad seleccionada
     setStep("activity");
   };
 
   const handleConfirmActivity = () => {
+    //Verificar que se haya seleccionado un detalle
     if (!selectedDetail) {
       window.alert("Selecciona un sector.");
       return;
     }
+
+    //Avanzar al siguiente "paso" que es el mapa
     setStep("map");
   };
 
+  //---------------------------------------------------------
+  // FUNCIONES PARA EL FORMULARIO DE REGISTRO NUEVO
+  //---------------------------------------------------------
+  
+  //Manejo de captura de foto para NUEVO registro
   const handleCapturePhoto = () => {
     fileInputRef.current?.click();
   };
 
+  //Manejo de cambio de archivo en input file para NUEVO registro
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    //Verificar si se seleccionó un archivo
     const file = event.target.files?.[0] ?? null;
     setEvidenceFile(file);
     if (file) {
+      //Crear una URL de vista previa para la imagen seleccionada
       const previewUrl = URL.createObjectURL(file);
       setEvidencePreview(previewUrl);
     } else {
@@ -387,6 +426,35 @@ export default function IndexPage() {
     }
   };
 
+  //---------------------------------------------------------
+  // FUNCIONES PARA EL MODAL DE EDICIÓN
+  //---------------------------------------------------------
+
+  //Manejo de captura de foto para EDITAR registro
+  const handleEditCapturePhoto = () => {
+    editFileInputRef.current?.click();
+  };
+
+  //Manejo de selección de imagen para EDITAR registro
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    if (file) {
+      setEditEvidenceFile(file);
+      setPreviewUrl(URL.createObjectURL(file)); 
+    } else {
+        setEditEvidenceFile(null);
+        setPreviewUrl("");
+    }
+  };
+
+  //---------------------------------------------------------
+
+  //Manejo de captura de coordenadas GPS
   const handleCaptureGps = () => {
     if (locationMode === "manual") {
       return;
@@ -416,6 +484,7 @@ export default function IndexPage() {
     );
   };
 
+  //Funcionalidad extendida: manejo de coordenadas manuales
   const handleManualUpdate = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
@@ -434,6 +503,7 @@ export default function IndexPage() {
     setLocationMode("manual");
   };
 
+  //Funcionalidad extendida: reinicio de ubicación y desbloqueo de modos
   const handleClearLocation = () => {
     setGpsLocation(null);
     setManualLat("");
@@ -441,6 +511,7 @@ export default function IndexPage() {
     setLocationMode(null);
   };
 
+  //Construir URL de registro con parámetros opcionales
   const buildRegistroUrl = (publicUrl: string) => {
     if (!note.trim() && !gpsLocation) {
       return publicUrl;
@@ -462,6 +533,7 @@ export default function IndexPage() {
 
   const sanitizeName = (text: string | null | undefined) => {
     if (!text) return "indefinido";
+
     return text
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -501,12 +573,15 @@ export default function IndexPage() {
     };
   };
 
+  //Manejo de guardado de evidencia
   const handleSave = async () => {
+    //Verificar que se haya seleccionado un detalle y que el usuario esté en sesión
     if (!selectedDetail || !sessionUser) {
       window.alert("Selecciona una actividad.");
       return;
     }
 
+    //Verificar que se haya seleccionado un archivo de evidencia
     if (!evidenceFile) {
       window.alert("Selecciona una foto.");
       return;
@@ -519,6 +594,7 @@ export default function IndexPage() {
       const fileName = `evidencia-${Date.now()}.jpg`;
       const storageInfo = getStorageInfo();
       const bucketName = formatBucketName(storageInfo.bucket);
+      //Subir el archivo de evidencia al almacenamiento con ruta ordenada
       const filePath = `${storageInfo.path}/${fileName}`;
       const publicUrl = await uploadEvidence(
         bucketName,
@@ -526,6 +602,7 @@ export default function IndexPage() {
         evidenceFile,
         evidenceFile.type || "image/jpeg"
       );
+      //Construir la URL del registro con los parámetros opcionales
       const registroUrl = buildRegistroUrl(publicUrl);
 
       const nuevaActividad = await createCheckedActivity({
@@ -547,6 +624,7 @@ export default function IndexPage() {
       });
 
       window.alert("Evidencia guardada.");
+      //Después de guardar, regresar al mapa para seguir registrando
       setStep("map");
     } catch (error) {
       window.alert("No se pudo guardar la evidencia.");
@@ -555,6 +633,7 @@ export default function IndexPage() {
     }
   };
 
+  //Manejo de cierre de sesión y reseteo de estados
   const handleReset = async () => {
     setStep("auth");
     setAuthMode("login");
@@ -587,6 +666,7 @@ export default function IndexPage() {
     await supabase.auth.signOut();
   };
   
+  //Manejo de guardado de actualizacion perfil de usuario
   const handleProfileSave = async () => {
     if (!sessionUser) return;
     setIsProfileSaving(true);
@@ -611,6 +691,8 @@ export default function IndexPage() {
       }
 
       setProfileMessage("Perfil actualizado correctamente.");
+      
+
       if (loadProfile) await loadProfile(); 
 
     } catch (error) {
@@ -622,6 +704,7 @@ export default function IndexPage() {
   };
 
   const handleDeleteAccount = async () => {
+    //Manejo de eliminación de cuenta de usuario
     const confirmed = window.confirm(
       "¿Seguro que deseas eliminar tu cuenta? Esta acción no se puede deshacer."
     );
@@ -648,6 +731,7 @@ export default function IndexPage() {
 
   const loadUserRecords = async () => {
     if (!sessionUser) return;
+    
     setIsLoadingRecords(true);
     try {
       const { data, error } = await supabase
@@ -658,6 +742,7 @@ export default function IndexPage() {
       if (error) throw error;
 
       setUserRecords(data || []);
+      
       if (data && data.length > 0) {
         setSelectedRecordId(data[0].id_registro);
       }
@@ -668,33 +753,29 @@ export default function IndexPage() {
     }
   };
 
-  // --- LÓGICA DEL MODAL CORREGIDA ---
+  const resetEditModalState = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl("");
+    setEditEvidenceFile(null);
+    setEditComment("");
+  }
 
   const openPhotoModal = () => {
-    // Buscamos el registro seleccionado para cargar sus datos iniciales
-    const record = userRecords.find((r) => r.id_registro === selectedRecordId);
-    if (record) {
-      setEditComment(record.comentario || ""); // Cargar comentario existente
-      setPreviewUrl(record.url_foto || "");    // Cargar foto existente
-      setEditEvidenceFile(null);               // Limpiar archivo pendiente
-      setIsPhotoModalOpen(true);
+    if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
     }
-  };
-
-  const closePhotoModal = () => {
-    setIsPhotoModalOpen(false);
+    const recordToEdit = userRecords.find(record => record.id_registro === selectedRecordId);
+    setEditComment(recordToEdit?.comentario ?? "");
     setEditEvidenceFile(null);
     setPreviewUrl("");
-  };
-
-  // Nueva función para manejar el archivo del modal y actualizar la vista previa
-  const handleModalFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setEditEvidenceFile(file);
-      setPreviewUrl(URL.createObjectURL(file)); // Previsualización inmediata
-    }
-  };
+    setIsPhotoModalOpen(true);
+  }
+  const closePhotoModal = () => {
+    resetEditModalState();
+    setIsPhotoModalOpen(false);
+  }
 
   const handleDelete = async (item: UserRecord) => {
     const confirmacion = window.confirm("¿Estás seguro de eliminar esta evidencia permanentemente?");
@@ -724,8 +805,8 @@ export default function IndexPage() {
       }
 
       window.alert("Evidencia eliminada correctamente.");
-      // Recargar la lista después de borrar
-      await loadUserRecords(); 
+      // Actualizar lista tras eliminar
+      await loadUserRecords();
       
     } catch (error: any) {
       console.error(error);
@@ -736,6 +817,11 @@ export default function IndexPage() {
   };
 
   const handleUpdate = async (item: UserRecord) => {
+    if (!editEvidenceFile && editComment === item.comentario) {
+      window.alert("No has realizado cambios.");
+      return;
+    }
+
     try {
       setIsLoadingData(true);
       
@@ -786,7 +872,6 @@ export default function IndexPage() {
 
       if (dbError) throw new Error(`Error actualizando BD: ${dbError.message}`);
 
-      // Borrar archivo antiguo si se subió uno nuevo
       if (editEvidenceFile && item.ruta_archivo) {
         const oldPathClean = item.ruta_archivo.startsWith('/') 
                              ? item.ruta_archivo.slice(1) 
@@ -797,8 +882,10 @@ export default function IndexPage() {
 
       window.alert("Registro actualizado correctamente.");
       
-      await loadUserRecords(); // Recargar la lista
-      closePhotoModal();       // Cerrar el modal
+      resetEditModalState();
+      setIsPhotoModalOpen(false);
+      // Actualizar lista tras editar
+      await loadUserRecords();
 
     } catch (error: any) {
       console.error(error);
@@ -807,17 +894,6 @@ export default function IndexPage() {
       setIsLoadingData(false);
     }
   };
-
-  // Validar si hay cambios para habilitar el botón "Confirmar Cambio"
-  const hasChanges = useMemo(() => {
-    const record = userRecords.find((r) => r.id_registro === selectedRecordId);
-    if (!record) return false;
-    
-    const commentChanged = editComment.trim() !== (record.comentario || "").trim();
-    const fileChanged = editEvidenceFile !== null;
-    
-    return commentChanged || fileChanged;
-  }, [editComment, editEvidenceFile, selectedRecordId, userRecords]);
 
   //Generar URL de mapa embebido basado en la ubicación del detalle seleccionado
   const mapCoords = useMemo(() => {
@@ -852,10 +928,13 @@ export default function IndexPage() {
 
   useEffect(() => {
     if (step === "profile" && sessionUser) {
-      loadProfile();
-      loadUserRecords();
+      loadProfile();      // Tu función existente
+      loadUserRecords();  // La nueva función
     }
   }, [step, sessionUser]);
+
+  const recordToUpdate = userRecords.find(record => record.id_registro === selectedRecordId);
+  const hasChanges = !!recordToUpdate && (editEvidenceFile !== null || editComment.trim() !== (recordToUpdate.comentario ?? ""));
 
   return (
     <div style={styles.page}>
@@ -1196,42 +1275,36 @@ export default function IndexPage() {
             <div style={styles.modalCard}>
               <h3 style={styles.sectionTitle}>Actualizar Evidencia</h3>
               <p style={styles.sectionHint}>Sube una nueva foto para este registro.</p>
-              
               <div style={styles.formBlock}>
+                <label style={styles.label}>Nueva Foto / evidencia</label>
                 <div style={styles.evidenceBox}>
                   {previewUrl ? (
-                    <img src={previewUrl} alt="Vista previa" style={styles.evidenceImage} />
-                  ) : (
-                    <span style={styles.emptyText}>Sin foto seleccionada.</span>
-                  )}
+                    <img src={previewUrl} alt="Nueva Evidencia" style={styles.evidenceImage} />
+                    ) : (
+                      <span style={styles.emptyText}>Sin foto nueva seleccionada.</span>
+                    )
+                  } 
                 </div>
-                
-                {/* Input oculto conectado a la referencia del modal */}
-                <input 
-                  type="file" 
-                  ref={modalFileInputRef} 
-                  style={{ display: 'none' }} 
-                  accept="image/*" 
-                  onChange={handleModalFileChange} 
-                />
-                
-                <button 
-                  onClick={() => modalFileInputRef.current?.click()} 
-                  style={styles.secondaryButton}
-                >
-                  {editEvidenceFile ? "Cambiar archivo elegido" : "Seleccionar archivo"}
+                  <input 
+                    type="text" 
+                    value={editComment} 
+                    onChange={(e) => setEditComment(e.target.value)}
+                    placeholder="Editar comentario..."
+                    style={styles.input}
+                  />
+                  <input 
+                    ref={editFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    style={{ display: "none" }}
+                  />
+                <button onClick={handleEditCapturePhoto} style={styles.secondaryButton}>
+                    Seleccionar archivo
                 </button>
-              </div>
-
-              <div style={styles.formBlock}>
-                <label style={styles.label}>Editar comentario</label>
-                <input 
-                  type="text" 
-                  value={editComment} 
-                  onChange={(e) => setEditComment(e.target.value)}
-                  placeholder="Editar comentario..."
-                  style={styles.input} 
-                />
+                <div style={styles.fileHelperText}>
+                    {editEvidenceFile ? editEvidenceFile.name : "Ningún archivo seleccionado"}
+                </div>
               </div>
 
               <div style={styles.modalButtons}>
@@ -1241,22 +1314,23 @@ export default function IndexPage() {
                 >
                   Cancelar
                 </button>
-                
                 <button 
                   onClick={() => {
-                    const recordToUpdate = userRecords.find(r => r.id_registro === selectedRecordId);
-                    if (recordToUpdate) {
-                        handleUpdate(recordToUpdate);
+                    const activeRecord = recordToUpdate;
+                    
+                    if (activeRecord) {
+                        handleUpdate(activeRecord);
                     } else {
+                        console.error("Error: No se encontró el registro seleccionado en memoria.");
                         closePhotoModal();
                     }
                   }}
-                  disabled={!hasChanges} 
                   style={{ 
                     ...styles.primaryButton, 
                     marginTop: 0,
-                    ...( !hasChanges ? styles.primaryButtonDisabled : {} ) 
+                    ...(hasChanges ? undefined : styles.primaryButtonDisabled)
                   }}
+                  disabled={!hasChanges}
                 >
                   Confirmar Cambio
                 </button>
@@ -1481,15 +1555,48 @@ export default function IndexPage() {
       {step === "form" && selectedDetail && (
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Registro en campo</h2>
-          <p style={styles.sectionHint}>
-            {(selectedActivity?.Nombre_Actividad ?? selectedDetail.activityName) +
-              " · " +
-              selectedDetail.Nombre_Detalle}
-          </p>
+          <p style={styles.sectionHint}>Revisa la información antes de guardar.</p>
 
-          <div style={styles.formBlock}>
-            <label style={styles.label}>Foto / evidencia</label>
-            <div style={styles.evidenceBox}>
+          <div style={styles.detailInfoBox}>
+            <div style={styles.detailRow}>
+              <span style={styles.detailLabel}>Proyecto:</span>
+              <span style={styles.detailValue}>
+                {selectedProjectId
+                  ? projects.find((p) => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre
+                  : "—"}
+              </span>
+            </div>
+            <div style={styles.detailRow}>
+              <span style={styles.detailLabel}>Frente:</span>
+              <span style={styles.detailValue}>
+                {selectedFrontId
+                  ? fronts.find((f) => f.ID_Frente === selectedFrontId)?.Nombre_Frente
+                  : "—"}
+              </span>
+            </div>
+            <div style={styles.detailRow}>
+              <span style={styles.detailLabel}>Localidad:</span>
+              <span style={styles.detailValue}>
+                {selectedLocalityId
+                  ? localities.find((l) => l.ID_Localidad === selectedLocalityId)?.Nombre_Localidad
+                  : "—"}
+              </span>
+            </div>
+            <div style={styles.detailRow}>
+              <span style={styles.detailLabel}>Sector:</span>
+              <span style={styles.detailValue}>{selectedDetail.Nombre_Detalle}</span>
+            </div>
+            <div style={{ ...styles.detailRow, borderBottom: "none" }}>
+              <span style={styles.detailLabel}>Actividad:</span>
+              <span style={styles.detailValue}>
+                {selectedActivity?.Nombre_Actividad ?? selectedDetail.activityName}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ ...styles.formBlock, marginTop: "16px" }}>
+            <label style={{ ...styles.label, fontSize: "12px" }}>Evidencia (Foto)</label>
+            <div style={{ ...styles.evidenceBox, backgroundColor: "#F1F5F9" }}>
               {evidencePreview ? (
                 <img src={evidencePreview} alt="Evidencia" style={styles.evidenceImage} />
               ) : (
@@ -2064,6 +2171,36 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#0F172A",
     textAlign: "right",
     fontWeight: 500,
+  },
+  detailInfoBox: {
+    borderRadius: "12px",
+    backgroundColor: "#F8FAFC",
+    border: "1px solid #E2E8F0",
+    padding: "12px",
+  },
+  detailRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    borderBottom: "1px dashed #E2E8F0",
+    paddingBottom: "6px",
+    marginBottom: "6px",
+    gap: "12px",
+  },
+  detailLabel: {
+    color: "#64748B",
+    fontSize: "12px",
+    fontWeight: 700,
+  },
+  detailValue: {
+    color: "#0F172A",
+    fontSize: "13px",
+    fontWeight: 600,
+    textAlign: "right",
+  },
+  fileHelperText: {
+    fontSize: "12px",
+    color: "#64748B",
+    textAlign: "center",
   },
 };
 
