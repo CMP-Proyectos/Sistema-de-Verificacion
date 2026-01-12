@@ -1,5 +1,6 @@
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import proj4 from 'proj4';
 
 import {
   ActivityRecord,
@@ -113,6 +114,17 @@ export default function IndexPage() {
   const [editComment, setEditComment] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState("");
 
+  const WGS84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+  const utmZones: Record<string, string> = {
+    "17": "+proj=utm +zone=17 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+    "18": "+proj=utm +zone=18 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+    "19": "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+  };
+
+  const [utmZone, setUtmZone] = useState("19");
+  const [utmEast, setUtmEast] = useState("");
+  const [utmNorth, setUtmNorth] = useState("");
+  
   //Funcion para definir las opciones de retorno entre los "pasos"
   const getPreviousStep = (current: Step) => {
     switch (current) {
@@ -426,10 +438,6 @@ export default function IndexPage() {
     }
   };
 
-  //---------------------------------------------------------
-  // FUNCIONES PARA EL MODAL DE EDICIÓN
-  //---------------------------------------------------------
-
   //Manejo de captura de foto para EDITAR registro
   const handleEditCapturePhoto = () => {
     editFileInputRef.current?.click();
@@ -484,10 +492,9 @@ export default function IndexPage() {
     );
   };
 
-  //Funcionalidad extendida: manejo de coordenadas manuales
-  const handleManualUpdate = () => {
-    const lat = parseFloat(manualLat);
-    const lng = parseFloat(manualLng);
+  const handleManualUpdate = (latInput: number | string, lngInput: number | string) => {
+    const lat = typeof latInput === 'number' ? latInput : parseFloat(manualLat);
+    const lng = typeof lngInput === 'number' ? lngInput : parseFloat(manualLng);
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       window.alert("Por favor ingresa coordenadas válidas.");
@@ -503,14 +510,31 @@ export default function IndexPage() {
     setLocationMode("manual");
   };
 
-  //Funcionalidad extendida: reinicio de ubicación y desbloqueo de modos
+  const handleUpdateFromUtm = () => {
+      if (!utmEast || !utmNorth) {
+        window.alert("Ingresa valores para Este y Norte.");
+        return;
+      }
+
+      try {
+        const sourceProj = utmZones[utmZone];
+        const [lng, lat] = proj4(sourceProj, WGS84, [Number(utmEast), Number(utmNorth)]);
+        setManualLat(lat.toFixed(6));
+        setManualLng(lng.toFixed(6));
+        handleManualUpdate(lat, lng);
+        
+      } catch (error) {
+        console.error("Error en conversión UTM:", error);
+        window.alert("Error al convertir. Verifica la Zona y las coordenadas.");
+      }
+  };
+
   const handleClearLocation = () => {
     setGpsLocation(null);
     setManualLat("");
     setManualLng("");
     setLocationMode(null);
   };
-
   //Construir URL de registro con parámetros opcionales
   const buildRegistroUrl = (publicUrl: string) => {
     if (!note.trim() && !gpsLocation) {
@@ -1485,30 +1509,38 @@ export default function IndexPage() {
             </div>
 
             <div style={styles.locationCard}>
-              <span style={styles.locationTitle}>Manual</span>
-              <input
-                type="number"
-                placeholder="Latitud (ej: -18.50)"
-                value={manualLat}
-                onChange={(event) => setManualLat(event.target.value)}
-                style={styles.input}
-                disabled={locationMode === "auto"}
-              />
-              <input
-                type="number"
-                placeholder="Longitud (ej: -70.20)"
-                value={manualLng}
-                onChange={(event) => setManualLng(event.target.value)}
-                style={styles.input}
-                disabled={locationMode === "auto"}
-              />
-              <button
-                onClick={handleManualUpdate}
-                style={styles.secondaryButton}
-                disabled={!manualLat || !manualLng}
-              >
-                Actualizar ubicación manual
-              </button>
+              <span>Coordenadas UTM (WGS84)</span>
+              <div style={{display: 'flex', gap: '5px', flexDirection: 'column'}}>
+                <select 
+                  value={utmZone}
+                  onChange={(e) => setUtmZone(e.target.value)}
+                  style={styles.input}
+                >
+                  <option value="17">Zona 17S</option>
+                  <option value="18">Zona 18S</option>
+                  <option value="19">Zona 19S</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Este (X)"
+                  value={utmEast}
+                  onChange={(e) => setUtmEast(e.target.value)}
+                  style={styles.input}
+                />
+                <input
+                  type="number"
+                  placeholder="Norte (Y)"
+                  value={utmNorth}
+                  onChange={(e) => setUtmNorth(e.target.value)}
+                  style={styles.input}
+                />
+                <button 
+                  onClick={handleUpdateFromUtm}
+                  style={styles.secondaryButton}
+                >
+                  Actualizar Mapa
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1537,7 +1569,7 @@ export default function IndexPage() {
           </button>
         </div>
       )}
-
+      
       {step === "form" && selectedDetail && (
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Registro en campo</h2>
