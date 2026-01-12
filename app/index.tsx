@@ -1,4 +1,5 @@
 import type React from "react";
+import proj4 from 'proj4';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -112,6 +113,17 @@ export default function IndexPage() {
   const [editEvidenceFile, setEditEvidenceFile] = useState<File | null>(null);
   const [editComment, setEditComment] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState("");
+
+  const WGS84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+  const utmZones: Record<string, string> = {
+    "17": "+proj=utm +zone=17 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+    "18": "+proj=utm +zone=18 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+    "19": "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+  };
+
+  const [utmZone, setUtmZone] = useState("19");
+  const [utmEast, setUtmEast] = useState("");
+  const [utmNorth, setUtmNorth] = useState("");
 
   //Funcion para definir las opciones de retorno entre los "pasos"
   const getPreviousStep = (current: Step) => {
@@ -484,10 +496,11 @@ export default function IndexPage() {
     );
   };
 
-  //Funcionalidad extendida: manejo de coordenadas manuales
-  const handleManualUpdate = () => {
-    const lat = parseFloat(manualLat);
-    const lng = parseFloat(manualLng);
+  const handleManualUpdate = (latInput: number | string, lngInput: number | string) => {
+    // Si nos pasan argumentos (desde UTM), los usamos.
+    // Si no (desde botón manual), leemos del estado y convertimos a número.
+    const lat = typeof latInput === 'number' ? latInput : parseFloat(manualLat);
+    const lng = typeof lngInput === 'number' ? lngInput : parseFloat(manualLng);
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       window.alert("Por favor ingresa coordenadas válidas.");
@@ -502,6 +515,25 @@ export default function IndexPage() {
     setGpsLocation({ latitude: lat, longitude: lng });
     setLocationMode("manual");
   };
+
+  const handleUpdateFromUtm = () => {
+      if (!utmEast || !utmNorth) {
+        window.alert("Ingresa valores para Este y Norte.");
+        return;
+      }
+
+      try {
+        const sourceProj = utmZones[utmZone];
+        const [lng, lat] = proj4(sourceProj, WGS84, [Number(utmEast), Number(utmNorth)]);
+        setManualLat(lat.toFixed(6));
+        setManualLng(lng.toFixed(6));
+        handleManualUpdate(lat, lng);
+        
+      } catch (error) {
+        console.error("Error en conversión UTM:", error);
+        window.alert("Error al convertir. Verifica la Zona y las coordenadas.");
+      }
+    };
 
   //Funcionalidad extendida: reinicio de ubicación y desbloqueo de modos
   const handleClearLocation = () => {
@@ -1083,192 +1115,179 @@ export default function IndexPage() {
       {step === "profile" && (
         <>
         <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Perfil de usuario</h2>
-          <p style={styles.sectionHint}>
-            {isProfileLoading ? "Cargando perfil..." : "Actualiza tus datos personales."}
-          </p>
-
-          <label style={styles.label}>Nombre completo</label>
-          <input
-            placeholder="Nombre"
-            value={profileName}
-            onChange={(event) => setProfileName(event.target.value)}
-            style={styles.input}
-          />
-
-          <label style={styles.label}>Apellido</label>
-          <input
-            placeholder="Apellido"
-            value={profileLastName}
-            onChange={(event) => setProfileLastName(event.target.value)}
-            style={styles.input}
-          />
-
-          <label style={styles.label}>Email</label>
-          <input
-            placeholder="tu@email.com"
-            value={profileEmail}
-            onChange={(event) => setProfileEmail(event.target.value)}
-            style={styles.input}
-          />
-
-          <div style={styles.readOnlyBlock}>
-            <div>
-              <span style={styles.readOnlyLabel}>Creado</span>
-              <span style={styles.readOnlyValue}>
-                {profileCreatedAt ? new Date(profileCreatedAt).toLocaleString() : "—"}
-              </span>
+            <h2 style={{...styles.sectionTitle, marginBottom: '10px'}}>Perfil</h2> {/* Título con menos margen */}
+            
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{...styles.label, fontSize: '12px', marginBottom: '4px'}}>Nombre</label>
+                <input
+                  placeholder="Nombre"
+                  value={profileName}
+                  onChange={(event) => setProfileName(event.target.value)}
+                  style={{...styles.input, marginBottom: 0}} // Quitamos margen inferior extra
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{...styles.label, fontSize: '12px', marginBottom: '4px'}}>Apellido</label>
+                <input
+                  placeholder="Apellido"
+                  value={profileLastName}
+                  onChange={(event) => setProfileLastName(event.target.value)}
+                  style={{...styles.input, marginBottom: 0}}
+                />
+              </div>
             </div>
-            <div>
-              <span style={styles.readOnlyLabel}>Último ingreso</span>
-              <span style={styles.readOnlyValue}>
-                {profileLastSignInAt ? new Date(profileLastSignInAt).toLocaleString() : "—"}
-              </span>
+
+            <label style={{...styles.label, fontSize: '12px', marginBottom: '4px'}}>Email</label>
+            <input
+              placeholder="tu@email.com"
+              value={profileEmail}
+              onChange={(event) => setProfileEmail(event.target.value)}
+              style={{...styles.input, marginBottom: '15px'}}
+            />
+            <div style={{...styles.readOnlyBlock, padding: '8px', marginBottom: '15px', fontSize: '12px'}}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={styles.readOnlyLabel}>Creado:</span>
+                <span style={styles.readOnlyValue}>
+                  {profileCreatedAt ? new Date(profileCreatedAt).toLocaleDateString() : "—"}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={styles.readOnlyLabel}>Último ingreso:</span>
+                <span style={styles.readOnlyValue}>
+                  {profileLastSignInAt ? new Date(profileLastSignInAt).toLocaleDateString() : "—"}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {profileMessage && <div style={styles.profileMessage}>{profileMessage}</div>}
+            {profileMessage && <div style={styles.profileMessage}>{profileMessage}</div>}
 
-          <button
-            onClick={handleProfileSave}
-            style={{
-              ...styles.primaryButton,
-              ...(isProfileSaving ? styles.primaryButtonDisabled : undefined),
-            }}
-            disabled={isProfileSaving}
-          >
-            {isProfileSaving ? "Guardando..." : "Guardar cambios"}
-          </button>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <button onClick={() => setStep("project")} style={{...styles.secondaryButton, flex: 1, margin: 0}}>
+                  Volver
+                </button>
+                <button
+                  onClick={handleProfileSave}
+                  style={{
+                    ...styles.primaryButton,
+                    flex: 1,
+                    margin: 0,
+                    ...(isProfileSaving ? styles.primaryButtonDisabled : undefined),
+                  }}
+                  disabled={isProfileSaving}
+                >
+                  {isProfileSaving ? "..." : "Guardar"}
+                </button>
+            </div>
 
-          <button
-            onClick={handleDeleteAccount}
-            style={styles.dangerButton}
-            disabled={isDeletingAccount}
-          >
-            {isDeletingAccount ? "Eliminando..." : "Eliminar cuenta"}
-          </button>
+            <button
+              onClick={handleDeleteAccount}
+              style={{...styles.dangerButton, padding: '8px', fontSize: '12px', marginBottom: '20px', width: '100%'}}
+              disabled={isDeletingAccount}
+            >
+              {isDeletingAccount ? "Eliminando..." : "Eliminar cuenta"}
+            </button>
 
-          <button onClick={() => setStep("project")} style={styles.secondaryButton}>
-            Volver
-          </button>
-
-          <div style={styles.historySection}>
-            <h3 style={styles.sectionTitle}>Historial de Registros</h3>
-            <p style={styles.sectionHint}>Selecciona un registro para ver la evidencia y detalles.</p>
-
-            <div style={styles.historyContainer}>
-  
-              <div style={styles.historyList}>
-                {isLoadingRecords ? (
-                  <div style={styles.emptyState}>Cargando registros...</div>
-                ) : userRecords.length === 0 ? (
-                  <div style={styles.emptyState}>No hay registros aún.</div>
-                ) : (
-                  userRecords.map((rec) => {
-                    const isActive = selectedRecordId === rec.id_registro;
-                    return (
-                      <div 
-                        key={rec.id_registro}
-                        onClick={() => setSelectedRecordId(rec.id_registro)}
-                        style={{
-                          ...styles.historyItem,
-                          ...(isActive ? styles.historyItemActive : {}),
-                        }}
-                      >
-                        <div style={styles.searchOptionTitle}>
-                          {new Date(rec.fecha_subida).toLocaleDateString()}
-                        </div>
-                        <div style={styles.searchOptionMeta}>
-                          {rec.nombre_actividad.length > 25 
-                          ? rec.nombre_actividad.substring(0, 25) + "..." 
-                          : rec.nombre_actividad}
-                        </div>
-                        {isActive && (
-                          <div style={{ ...styles.sectionHint, fontSize: '11px', marginTop: '4px', color: '#0B5FFF' }}>
-                            Viendo detalles
+            <div style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
+              <h3 style={{...styles.sectionTitle, fontSize: '16px', marginBottom: '5px'}}>Historial</h3>
+              
+              <div style={styles.historyContainer}>
+                <div style={{...styles.historyList, maxHeight: '150px'}}>
+                  {isLoadingRecords ? (
+                    <div style={styles.emptyState}>Cargando...</div>
+                  ) : userRecords.length === 0 ? (
+                    <div style={styles.emptyState}>Sin registros.</div>
+                  ) : (
+                    userRecords.map((rec) => {
+                      const isActive = selectedRecordId === rec.id_registro;
+                      return (
+                        <div 
+                          key={rec.id_registro}
+                          onClick={() => setSelectedRecordId(rec.id_registro)}
+                          style={{
+                            ...styles.historyItem,
+                            padding: '8px',
+                            ...(isActive ? styles.historyItemActive : {}),
+                          }}
+                        >
+                          <div style={{...styles.searchOptionTitle, fontSize: '13px'}}>
+                            {new Date(rec.fecha_subida).toLocaleDateString()}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div style={styles.historyDetail}>
-                {(() => {
-                  const selectedRec = userRecords.find(r => r.id_registro === selectedRecordId);
-
-                  if (!selectedRec) {
-                    return (
-                      <div style={{ ...styles.emptyState, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        Selecciona un registro de la izquierda.
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <>
-                    <h4 style={{ ...styles.title, fontSize: "18px", marginBottom: "0" }}>
-                      Información del Registro
-                    </h4>
-
-                    <div style={styles.detailInfoBox}>
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Actividad:</span>
-                        <span style={styles.detailValue} title={selectedRec.nombre_actividad}>
-                            {selectedRec.nombre_actividad}
-                        </span>
-                      </div>
-
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Localidad:</span>
-                        <span style={styles.detailValue}>{selectedRec.nombre_localidad}</span>
-                      </div>
-
-                      <div style={styles.detailRow}>
-                        <span style={styles.detailLabel}>Detalle:</span>
-                        <span style={styles.detailValue}>{selectedRec.nombre_detalle}</span>
-                      </div>
-
-                      <div style={{ ...styles.detailRow, borderBottom: 'none' }}>
-                        <span style={styles.detailLabel}>Observación:</span>
-                        <span style={{ ...styles.detailValue, color: '#0B5FFF', fontStyle: selectedRec.comentario ? 'normal' : 'italic' }}>
-                          {selectedRec.comentario || "—"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                        <label style={{ ...styles.label, fontSize: '12px' }}>Evidencia guardada</label>
-                        <div style={{ ...styles.evidenceBox, height: 'auto', minHeight: '200px', backgroundColor: '#F1F5F9' }}>
-                          {selectedRec.url_foto ? (
-                            <img src={selectedRec.url_foto} alt="Actual" style={{ ...styles.evidenceImage, height: 'auto', maxHeight: '250px' }} />
-                          ) : <span style={styles.emptyText}>Sin imagen</span>}
+                          <div style={{...styles.searchOptionMeta, fontSize: '11px'}}>
+                            {rec.nombre_actividad.length > 20 
+                            ? rec.nombre_actividad.substring(0, 20) + "..." 
+                            : rec.nombre_actividad}
+                          </div>
                         </div>
-                    </div>
+                      );
+                    })
+                  )}
+                </div>
+                <div style={styles.historyDetail}>
+                  {(() => {
+                    const selectedRec = userRecords.find(r => r.id_registro === selectedRecordId);
 
-                    <div style={styles.buttonsRow}>
-                      <button 
-                        style={{ ...styles.dangerButton, marginTop: 0, width: 'auto', flex: 1 }}
-                        onClick={() => handleDelete(selectedRec)}
-                      >
-                        Eliminar
-                      </button>
+                    if (!selectedRec) return <div style={{padding: '10px', fontSize: '12px', color: '#666'}}>Selecciona un registro.</div>;
 
-                      <button 
-                        style={{ ...styles.secondaryButton, marginTop: 0, width: 'auto', flex: 1 }}
-                        onClick={openPhotoModal}
-                      >
-                        Cambiar Foto
-                      </button>
-                    </div>
-                    </>
-                  );
-                })()}
+                    return (
+                      <>
+                      <h4 style={{ ...styles.title, fontSize: "14px", margin: "10px 0 5px" }}>Detalles</h4>
+
+                      <div style={{...styles.detailInfoBox, padding: '0'}}>
+                        <div style={{...styles.detailRow, padding: '6px 0'}}>
+                          <span style={{...styles.detailLabel, fontSize: '12px'}}>Actividad:</span>
+                          <span style={{...styles.detailValue, fontSize: '12px'}}>{selectedRec.nombre_actividad}</span>
+                        </div>
+                        <div style={{...styles.detailRow, padding: '6px 0'}}>
+                          <span style={{...styles.detailLabel, fontSize: '12px'}}>Localidad:</span>
+                          <span style={{...styles.detailValue, fontSize: '12px'}}>{selectedRec.nombre_localidad}</span>
+                        </div>
+                        <div style={{...styles.detailRow, padding: '6px 0', borderBottom: 'none'}}>
+                          <span style={{...styles.detailLabel, fontSize: '12px'}}>Obs:</span>
+                          <span style={{...styles.detailValue, fontSize: '12px', color: '#0B5FFF'}}>
+                            {selectedRec.comentario || "-"}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: '10px' }}>
+                          <div style={{ 
+                              ...styles.evidenceBox, 
+                              height: 'auto', 
+                              minHeight: '100px',
+                              maxHeight: '150px',
+                              padding: '5px',
+                              backgroundColor: '#F1F5F9',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center'
+                          }}>
+                            {selectedRec.url_foto ? (
+                              <img src={selectedRec.url_foto} alt="Evidencia" style={{ maxHeight: '140px', maxWidth: '100%', objectFit: 'contain' }} />
+                            ) : <span style={{fontSize: '11px', color: '#999'}}>Sin foto</span>}
+                          </div>
+                      </div>
+
+                      <div style={{...styles.buttonsRow, marginTop: '10px', paddingBottom: '0'}}>
+                        <button 
+                          style={{ ...styles.dangerButton, marginTop: 0, padding: '8px', fontSize: '12px', flex: 1 }}
+                          onClick={() => handleDelete(selectedRec)}
+                        >
+                          Eliminar
+                        </button>
+                        <button 
+                          style={{ ...styles.secondaryButton, marginTop: 0, padding: '8px', fontSize: '12px', flex: 1 }}
+                          onClick={openPhotoModal}
+                        >
+                          Cambiar Foto
+                        </button>
+                      </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         {isPhotoModalOpen && (
           <div style={styles.modalOverlay}>
@@ -1499,30 +1518,38 @@ export default function IndexPage() {
             </div>
 
             <div style={styles.locationCard}>
-              <span style={styles.locationTitle}>Manual</span>
-              <input
-                type="number"
-                placeholder="Latitud (ej: -18.50)"
-                value={manualLat}
-                onChange={(event) => setManualLat(event.target.value)}
-                style={styles.input}
-                disabled={locationMode === "auto"}
-              />
-              <input
-                type="number"
-                placeholder="Longitud (ej: -70.20)"
-                value={manualLng}
-                onChange={(event) => setManualLng(event.target.value)}
-                style={styles.input}
-                disabled={locationMode === "auto"}
-              />
-              <button
-                onClick={handleManualUpdate}
-                style={styles.secondaryButton}
-                disabled={!manualLat || !manualLng}
-              >
-                Actualizar ubicación manual
-              </button>
+              <span>Coordenadas UTM (WGS84)</span>
+              <div style={{display: 'flex', gap: '5px', flexDirection: 'column'}}>
+                <select 
+                  value={utmZone}
+                  onChange={(e) => setUtmZone(e.target.value)}
+                  style={styles.input}
+                >
+                  <option value="17">Zona 17S</option>
+                  <option value="18">Zona 18S</option>
+                  <option value="19">Zona 19S</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Este (X)"
+                  value={utmEast}
+                  onChange={(e) => setUtmEast(e.target.value)}
+                  style={styles.input}
+                />
+                <input
+                  type="number"
+                  placeholder="Norte (Y)"
+                  value={utmNorth}
+                  onChange={(e) => setUtmNorth(e.target.value)}
+                  style={styles.input}
+                />
+                <button 
+                  onClick={handleUpdateFromUtm}
+                  style={styles.secondaryButton}
+                >
+                  Actualizar Mapa
+                </button>
+              </div>
             </div>
           </div>
 

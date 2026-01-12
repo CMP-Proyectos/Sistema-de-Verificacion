@@ -45,6 +45,9 @@ export type RegistroPayload = {
   URL_Archivo: string;
   user_id: string;
   ID_Verificada?: number | null;
+  Comentario: string | null;
+  Ruta_Archivo: string;
+  Bucket: string;
 };
 //Conseguir lista de proyectos de la base de datos
 export async function getProjects() {
