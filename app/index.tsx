@@ -51,7 +51,7 @@ type DetailWithActivity = DetailRecord & {
   activityName: string;
 };
 
-const LOGO_SRC = "/assets/images/logo-consorcio-cenepa.png";
+const LOGO_SRC = "https://i.imgur.com/Ej1MRpv.png";
 
 export default function IndexPage() {
   //Establecer auth como primer "paso" dentro de la pagina
@@ -1036,7 +1036,6 @@ export default function IndexPage() {
         <div style={styles.card}>
           <div style={styles.logoRow}>
             <img src={LOGO_SRC} alt="Consorcio Cenepa Asociados" style={styles.logo} />
-            <span style={styles.logoText}>Consorcio Cenepa Asociados</span>
           </div>
           <h2 style={styles.sectionTitle}>
             {authMode === "login" ? "Inicia sesión" : "Crear cuenta"}
