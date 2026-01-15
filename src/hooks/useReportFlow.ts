@@ -1,185 +1,122 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "../services/supabaseClient";
-import { db, PendingRecord } from "../services/db_local";
-import {
-  getProjects,
-  getFronts,
-  getLocalities,
-  getDetails,
-  getActivities,
-  uploadEvidence,
-  createCheckedActivity,
-  createRegistro,
-  ProjectRecord,
-  FrontRecord,
-  LocalityRecord,
-  DetailRecord,
-  ActivityRecord,
-  RegistroPayload
+import { 
+  supabase, 
+  getAllProjects, getAllFronts, getAllLocalities, getAllDetails, getAllActivities, 
+  uploadEvidence, createCheckedActivity, createRegistro, 
+  ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord 
 } from "../services/dataService";
+import { db, PendingRecord } from "../services/db_local";
+import { validarFotoConIA } from "../services/GoogleAI"; // <--- IMPORTACIÓN DEL AGENTE
+import proj4 from 'proj4';
 
-// Tipos auxiliares para el flujo
-export type Step =
-  | "auth" | "project" | "front" | "locality" | "detail"
-  | "activity" | "map" | "form" | "profile" | "user_records" | "files";
-
+export type Step = "auth" | "project" | "front" | "locality" | "detail" | "activity" | "map" | "form" | "profile" | "user_records" | "files";
+export interface UserRecord { id_registro: number; fecha_subida: string; url_foto: string | null; nombre_actividad: string; nombre_localidad: string; nombre_detalle: string; comentario: string | null; ruta_archivo: string | null; bucket: string | null; latitud: number | null; longitud: number | null; }
+export interface ActivitiesTypes { Tipo_Actividad: string; ID_Propiedad: number; Propiedad: string; }
 type DetailWithActivity = DetailRecord & { activityName: string };
+type GpsLocation = { latitude: number; longitude: number; };
+
+const WGS84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+const utmZones: Record<string, string> = { "17": "+proj=utm +zone=17 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", "18": "+proj=utm +zone=18 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", "19": "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs" };
 
 export function useReportFlow() {
-  // --- Estados de Control ---
   const [step, setStep] = useState<Step>("auth");
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // --- Estados de Autenticación ---
+  const [syncStatus, setSyncStatus] = useState("");
   const [sessionUser, setSessionUser] = useState<{ email: string; id: string } | null>(null);
+  
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"login"|"signup">("login");
 
-  // --- Estados de Datos (Listas) ---
+  const [profileName, setProfileName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileCreatedAt, setProfileCreatedAt] = useState("");
+  const [profileLastSignInAt, setProfileLastSignInAt] = useState("");
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [fronts, setFronts] = useState<FrontRecord[]>([]);
   const [localities, setLocalities] = useState<LocalityRecord[]>([]);
   const [details, setDetails] = useState<DetailRecord[]>([]);
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
 
-  // --- Estados de Selección ---
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedFrontId, setSelectedFrontId] = useState<number | null>(null);
   const [selectedLocalityId, setSelectedLocalityId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<DetailWithActivity | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityRecord | null>(null);
+  const [detailSearch, setDetailSearch] = useState("");
 
-  // --- Estados del Formulario Final ---
-  const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsLocation, setGpsLocation] = useState<GpsLocation | null>(null);
+  const [isFetchingGps, setIsFetchingGps] = useState(false);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [utmZone, setUtmZone] = useState("19");
+  const [utmEast, setUtmEast] = useState("");
+  const [utmNorth, setUtmNorth] = useState("");
 
-  // --- 1. Listener de Conexión y Sincronización ---
+  const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
+  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  const [availableProperties, setAvailableProperties] = useState<ActivitiesTypes[]>([]);
+  const [selectedPropId, setSelectedPropId] = useState<number | "">("");
+  const [detailText, setDetailText] = useState("");
+
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [editEvidenceFile, setEditEvidenceFile] = useState<File | null>(null);
+  const [editComment, setEditComment] = useState("");
+  const [editPreviewUrl, setEditPreviewUrl] = useState("");
+
+  // --- NUEVOS ESTADOS PARA EL AGENTE DE IA ---
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   useEffect(() => {
-    const handleStatusChange = () => {
-      const status = navigator.onLine;
-      setIsOnline(status);
-      if (status) syncPendingUploads(); // Si vuelve internet, intenta subir pendientes
-    };
-
-    window.addEventListener('online', handleStatusChange);
-    window.addEventListener('offline', handleStatusChange);
-
-    // Chequeo inicial de sesión
+    const handleStatus = () => { setIsOnline(navigator.onLine); if(navigator.onLine) syncPendingUploads(); };
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
     checkSession();
-
-    return () => {
-      window.removeEventListener('online', handleStatusChange);
-      window.removeEventListener('offline', handleStatusChange);
-    };
+    return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
   }, []);
 
-  // --- 2. Funciones "Core" de Caché (Offline-First) ---
-  
-  /**
-   * Patrón Genérico: Intenta bajar de internet -> Guarda en Dexie.
-   * Si falla o no hay internet -> Lee de Dexie.
-   */
-  const loadWithCache = async <T>(
-    remoteFetcher: () => Promise<T[]>,
-    localTable: any, // Tabla de Dexie
-    queryFn?: (table: any) => Promise<T[]> // Función opcional para filtrar en Dexie
-  ): Promise<T[]> => {
-    setIsLoading(true);
-    try {
-      if (navigator.onLine) {
-        // ONLINE: Bajar, limpiar tabla local específica y guardar nuevos
-        const data = await remoteFetcher();
-        // Nota: En producción real, usa transacciones para no borrar todo si no es necesario,
-        // pero para mantener simpleza limpiamos y llenamos.
-        try {
-          // Limpiamos solo si vamos a rellenar con datos frescos relacionados
-          // (Para optimizar, podrías hacer un 'put' masivo sin clear, pero 'clear' asegura que no queden huerfanos)
-           /* OJO: Si limpiamos 'fronts' al cargar un proyecto, borramos frentes de OTROS proyectos.
-              Para este ejemplo simple, asumiremos que si hay internet traemos lo fresco.
-              Si estás offline, usas lo que hay. */
-           if (localTable === db.projects) await localTable.clear(); 
-           // Para tablas dependientes (fronts, etc) es mejor usar bulkPut para actualizar/insertar
-           await localTable.bulkPut(data);
-        } catch (e) {
-          console.warn("Error escribiendo caché Dexie:", e);
-        }
-        return data;
-      } else {
-        throw new Error("Offline");
-      }
-    } catch (error) {
-      // OFFLINE O ERROR: Leer de Dexie
-      console.log("Modo Offline: Leyendo de Dexie...");
-      if (queryFn) {
-        return await queryFn(localTable);
-      }
-      return await localTable.toArray();
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if ((step === "profile" || step === "user_records" || step === "files") && sessionUser) { 
+        loadProfileData(); 
+        if (step !== "profile") loadUserRecords(); 
     }
+  }, [step, sessionUser]);
+
+  const performFullSync = async () => {
+    if (!navigator.onLine) return;
+    setSyncStatus("Sincronizando...");
+    try {
+        const [p, f, l, d, a] = await Promise.all([ getAllProjects(), getAllFronts(), getAllLocalities(), getAllDetails(), getAllActivities() ]);
+        await db.transaction('rw', db.projects, db.fronts, db.localities, db.details, async () => {
+            await db.projects.bulkPut(p); await db.fronts.bulkPut(f); await db.localities.bulkPut(l); await db.details.bulkPut(d);
+        });
+        setActivities(a);
+        setSyncStatus("");
+    } catch (e) { console.error("Sync error", e); setSyncStatus("Error Sync"); }
   };
 
-  // --- 3. Carga de Datos Específicos ---
+  const loadProjectsLocal = useCallback(async () => { setProjects(await db.projects.toArray()); }, []);
+  const loadFrontsLocal = useCallback(async (pid: number) => { setFronts(await db.fronts.where("ID_Proyecto").equals(pid).toArray()); }, []);
+  const loadLocalitiesLocal = useCallback(async (fid: number) => { setLocalities(await db.localities.where("ID_Frente").equals(fid).toArray()); }, []);
+  const loadDetailsLocal = useCallback(async (lid: number) => { setDetails(await db.details.where("ID_Localidad").equals(lid).toArray()); }, []);
 
-  const loadProjects = useCallback(async () => {
-    const data = await loadWithCache(
-      getProjects,
-      db.projects
-    );
-    setProjects(data);
-  }, []);
-
-  const loadFronts = useCallback(async (projectId: number) => {
-    const data = await loadWithCache(
-      () => getFronts(projectId),
-      db.fronts,
-      (table) => table.where("ID_Proyecto").equals(projectId).toArray()
-    );
-    setFronts(data);
-  }, []);
-
-  const loadLocalities = useCallback(async (frontId: number) => {
-    const data = await loadWithCache(
-      () => getLocalities(frontId),
-      db.localities,
-      (table) => table.where("ID_Frente").equals(frontId).toArray()
-    );
-    setLocalities(data);
-  }, []);
-
-  const loadDetails = useCallback(async (localityId: number) => {
-    // 1. Obtener detalles (Sectores)
-    const detailsData = await loadWithCache(
-      () => getDetails(localityId),
-      db.details,
-      (table) => table.where("ID_Localidad").equals(localityId).toArray()
-    );
-    setDetails(detailsData);
-
-    // 2. Obtener Actividades relacionadas (Esto es un poco más complejo offline)
-    //    Si estamos online, las bajamos por IDs. Si estamos offline, esperamos que ya estén cacheadas?
-    //    Para simplificar: Si estamos online, bajamos actividades y las guardamos en una tabla 'activities' (que podrías agregar a db_local si quieres persistencia total)
-    //    Por ahora, lo dejaremos en memoria o petición directa si hay red.
-    if (detailsData.length > 0) {
-      const activityIds = Array.from(new Set(detailsData.map((d) => d.ID_Actividad)));
-      // Nota: Si quieres full offline de actividades, necesitarías tabla 'activities' en Dexie.
-      // Asumiremos online para actividades por ahora o caché básico de navegador.
-      if (navigator.onLine) {
-        const acts = await getActivities(activityIds);
-        setActivities(acts);
-      }
-    }
-  }, []);
-
-  // --- 4. Gestión de Sesión ---
   const checkSession = async () => {
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
       setSessionUser({ email: data.session.user.email!, id: data.session.user.id });
-      loadProjects();
+      const count = await db.projects.count();
+      if(count === 0 && navigator.onLine) await performFullSync();
+      else if(navigator.onLine) performFullSync().then(loadProjectsLocal);
+      await loadProjectsLocal();
       setStep("project");
     }
   };
@@ -187,234 +124,185 @@ export function useReportFlow() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: authEmail.trim(),
-        password: authPassword.trim(),
-      });
-      if (error) throw error;
-      if (data.user) {
-        setSessionUser({ email: data.user.email!, id: data.user.id });
-        await loadProjects();
-        setStep("project");
+      if (authMode === "signup") {
+         const { data, error } = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword.trim() });
+         if (error) throw error; if (!data.user) return alert("Verifica tu correo");
+         setSessionUser({ email: data.user.email!, id: data.user.id });
+      } else {
+         const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword.trim() });
+         if (error) throw error; if (data.user) setSessionUser({ email: data.user.email!, id: data.user.id });
       }
-    } catch (e: any) {
-      alert(e.message || "Error al iniciar sesión");
-    } finally {
-      setIsLoading(false);
-    }
+      await performFullSync();
+      await loadProjectsLocal();
+      setStep("project");
+    } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
   };
 
   const handleLogout = async () => {
+    await db.projects.clear(); await db.fronts.clear(); await db.localities.clear(); await db.details.clear();
     await supabase.auth.signOut();
-    setSessionUser(null);
-    setStep("auth");
-    // Limpiamos estados
-    setProjects([]);
-    setSelectedProjectId(null);
+    setSessionUser(null); setStep("auth"); setProjects([]);
   };
 
-  // --- 5. Lógica de Selección y Navegación ---
-
-  const selectProject = (id: number) => {
-    setSelectedProjectId(id);
-    loadFronts(id);
-    setStep("front");
+  const loadProfileData = async () => {
+      const {data} = await supabase.auth.getUser();
+      if(data.user) {
+          setProfileEmail(data.user.email||"");
+          setProfileName(data.user.user_metadata?.full_name||"");
+          setProfileLastName(data.user.user_metadata?.last_name||"");
+          setProfileCreatedAt(data.user.created_at||"");
+          setProfileLastSignInAt(data.user.last_sign_in_at||"");
+      }
+  };
+  const saveProfile = async () => { if(!sessionUser) return; setIsProfileSaving(true); try { await supabase.from('Detalle_Perfil').update({Nombre: profileName, Apellido: profileLastName}).eq('id', sessionUser.id); alert("OK"); loadProfileData(); } catch { alert("Error"); } finally { setIsProfileSaving(false); } };
+  const deleteAccount = async () => { if(!confirm("Seguro?")) return; try { await supabase.rpc("delete_user"); handleLogout(); } catch { alert("Error"); } };
+  
+  const loadUserRecords = async () => { if(!sessionUser) return; setIsLoadingRecords(true); try { const {data} = await supabase.rpc('obtener_historial_usuario', { usuario_uid: sessionUser.id }); setUserRecords(data || []); } catch {} finally { setIsLoadingRecords(false); } };
+  
+  const handleDeleteRecord = async (i: UserRecord) => { 
+      if(!confirm("Eliminar?")) return; 
+      setIsLoading(true); 
+      try { 
+          if(i.bucket && i.ruta_archivo) await supabase.storage.from(i.bucket).remove([i.ruta_archivo]); 
+          await supabase.rpc('eliminar_evidencia_completa', { p_id_registro: i.id_registro }); 
+          await loadUserRecords(); 
+          setSelectedRecordId(null); 
+      } catch { alert("Error al eliminar"); } 
+      finally { setIsLoading(false); } 
   };
 
-  const selectFront = (id: number) => {
-    setSelectedFrontId(id);
-    loadLocalities(id);
-    setStep("locality");
+  const handleDownloadCSV = () => { 
+      if(!userRecords.length) return alert("Sin datos"); 
+      const h=["ID","Fecha","Actividad","Localidad","Detalle","Comentario","Latitud","Longitud"]; 
+      const r=userRecords.map(i=>[i.id_registro, i.fecha_subida, `"${i.nombre_actividad}"`, `"${i.nombre_localidad}"`, `"${i.nombre_detalle}"`, `"${(i.comentario||'').replace(/"/g, '""')}"`, i.latitud, i.longitud].join(";")); 
+      const csvContent = "\uFEFF" + [h.join(";"), ...r].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `data_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
   };
 
-  const selectLocality = (id: number) => {
-    setSelectedLocalityId(id);
-    loadDetails(id);
-    setStep("detail");
+  const saveRecordEdits = async () => {
+      const item = userRecords.find(r => r.id_registro === selectedRecordId); if(!item) return; setIsLoading(true);
+      try {
+          let u=item.url_foto, r=item.ruta_archivo, n=null;
+          if(editEvidenceFile && item.bucket) {
+              const fn=`ev-${Date.now()}.jpg`; const {data}=await supabase.storage.from(item.bucket).upload(`${item.ruta_archivo?.split('/').slice(0,-1).join('/')}/${fn}`, editEvidenceFile);
+              if(data){ const {data:p}=supabase.storage.from(item.bucket).getPublicUrl(data.path); u=p.publicUrl; r=data.path; n=fn; if(item.ruta_archivo) await supabase.storage.from(item.bucket).remove([item.ruta_archivo]); }
+          }
+          await supabase.from('Registros').update({ Comentario: editComment, ...(editEvidenceFile && { URL_Archivo: u, Ruta_Archivo: r, Nombre_Archivo: n }) }).eq('ID_Registros', item.id_registro);
+          alert("Actualizado"); setIsPhotoModalOpen(false); setEditEvidenceFile(null); loadUserRecords();
+      } catch { alert("Error"); } finally { setIsLoading(false); }
   };
-
-  const selectDetail = (detail: DetailRecord) => {
-    // Mapear nombre actividad
-    const actName = activities.find(a => a.ID_Actividad === detail.ID_Actividad)?.Nombre_Actividad || "Cargando...";
-    setSelectedDetail({ ...detail, activityName: actName });
-    const act = activities.find(a => a.ID_Actividad === detail.ID_Actividad) || null;
-    setSelectedActivity(act);
-    setStep("activity");
+  
+  const selectProject = (id: number) => { setSelectedProjectId(id); loadFrontsLocal(id); setStep("front"); };
+  const selectFront = (id: number) => { setSelectedFrontId(id); loadLocalitiesLocal(id); setStep("locality"); };
+  const selectLocality = (id: number) => { setSelectedLocalityId(id); loadDetailsLocal(id); setStep("detail"); };
+  const selectDetail = (d: DetailWithActivity) => { setSelectedDetail(d); setSelectedActivity(activityMap.get(d.ID_Actividad) || null); setStep("activity"); };
+  const goBack = () => { if(step==="front")setStep("project");else if(step==="locality")setStep("front");else if(step==="detail")setStep("locality");else if(step==="activity")setStep("detail");else if(step==="map")setStep("activity");else if(step==="form")setStep("map");else if(step==="profile")setStep("project");else if(step==="user_records"||step==="files")setStep("profile");else setStep("project"); };
+  
+  const handleCaptureGps = () => { 
+      if (!navigator.geolocation) return alert("Navegador sin GPS"); 
+      setIsFetchingGps(true); 
+      navigator.geolocation.getCurrentPosition(
+          (p) => { setGpsLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setIsFetchingGps(false); }, 
+          (e) => { alert(`Error GPS (${e.code}): ${e.message}`); setIsFetchingGps(false); },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+      ); 
   };
+  
+  const handleUpdateFromUtm = () => { if (!utmEast || !utmNorth) return alert("Faltan datos"); try { const [lng, lat] = proj4(utmZones[utmZone], WGS84, [Number(utmEast), Number(utmNorth)]); setGpsLocation({ latitude: lat, longitude: lng }); } catch { alert("Error UTM"); } };
+  const getMapUrl = () => { const lat = gpsLocation?.latitude ?? selectedDetail?.Latitud; const lng = gpsLocation?.longitude ?? selectedDetail?.Longitud; if (!lat || !lng) return null; return `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}`; };
+  
+  // --- FUNCIÓN MODIFICADA PARA VALIDAR CON EL AGENTE ---
+  const handleCaptureFile = async (e: React.ChangeEvent<HTMLInputElement>) => { 
+    if (e.target.files?.[0]) { 
+        const file = e.target.files[0];
+        setEvidenceFile(file); 
+        setEvidencePreview(URL.createObjectURL(file)); 
+        
+        // 1. Limpiamos errores previos y activamos carga
+        setAiError(null);
+        setIsAnalyzing(true);
 
-  const goBack = () => {
-    switch (step) {
-      case "project": return; // No sale al login con back, usa logout
-      case "front": setStep("project"); break;
-      case "locality": setStep("front"); break;
-      case "detail": setStep("locality"); break;
-      case "activity": setStep("detail"); break;
-      case "map": setStep("activity"); break;
-      case "form": setStep("map"); break;
-      default: setStep("project");
-    }
+        try {
+            // 2. Obtenemos el nombre de la actividad para el prompt
+            const nombreActividad = selectedActivity?.Nombre_Actividad || "Actividad de obra";
+            
+            // 3. Llamamos a tu servicio (GoogleAI.ts)
+            const resultado = await validarFotoConIA(file, nombreActividad);
+            
+            // 4. Si la IA dice que NO, guardamos el error para bloquear el botón
+            if (!resultado.aprobado) {
+                setAiError(resultado.mensaje);
+            }
+        } catch (err) {
+            console.error(err);
+            // Opcional: Si falla la conexión con la IA, podrías dejar pasar o bloquear. 
+            // Aquí solo logueamos, pero si quieres ser estricto, descomenta:
+            // setAiError("Error conectando con el agente IA");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    } 
   };
-
-  // --- 6. Guardado (Híbrido: Online / PendingUploads) ---
-
-  const sanitizeName = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, "_");
 
   const saveReport = async () => {
-    if (!evidenceFile || !sessionUser || !selectedDetail || !selectedActivity) return alert("Faltan datos");
+    // --- BLOQUEOS DE SEGURIDAD DEL AGENTE ---
+    if (isAnalyzing) return alert("Espera, el agente está analizando la imagen...");
+    if (aiError) return alert(`No puedes guardar. El agente dice: ${aiError}`);
 
-    setIsLoading(true);
-    const timestamp = Date.now();
-    const fileName = `evidencia-${timestamp}.jpg`;
-    
-    // Construir metadatos
-    const projectObj = projects.find(p => p.ID_Proyectos === selectedProjectId);
-    const frontObj = fronts.find(f => f.ID_Frente === selectedFrontId);
-    const localityObj = localities.find(l => l.ID_Localidad === selectedLocalityId);
-    
-    const bucketName = sanitizeName(projectObj?.Proyecto_Nombre || "default");
-    const folderPath = `${sanitizeName(frontObj?.Nombre_Frente || "")}/${sanitizeName(localityObj?.Nombre_Localidad || "")}/${sanitizeName(selectedDetail.Nombre_Detalle)}/${sanitizeName(selectedActivity.Nombre_Actividad)}`;
-    const fullPath = `${folderPath}/${fileName}`;
-
+    if (!evidenceFile || !sessionUser || !selectedDetail) return alert("Faltan datos"); setIsLoading(true);
+    const timestamp = Date.now(); const fileName = `evidencia-${timestamp}.jpg`;
+    const pName = projects.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre || "default";
+    const bucket = pName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_"); const path = `uploads/${fileName}`;
     try {
-      if (navigator.onLine) {
-        // --- MODO ONLINE ---
-        // 1. Subir Foto
-        const publicUrl = await uploadEvidence(bucketName, fullPath, evidenceFile, "image/jpeg");
-        
-        // 2. Registrar Actividad Verificada
-        const verifiedData = await createCheckedActivity({
-          ID_DetallesActividad: selectedDetail.ID_DetallesActividad,
-          Latitud: gpsLocation?.latitude || selectedDetail.Latitud,
-          Longitud: gpsLocation?.longitude || selectedDetail.Longitud,
-        });
-
-        // 3. Crear Registro Final
-        await createRegistro({
-          Nombre_Archivo: fileName,
-          URL_Archivo: publicUrl,
-          user_id: sessionUser.id,
-          ID_Verificada: verifiedData.ID_Verificada,
-          Comentario: note,
-          Ruta_Archivo: fullPath,
-          Bucket: bucketName
-        });
-
-        alert("¡Registro guardado y sincronizado!");
-      } else {
-        // --- MODO OFFLINE ---
-        // Guardamos todo lo necesario para replicar el proceso arriba cuando vuelva internet
-        const pendingData: PendingRecord = {
-          timestamp,
-          evidenceBlob: evidenceFile, // Dexie soporta Blobs/Files
-          fileType: "image/jpeg",
-          meta: {
-            bucketName,
-            fullPath,
-            fileName,
-            userId: sessionUser.id,
-            detailId: selectedDetail.ID_DetallesActividad,
-            lat: gpsLocation?.latitude || selectedDetail.Latitud,
-            lng: gpsLocation?.longitude || selectedDetail.Longitud,
-            comment: note
-          }
-        };
-
-        await db.pendingUploads.add(pendingData);
-        alert("Sin internet. Guardado en dispositivo. Se subirá cuando recuperes conexión.");
-      }
-
-      // Reset y volver al mapa o lista
-      setEvidenceFile(null);
-      setEvidencePreview(null);
-      setNote("");
-      setStep("map");
-
-    } catch (error) {
-      console.error(error);
-      alert("Error al guardar. Intenta nuevamente.");
-    } finally {
-      setIsLoading(false);
-    }
+        if(navigator.onLine) {
+            const pubUrl = await uploadEvidence(bucket, path, evidenceFile, "image/jpeg");
+            const checked = await createCheckedActivity({ ID_DetallesActividad: selectedDetail.ID_DetallesActividad, Latitud: gpsLocation?.latitude || selectedDetail.Latitud, Longitud: gpsLocation?.longitude || selectedDetail.Longitud });
+            await createRegistro({ Nombre_Archivo: fileName, URL_Archivo: pubUrl, user_id: sessionUser.id, ID_Verificada: checked.ID_Verificada, Comentario: note, Ruta_Archivo: path, Bucket: bucket });
+            alert("Enviado Online");
+        } else {
+            const pend: PendingRecord = { timestamp, evidenceBlob: evidenceFile, fileType: "image/jpeg", meta: { bucketName: bucket, fullPath: path, fileName, userId: sessionUser.id, detailId: selectedDetail.ID_DetallesActividad, lat: gpsLocation?.latitude || selectedDetail.Latitud, lng: gpsLocation?.longitude || selectedDetail.Longitud, comment: note } };
+            await db.pendingUploads.add(pend);
+            alert("Guardado Offline");
+        }
+        // Limpiamos todo al terminar
+        setStep("map"); setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiError(null);
+    } catch { alert("Error"); } finally { setIsLoading(false); }
   };
-
-  // --- 7. Sincronización en Segundo Plano ---
-  const syncPendingUploads = async () => {
-    const pendingCount = await db.pendingUploads.count();
-    if (pendingCount === 0) return;
-
-    console.log(`Intentando sincronizar ${pendingCount} registros...`);
-    const records = await db.pendingUploads.toArray();
-
-    for (const record of records) {
-      try {
-        const { meta, evidenceBlob } = record;
-        
-        // 1. Subir Foto
-        const publicUrl = await uploadEvidence(meta.bucketName, meta.fullPath, evidenceBlob, "image/jpeg");
-        
-        // 2. Registrar (Replicar lógica)
-        const verifiedData = await createCheckedActivity({
-          ID_DetallesActividad: meta.detailId,
-          Latitud: meta.lat,
-          Longitud: meta.lng,
-        });
-
-        await createRegistro({
-          Nombre_Archivo: meta.fileName,
-          URL_Archivo: publicUrl,
-          user_id: meta.userId,
-          ID_Verificada: verifiedData.ID_Verificada,
-          Comentario: meta.comment,
-          Ruta_Archivo: meta.fullPath,
-          Bucket: meta.bucketName
-        });
-
-        // 3. Si tiene éxito, borrar de Dexie
-        if (record.id) await db.pendingUploads.delete(record.id);
-
-      } catch (e) {
-        console.error("Error sincronizando registro ID:", record.id, e);
-        // No borramos si falla, para reintentar luego
-      }
-    }
-    console.log("Sincronización finalizada.");
-  };
-
-  // --- Helpers UI ---
-  const handleCaptureFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setEvidenceFile(file);
-      setEvidencePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const activityMap = useMemo(() => new Map(activities.map((a) => [a.ID_Actividad, a])), [activities]);
   
-  const derivedDetails = useMemo(() => details.map((d) => ({
-    ...d,
-    activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando...",
-  })), [details, activityMap]);
+  const syncPendingUploads = async () => { const count = await db.pendingUploads.count(); if(count > 0) { const recs = await db.pendingUploads.toArray(); for(const r of recs) { try { const pub = await uploadEvidence(r.meta.bucketName, r.meta.fullPath, r.evidenceBlob, "image/jpeg"); const chk = await createCheckedActivity({ ID_DetallesActividad: r.meta.detailId, Latitud: r.meta.lat, Longitud: r.meta.lng }); await createRegistro({ Nombre_Archivo: r.meta.fileName, URL_Archivo: pub, user_id: r.meta.userId, ID_Verificada: chk.ID_Verificada, Comentario: r.meta.comment, Ruta_Archivo: r.meta.fullPath, Bucket: r.meta.bucketName }); if(r.id) await db.pendingUploads.delete(r.id); } catch {} } } };
+  const handleRowClick = async (r: UserRecord) => { setSelectedRecordId(r.id_registro); try { const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { nombre_input: r.nombre_actividad }); if(data) setAvailableProperties(data.map((x:any)=>({Tipo_Actividad:x.nombre_tipo, ID_Propiedad:x.id_propiedad, Propiedad:x.nombre_propiedad}))); } catch {} };
+  const handleSaveProperty = async () => { if(!selectedRecordId || !selectedPropId) return; try { await supabase.from('Detalle_Propiedad').insert([{ ID_Registro: selectedRecordId, ID_Propiedad: Number(selectedPropId), Detalle_Propiedad: detailText }]); alert("OK"); setDetailText(""); } catch { alert("Error"); } };
+  const openEditModal = () => { const r = userRecords.find(i => i.id_registro === selectedRecordId); if(r){ setEditComment(r.comentario??""); setEditEvidenceFile(null); setEditPreviewUrl(r.url_foto??""); setIsPhotoModalOpen(true); } };
+  const closeEditModal = () => { setIsPhotoModalOpen(false); setEditEvidenceFile(null); };
+  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if(e.target.files?.[0]) { setEditEvidenceFile(e.target.files[0]); setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } };
+
+  const activityMap = useMemo(() => new Map((activities||[]).map((a) => [a.ID_Actividad, a])), [activities]);
+  const derivedDetails = useMemo(() => (details||[]).map((d) => ({ ...d, activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." })), [details, activityMap]);
+  const filteredDetails = useMemo(() => { const query = detailSearch.trim().toLowerCase(); return query ? derivedDetails.filter((d) => `${d.Nombre_Detalle} ${d.activityName}`.toLowerCase().includes(query)) : derivedDetails; }, [detailSearch, derivedDetails]);
+  const selectedActivities = useMemo(() => { if (!selectedDetail) return []; const activity = activityMap.get(selectedDetail.ID_Actividad); return activity ? [activity] : []; }, [activityMap, selectedDetail]);
 
   return {
-    // State
-    step, setStep,
-    isOnline, isLoading,
-    sessionUser, authEmail, setAuthEmail, authPassword, setAuthPassword,
-    
-    // Data
-    projects, fronts, localities, derivedDetails, activities,
-    
-    // Selections
-    selectedProjectId, selectedFrontId, selectedLocalityId, selectedDetail, selectedActivity,
-    
-    // Form inputs
-    gpsLocation, setGpsLocation,
-    evidencePreview, note, setNote,
-    
-    // Actions
-    handleLogin, handleLogout,
-    selectProject, selectFront, selectLocality, selectDetail,
-    saveReport, goBack, handleCaptureFile
+    step, setStep, isOnline, isLoading, syncStatus, sessionUser, authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
+    projects, fronts, localities, derivedDetails, filteredDetails, selectedActivities, selectedDetail, selectedActivity,
+    selectProject, selectFront, selectLocality, selectDetail, detailSearch, setDetailSearch,
+    gpsLocation, setGpsLocation, evidencePreview, setEvidencePreview, note, setNote, isFetchingGps,
+    utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm, getMapUrl, handleCaptureGps, handleCaptureFile,
+    saveReport, profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, setProfileEmail, profileCreatedAt, profileLastSignInAt, profileMessage, isProfileSaving, isDeletingAccount, saveProfile, deleteAccount,
+    userRecords, isLoadingRecords, selectedRecordId, setSelectedRecordId, availableProperties, selectedPropId, setSelectedPropId, detailText, setDetailText, 
+    handleDownloadCSV, 
+    deleteRecord: handleDeleteRecord, 
+    handleUpdateRecord: saveRecordEdits, 
+    handleRowClick, handleSaveProperty,
+    isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
+    handleLogin, handleLogout, goBack,
+    // --- EXPORTAR ESTADOS NUEVOS PARA USARLOS EN LA VISTA ---
+    isAnalyzing, aiError 
   };
 }

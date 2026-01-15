@@ -10,7 +10,6 @@ export interface PendingRecord {
 
 class OfflineDatabase extends Dexie {
   pendingUploads!: Table<PendingRecord>; 
-  // Nuevas tablas para el caché de navegación
   projects!: Table<any>;
   fronts!: Table<any>;
   localities!: Table<any>;
@@ -18,15 +17,15 @@ class OfflineDatabase extends Dexie {
 
   constructor() {
     super('CenepaOfflineDB');
-    // Actualizamos la versión a 2 para agregar las nuevas tablas
     this.version(2).stores({
-      pendingUploads: '++id, timestamp',
-      projects: 'ID_Proyectos',           // Llave primaria
-      fronts: 'ID_Frente, ID_Proyectos',  // ID_Proyectos es índice para buscar
+      pendingUploads: '++id, timestamp', 
+      projects: 'ID_Proyecto',
+      fronts: 'ID_Frente, ID_Proyecto',
       localities: 'ID_Localidad, ID_Frente',
       details: 'ID_DetallesActividad, ID_Localidad'
     });
   }
 }
 
-export const db = new OfflineDatabase();
+// Protección contra Server Side Rendering
+export const db = typeof window !== "undefined" ? new OfflineDatabase() : {} as any;
