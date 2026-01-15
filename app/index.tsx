@@ -36,8 +36,17 @@ export default function IndexPage() {
   const selectedLocalityName = useMemo(() => localities?.find(l => l.ID_Localidad === selectedLocalityId)?.Nombre_Localidad, [localities, selectedLocalityId]);
 
   return (
-    // PADDING INFERIOR AUMENTADO A 150PX PARA EVITAR CORTES
-    <div style={{...styles.page, paddingBottom: '150px'}}>
+    // FIX DE SCROLL: Usamos 'height: 100dvh' para ocupar exactamente la pantalla del móvil 
+    // y 'overflowY: auto' para que el scroll ocurra dentro de este div y no en el body global.
+    <div style={{
+        ...styles.page, 
+        height: '100dvh', 
+        minHeight: 'unset', 
+        overflowY: 'auto', 
+        display: 'flex', 
+        flexDirection: 'column',
+        paddingBottom: '40px' // Un padding normal es suficiente ahora
+    }}>
       
       <div style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -70,8 +79,11 @@ export default function IndexPage() {
         )}
       </div>
 
+      {/* Contenedor flexible para el contenido que scrollea */}
+      <div style={{flex: 1, padding: '0 24px'}}>
+
       {step === "auth" && (
-        <div style={styles.card}>
+        <div style={{...styles.card, margin: '0 0 24px'}}>
           <div style={styles.logoRow}><img src={LOGO_SRC} style={styles.logo} alt="Logo" /></div>
           <h2 style={styles.sectionTitle}>{authMode === "login" ? "Inicia sesión" : "Crear cuenta"}</h2>
           <label style={styles.label}>Email</label>
@@ -87,27 +99,25 @@ export default function IndexPage() {
       )}
 
       {step === "project" && (
-        <div style={styles.card}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
+        <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
       )}
-      {step === "front" && (<div style={styles.card}><h2 style={styles.sectionTitle}>Selecciona un frente</h2><div style={styles.optionGrid}>{fronts?.map(f => <button key={f.ID_Frente} onClick={() => selectFront(f.ID_Frente)} style={styles.optionButton}>{f.Nombre_Frente}</button>)}</div></div>)}
-      {step === "locality" && (<div style={styles.card}><h2 style={styles.sectionTitle}>Selecciona una localidad</h2><div style={styles.optionGrid}>{localities?.map(l => <button key={l.ID_Localidad} onClick={() => selectLocality(l.ID_Localidad)} style={styles.optionButton}>{l.Nombre_Localidad}</button>)}</div></div>)}
+      {step === "front" && (<div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un frente</h2><div style={styles.optionGrid}>{fronts?.map(f => <button key={f.ID_Frente} onClick={() => selectFront(f.ID_Frente)} style={styles.optionButton}>{f.Nombre_Frente}</button>)}</div></div>)}
+      {step === "locality" && (<div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona una localidad</h2><div style={styles.optionGrid}>{localities?.map(l => <button key={l.ID_Localidad} onClick={() => selectLocality(l.ID_Localidad)} style={styles.optionButton}>{l.Nombre_Localidad}</button>)}</div></div>)}
       {step === "detail" && (
-        <div style={styles.card}><h2 style={styles.sectionTitle}>Selecciona un sector</h2><input placeholder="Buscar..." value={detailSearch} onChange={e => setDetailSearch(e.target.value)} style={styles.searchInput} /><div style={styles.searchResults}>{filteredDetails?.map(d => (<button key={d.ID_DetallesActividad} onClick={() => selectDetail(d)} style={styles.searchOption}><span style={styles.searchOptionTitle}>{d.Nombre_Detalle}</span><span style={styles.searchOptionMeta}>{d.activityName}</span></button>))}</div></div>
+        <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un sector</h2><input placeholder="Buscar..." value={detailSearch} onChange={e => setDetailSearch(e.target.value)} style={styles.searchInput} /><div style={styles.searchResults}>{filteredDetails?.map(d => (<button key={d.ID_DetallesActividad} onClick={() => selectDetail(d)} style={styles.searchOption}><span style={styles.searchOptionTitle}>{d.Nombre_Detalle}</span><span style={styles.searchOptionMeta}>{d.activityName}</span></button>))}</div></div>
       )}
       {step === "activity" && selectedActivity && (
-         <div style={styles.card}><h2 style={styles.sectionTitle}>Confirmar Actividad</h2><div style={styles.detailInfoBox}><p style={{fontWeight:'bold'}}>{selectedActivity.Nombre_Actividad}</p></div><button onClick={() => setStep("map")} style={styles.primaryButton}>Ir al Mapa / Formulario</button></div>
+         <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Confirmar Actividad</h2><div style={styles.detailInfoBox}><p style={{fontWeight:'bold'}}>{selectedActivity.Nombre_Actividad}</p></div><button onClick={() => setStep("map")} style={styles.primaryButton}>Ir al Mapa / Formulario</button></div>
       )}
 
-      {/* --- PANTALLA DE REGISTRO REDISEÑADA --- */}
       {(step === "map" || step === "form") && (
-        <div style={styles.card}>
+        <div style={{...styles.card, margin: '0 0 24px'}}>
            <h2 style={styles.sectionTitle}>Registrar Evidencia</h2>
            
-           {/* BLOQUE 1: UBICACIÓN (GPS + UTM) */}
+           {/* BLOQUE 1: UBICACIÓN */}
            <div style={{backgroundColor:'#F8FAFC', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20}}>
-               <h3 style={{fontSize:14, fontWeight:'bold', color:'#475569', marginTop:0, marginBottom:10}}>1. Ubicación</h3>
+               <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Ubicación</h3>
                
-               {/* Mapa pequeño */}
                <div style={{...styles.mapPlaceholder, height: '150px', marginBottom:10}}>
                    {isOnline && mapUrl ? <iframe title="Mapa" src={mapUrl} style={{...styles.mapFrame, height:'150px'}} /> : <div style={styles.emptyState}>Mapa Offline<br/>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div>}
                </div>
@@ -115,8 +125,8 @@ export default function IndexPage() {
                {/* GPS ROW */}
                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, paddingBottom:12, borderBottom:'1px dashed #CBD5F5'}}>
                    <div>
-                       <span style={{fontSize:11, color:'#64748B', fontWeight:'bold'}}>AUTOMÁTICA (GPS)</span>
-                       <div style={{fontSize:14, fontWeight:'bold', color:'#0F172A'}}>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div>
+                       <span style={{fontSize:11, color:'#64748B'}}>Automática (GPS)</span>
+                       <div style={{fontSize:14, color:'#0F172A'}}>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div>
                    </div>
                    <button onClick={handleCaptureGps} disabled={isFetchingGps} style={styles.secondaryButtonSmall}>
                        {isFetchingGps ? "..." : "Actualizar"}
@@ -125,21 +135,21 @@ export default function IndexPage() {
 
                {/* UTM ROW */}
                <div>
-                   <span style={{fontSize:11, color:'#64748B', fontWeight:'bold', display:'block', marginBottom:5}}>MANUAL (UTM)</span>
+                   <span style={{fontSize:11, color:'#64748B', display:'block', marginBottom:5}}>Manual (UTM)</span>
                    <div style={{display:'flex', gap:5}}>
                         <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={{...styles.inputCompact, width:'25%'}}>
                             <option value="17">17S</option><option value="18">18S</option><option value="19">19S</option>
                         </select>
                         <input placeholder="Este (E)" value={utmEast} onChange={(e) => setUtmEast(e.target.value)} style={{...styles.inputCompact, width:'30%'}} />
                         <input placeholder="Norte (N)" value={utmNorth} onChange={(e) => setUtmNorth(e.target.value)} style={{...styles.inputCompact, width:'30%'}} />
-                        <button onClick={handleUpdateFromUtm} style={{...styles.secondaryButtonSmall, width:'auto', padding:'0 8px'}}>OK</button>
+                        <button onClick={handleUpdateFromUtm} style={{...styles.secondaryButtonSmall, width:'auto', padding:'0 8px'}}>Aplicar</button>
                    </div>
                </div>
            </div>
            
-           {/* BLOQUE 2: EVIDENCIA (FOTO + IA + NOTAS) */}
+           {/* BLOQUE 2: EVIDENCIA */}
            <div style={{backgroundColor:'#FFFFFF', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20, boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
-               <h3 style={{fontSize:14, fontWeight:'bold', color:'#475569', marginTop:0, marginBottom:10}}>2. Evidencia & Datos</h3>
+               <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Evidencia y datos</h3>
                
                <div style={{marginBottom:15}}>
                     <div style={{...styles.evidenceBox, backgroundColor:'#F1F5F9', borderStyle:'dashed', minHeight:'180px'}}>
@@ -149,21 +159,20 @@ export default function IndexPage() {
                         }
                     </div>
 
-                    {/* MENSAJES IA */}
                     {isAnalyzing && (
                         <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}>
-                            <span>🤖</span> <b>Verificando imagen con IA...</b>
+                            <b>Analizando imagen con IA...</b>
                         </div>
                     )}
                     {aiError && (
                         <div style={{padding:10, backgroundColor:'#FEF2F2', borderRadius:8, color:'#991B1B', fontSize:13, border:'1px solid #FCA5A5', marginTop:5}}>
-                            ⚠️ <b>Rechazado:</b> {aiError}
+                            <b>Rechazado:</b> {aiError}
                         </div>
                     )}
 
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCaptureFile} style={{display:'none'}} />
                     <button onClick={() => fileInputRef.current?.click()} style={{...styles.secondaryButton, marginTop:10}}>
-                        📷 {evidencePreview ? "Cambiar Foto" : "Tomar Foto"}
+                        Tomar / Seleccionar foto
                     </button>
                </div>
 
@@ -171,7 +180,6 @@ export default function IndexPage() {
                <textarea value={note} onChange={e => setNote(e.target.value)} style={{...styles.textArea, minHeight:'70px'}} placeholder="Escribe aquí..." />
            </div>
 
-           {/* BOTÓN GUARDAR GRANDE AL FINAL */}
            <button 
                 onClick={saveReport} 
                 disabled={isLoading || !evidencePreview || isAnalyzing || !!aiError} 
@@ -179,16 +187,16 @@ export default function IndexPage() {
                     ...(isLoading || isAnalyzing || !!aiError ? styles.primaryButtonDisabled : styles.primaryButton),
                     height: '50px',
                     fontSize: '16px',
-                    marginBottom: '20px'
+                    marginBottom: '20px' // Margen final extra por seguridad
                 }}
            >
-               {isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "GUARDAR REPORTE")}
+               {isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}
            </button>
         </div>
       )}
 
       {step === "profile" && (
-         <div style={styles.card}>
+         <div style={{...styles.card, margin: '0 0 24px'}}>
             <h2 style={styles.sectionTitle}>Mi Perfil</h2>
             <input placeholder="Nombre" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={styles.input} />
             <input placeholder="Apellido" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={styles.input} />
@@ -205,7 +213,7 @@ export default function IndexPage() {
       )}
 
       {step === "user_records" && (
-         <div style={styles.card}>
+         <div style={{...styles.card, margin: '0 0 24px'}}>
              <h2 style={styles.sectionTitle}>Historial</h2>
              <div style={styles.historyContainer}>
                 <div style={styles.historyList}>
@@ -235,7 +243,7 @@ export default function IndexPage() {
       )}
 
       {step === "files" && (
-         <div style={styles.card}>
+         <div style={{...styles.card, margin: '0 0 24px'}}>
              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10}}>
                 <h2 style={{...styles.sectionTitle, marginBottom:0}}>Archivos</h2>
                 <button onClick={handleDownloadCSV} style={{...styles.secondaryButtonSmall, width:'auto'}}>Descargar CSV</button>
@@ -289,6 +297,7 @@ export default function IndexPage() {
       {isPhotoModalOpen && (
          <div style={styles.modalOverlay}><div style={styles.modalCard}><h3>Editar</h3>{editPreviewUrl && <img src={editPreviewUrl} style={styles.evidenceImage} />}<button onClick={() => editFileInputRef.current?.click()} style={styles.secondaryButton}>Cambiar Foto</button><input ref={editFileInputRef} type="file" onChange={handleEditFileSelect} style={{display:'none'}} /><input value={editComment} onChange={e => setEditComment(e.target.value)} style={styles.input} /><div style={styles.modalButtons}><button onClick={closeEditModal} style={styles.secondaryButton}>Cancelar</button><button onClick={saveRecordEdits} style={styles.primaryButton}>Guardar</button></div></div></div>
       )}
+      </div>
     </div>
   );
 }
