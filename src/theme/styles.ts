@@ -1,106 +1,29 @@
 import React from "react";
 
 export const styles: Record<string, React.CSSProperties> = {
-  // --- LAYOUT GENERAL ---
-  page: { 
-    minHeight: "100vh", 
-    backgroundColor: "#F5F7FB", 
-    fontFamily: "system-ui, -apple-system, sans-serif" 
-  },
+  // --- main layout ---
+  page: { minHeight: "100vh", backgroundColor: "#F5F7FB", fontFamily: "system-ui, -apple-system, sans-serif" },
   
-  // --- NUEVO NAVBAR SUPERIOR ---
-  navbar: {
-    backgroundColor: "#0F172A", // Azul oscuro profesional
-    padding: "15px 20px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    color: "white",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-    position: "sticky",
-    top: 0,
-    zIndex: 1000
-  },
-  navbarBrand: {
-    fontSize: "16px",
-    fontWeight: "700",
-    letterSpacing: "0.5px"
-  },
-  hamburgerBtn: {
-    background: "transparent",
-    border: "none",
-    color: "white",
-    fontSize: "24px",
-    cursor: "pointer",
-    padding: "0 5px"
-  },
+  // --- NAVBAR superior ---
+  navbar: { backgroundColor: "#0F172A", padding: "15px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "white", boxShadow: "0 2px 4px rgba(0,0,0,0.1)", position: "sticky", top: 0, zIndex: 1000 },
+  navbarBrand: { fontSize: "16px", fontWeight: "700", letterSpacing: "0.5px" },
+  hamburgerBtn: { background: "transparent", border: "none", color: "white", fontSize: "24px", cursor: "pointer", padding: "0 5px" },
   
-  // --- MENÚ DESPLEGABLE (HAMBURGUESA) ---
-  dropdownMenu: {
-    backgroundColor: "#FFFFFF",
-    borderBottom: "1px solid #E2E8F0",
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-    position: "absolute",
-    top: "54px", // Justo debajo del navbar
-    left: 0,
-    right: 0,
-    zIndex: 999,
-    display: "flex",
-    flexDirection: "column"
-  },
-  menuItem: {
-    padding: "15px 20px",
-    borderBottom: "1px solid #F1F5F9",
-    color: "#334155",
-    fontSize: "14px",
-    fontWeight: "500",
-    cursor: "pointer",
-    textAlign: "left",
-    background: "none",
-    border: "none",
-    width: "100%"
-  },
+  // --- login ---
+  logoRow: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginBottom: "20px", gap: "10px" },
+  logoText: { fontSize: "16px", fontWeight: "bold", color: "#0F172A", textAlign: "center" },
 
-  // --- BARRA DE ESTADO Y NAVEGACIÓN ---
-  statusBar: {
-    backgroundColor: "#FFFFFF",
-    padding: "10px 20px",
-    borderBottom: "1px solid #E2E8F0",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "12px"
-  },
-  navControls: {
-    padding: "10px 20px 0",
-    display: "flex",
-    gap: "10px"
-  },
-  navButton: {
-    padding: "8px 16px",
-    borderRadius: "8px",
-    border: "1px solid #CBD5F5",
-    backgroundColor: "#FFFFFF",
-    color: "#0F172A",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    flex: 1, // Para que ocupen espacio igual
-    textAlign: "center"
-  },
-  navButtonPrimary: {
-    padding: "8px 16px",
-    borderRadius: "8px",
-    backgroundColor: "#0B5FFF",
-    color: "#FFFFFF",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    border: "none",
-    flex: 1
-  },
+  // --- menú desplegable ---
+  dropdownMenu: { backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)", position: "absolute", top: "54px", left: 0, right: 0, zIndex: 999, display: "flex", flexDirection: "column" },
+  menuItem: { padding: "15px 20px", borderBottom: "1px solid #F1F5F9", color: "#334155", fontSize: "14px", fontWeight: "500", cursor: "pointer", textAlign: "left", background: "none", border: "none", width: "100%" },
 
-  // --- COMPONENTES EXISTENTES (Mantener) ---
+  // --- barra de estado y navegación ---
+  statusBar: { backgroundColor: "#FFFFFF", padding: "10px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" },
+  navControls: { padding: "10px 20px 0", display: "flex", gap: "10px" },
+  navButton: { padding: "8px 16px", borderRadius: "8px", border: "1px solid #CBD5F5", backgroundColor: "#FFFFFF", color: "#0F172A", fontSize: "13px", fontWeight: "600", cursor: "pointer", flex: 1, textAlign: "center" },
+  navButtonPrimary: { padding: "8px 16px", borderRadius: "8px", backgroundColor: "#0B5FFF", color: "#FFFFFF", fontSize: "13px", fontWeight: "600", cursor: "pointer", border: "none", flex: 1 },
+
+  // --- componentes ---
   breadcrumbs: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", padding: "10px 20px", fontSize: "12px" },
   breadcrumbItem: { color: "#0F172A", fontWeight: 600 },
   breadcrumbSeparator: { color: "#CBD5F5", fontSize: "14px" },
@@ -162,5 +85,12 @@ export const styles: Record<string, React.CSSProperties> = {
   attributeList: { display: "flex", flexDirection: "column", gap: "10px" },
   attributeItem: { display: "flex", flexDirection: "column", borderBottom: "1px solid #F1F5F9", paddingBottom: "6px" },
   attributeLabel: { fontSize: "10px", fontWeight: "700", color: "#64748B", textTransform: "uppercase", marginBottom: "2px" },
-  attributeValue: { fontSize: "13px", color: "#0F172A", lineHeight: "1.4" }
+  attributeValue: { fontSize: "13px", color: "#0F172A", lineHeight: "1.4" },
+  
+  tableContainer: { overflowX: "auto", borderRadius: "12px", border: "1px solid #E2E8F0" },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: "13px" },
+  tableHeaderRow: { backgroundColor: "#F8FAFC", color: "#64748B", textAlign: "left" },
+  tableTh: { padding: "12px 10px", fontWeight: 600, borderBottom: "1px solid #E2E8F0" },
+  tableRow: { borderBottom: "1px solid #F1F5F9", cursor: "pointer" },
+  tableRowActive: { backgroundColor: "#EFF6FF", borderBottom: "1px solid #BFDBFE", cursor: "pointer" }
 };

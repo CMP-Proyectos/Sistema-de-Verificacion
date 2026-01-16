@@ -3,11 +3,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = "AIzaSyBLQUR7hW1sO_Iyf_g8EvKFXGogu0tbguA"; 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Interface de respuesta extendida
+// interfaz de respuesta
 export interface IAValidationResult {
     aprobado: boolean;
     mensaje: string;
-    esErrorTecnico?: boolean; // Nueva bandera para saber si fue error de red
+    esErrorTecnico?: boolean; // bandera para identificar error de red
 }
 
 export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
@@ -15,7 +15,7 @@ export const validarFotoConIA = async (file: File, nombreActividad: string): Pro
     const base64Data = await fileToBase64(file);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
-    // Prompt ajustado para ser analítico
+    // prompt "analítico"
     const prompt = `Analiza esta imagen para la actividad: "${nombreActividad}".
                     Si la imagen coincide razonablemente (construcción, planos, herramientas, terreno), aprueba.
                     Si es algo claramente incorrecto (selfie, mascota, pantalla negra, comida), reprueba y di qué es.
@@ -34,11 +34,11 @@ export const validarFotoConIA = async (file: File, nombreActividad: string): Pro
   } catch (error: any) {
     console.error("Error IA:", error);
     
-    // DETECCIÓN DE ERROR DE CONEXIÓN / OFFLINE
-    // Si falla el fetch o no hay internet, devolvemos un estado especial
+    // detección de error técnico (conexión) u offline
+    // si falla el fetch o no hay internet, devolvemos un estado especial
     return { 
         aprobado: false, 
-        esErrorTecnico: true, // Marcamos que fue error técnico, no rechazo de imagen
+        esErrorTecnico: true, // error técnico, no rechazo de imagen
         mensaje: "Validación automática no disponible (Offline)" 
     };
   }

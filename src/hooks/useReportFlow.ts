@@ -80,12 +80,12 @@ export function useReportFlow() {
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
   
-  // --- PROPIEDADES (Edición en pestaña Archivos) ---
+  // --- propiedad (pestaña archivos) ---
   const [availableProperties, setAvailableProperties] = useState<ActivitiesTypes[]>([]);
   const [selectedPropId, setSelectedPropId] = useState<number | "">("");
   const [detailText, setDetailText] = useState("");
 
-  // --- NUEVO: PROPIEDADES (Creación en pestaña Mapa/Formulario) ---
+  // --- propieidad (pestaña mapa / formulario) ---
   const [registerProperties, setRegisterProperties] = useState<ActivitiesTypes[]>([]);
   const [registerPropId, setRegisterPropId] = useState<number | "">("");
   const [registerDetailText, setRegisterDetailText] = useState("");
@@ -122,10 +122,9 @@ export function useReportFlow() {
     }
   }, [step, sessionUser]);
 
-  // --- NUEVO: CARGA AUTOMÁTICA DE PROPIEDADES PARA REGISTRO (ONLINE-ONLY) ---
+  // --- carga automática de propiedades para registro (solo online) ---
   useEffect(() => {
     const loadRegisterProperties = async () => {
-      // Solo cargar si estamos en el paso de formulario y tenemos internet
       if ((step === "map" || step === "form") && isOnline && selectedActivity) {
         try {
           const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { 
@@ -142,7 +141,6 @@ export function useReportFlow() {
           console.error("Error cargando propiedades registro:", err);
         }
       } else {
-        // Limpiar si salimos del paso o estamos offline
         setRegisterProperties([]);
       }
     };
@@ -287,10 +285,8 @@ export function useReportFlow() {
   };
   
   const handleGoHome = () => {
-      // Limpiar estados de selección
       setSelectedProjectId(null); setSelectedFrontId(null); setSelectedLocalityId(null); setSelectedDetail(null); setSelectedActivity(null);
       setGpsLocation(null); setNote(""); setStep("project"); setIsMenuOpen(false);
-      
       // Limpiar datos del formulario de registro
       setRegisterPropId("");
       setRegisterDetailText("");
@@ -332,7 +328,7 @@ export function useReportFlow() {
         setEvidenceFile(file); 
         setEvidencePreview(URL.createObjectURL(file)); 
         
-        setAiFeedback(null); // Limpiamos feedback anterior
+        setAiFeedback(null); 
         setIsAnalyzing(true);
         try {
             const nombreActividad = selectedActivity?.Nombre_Actividad || "Actividad de obra";
@@ -356,7 +352,6 @@ export function useReportFlow() {
 
   const saveReport = async () => {
     if (isAnalyzing) return showToast("Espera un momento, analizando imagen...", "info");
-
     if (!evidenceFile || !sessionUser || !selectedDetail) return showToast("Faltan datos (foto o sector)", "error"); setIsLoading(true);
     const timestamp = Date.now(); const fileName = `evidencia-${timestamp}.jpg`;
     const pName = projects.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre || "default";
@@ -364,18 +359,14 @@ export function useReportFlow() {
     
     try {
         if(navigator.onLine) {
-            // 1. Subir archivo
             const pubUrl = await uploadEvidence(bucket, path, evidenceFile, "image/jpeg");
-            
-            // 2. Crear actividad verificada
             const checked = await createCheckedActivity({ 
                 ID_DetallesActividad: selectedDetail.ID_DetallesActividad, 
                 Latitud: gpsLocation?.latitude || selectedDetail.Latitud, 
                 Longitud: gpsLocation?.longitude || selectedDetail.Longitud 
             });
 
-            // 3. Crear Registro Principal
-            // createRegistro devuelve { data, error }. 'data' es un array de objetos creados.
+            // guardar registro
             const { data: regData, error: regError } = await createRegistro({ 
                 Nombre_Archivo: fileName, 
                 URL_Archivo: pubUrl, 
@@ -388,16 +379,14 @@ export function useReportFlow() {
 
             if (regError) throw regError;
 
-            // 4. --- NUEVO: GUARDAR PROPIEDAD/ATRIBUTO (ONLINE-ONLY) ---
+            // guardar atributos si aplica
             const newRecordId = regData && regData[0] ? regData[0].ID_Registros : null;
-
             if (newRecordId && registerPropId && registerDetailText.trim() !== "") {
                 const { error: propError } = await supabase.from('Detalle_Propiedad').insert([{ 
                     ID_Registro: newRecordId, 
                     ID_Propiedad: Number(registerPropId), 
                     Detalle_Propiedad: registerDetailText 
                 }]);
-                
                 if (propError) console.error("Error guardando propiedad:", propError);
                 else showToast("Reporte y atributos guardados", "success");
             } else {
@@ -405,7 +394,7 @@ export function useReportFlow() {
             }
 
         } else {
-            // Lógica Offline (Se ignoran las propiedades como se pidió)
+            // offline case (se ignoran atributos)
             const pend: PendingRecord = { 
                 timestamp, evidenceBlob: evidenceFile, fileType: "image/jpeg", 
                 meta: { bucketName: bucket, fullPath: path, fileName, userId: sessionUser.id, detailId: selectedDetail.ID_DetallesActividad, lat: gpsLocation?.latitude || selectedDetail.Latitud, lng: gpsLocation?.longitude || selectedDetail.Longitud, comment: note } 
@@ -414,16 +403,8 @@ export function useReportFlow() {
             showToast("Guardado localmente (Atributos no disponibles offline)", "info");
         }
         
-        // Limpieza y Reset
-        setStep("map"); 
-        setEvidenceFile(null); 
-        setEvidencePreview(null); 
-        setNote(""); 
-        setAiFeedback(null);
-        
-        // Resetear campos de atributos
-        setRegisterPropId("");
-        setRegisterDetailText("");
+        setStep("map"); setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiFeedback(null);
+        setRegisterPropId(""); setRegisterDetailText(""); // Limpieza de campos
 
     } catch (err: any) { 
         console.error(err);
@@ -460,13 +441,7 @@ export function useReportFlow() {
     handleRowClick, handleSaveProperty,
     isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
     handleLogin, handleLogout, goBack, handleGoHome,
-    isAnalyzing, 
-    aiFeedback, 
-    toast, confirmModal, setConfirmModal,
-    isMenuOpen, setIsMenuOpen,
-    // --- EXPORTAR ESTADOS NUEVOS PARA UI ---
-    registerProperties,
-    registerPropId, setRegisterPropId,
-    registerDetailText, setRegisterDetailText
+    isAnalyzing, aiFeedback, toast, confirmModal, setConfirmModal, isMenuOpen, setIsMenuOpen,
+    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
   };
 }

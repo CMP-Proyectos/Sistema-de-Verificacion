@@ -28,10 +28,7 @@ export default function IndexPage() {
     aiFeedback,
     toast, confirmModal, setConfirmModal,
     isMenuOpen, setIsMenuOpen,
-    // --- NUEVOS ESTADOS DESTRUCTURADOS ---
-    registerProperties,
-    registerPropId, setRegisterPropId,
-    registerDetailText, setRegisterDetailText
+    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
   } = useReportFlow();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -98,13 +95,39 @@ export default function IndexPage() {
 
       {step === "auth" && (
         <div style={{...styles.card, margin: '0 0 24px'}}>
-          <div style={styles.logoRow}><img src={LOGO_SRC} style={styles.logo} alt="Logo" /></div>
+          <div style={styles.logoRow}>
+            <img src={LOGO_SRC} alt="Logo" style={styles.logo} />
+            <span style={styles.logoText}>Consorcio Cenepa Asociados</span>
+          </div>
+          
           <h2 style={styles.sectionTitle}>{authMode === "login" ? "Inicia sesión" : "Crear cuenta"}</h2>
-          <label style={styles.label}>Email</label>
-          <input placeholder="tu@email.com" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} style={styles.input} />
-          <label style={styles.label}>Contraseña</label>
-          <input placeholder="Contraseña" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} style={styles.input} />
-          <button onClick={handleLogin} disabled={isLoading} style={styles.primaryButton}>{isLoading ? "Cargando..." : (authMode === "login" ? "Ingresar" : "Crear")}</button>
+          
+          {/* formulario con Enter */}
+          <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+              <label style={styles.label}>Email</label>
+              <input 
+                  placeholder="tu@email.com" 
+                  value={authEmail} 
+                  onChange={(e) => setAuthEmail(e.target.value)} 
+                  style={styles.input} 
+              />
+              <label style={styles.label}>Contraseña</label>
+              <input 
+                  placeholder="Contraseña" 
+                  type="password" 
+                  value={authPassword} 
+                  onChange={(e) => setAuthPassword(e.target.value)} 
+                  style={styles.input} 
+              />
+              <button 
+                  onClick={handleLogin} 
+                  disabled={isLoading || !authEmail || !authPassword} 
+                  style={(!authEmail || !authPassword) ? styles.primaryButtonDisabled : styles.primaryButton}
+              >
+                  {isLoading ? "Cargando..." : (authMode === "login" ? "Ingresar" : "Crear")}
+              </button>
+          </form>
+
           <div style={styles.authFooter}>
               {authMode === "login" ? (<span onClick={() => setAuthMode("signup")} style={styles.linkText}>Crear cuenta</span>) : (<>¿Ya tienes una cuenta? <span onClick={() => setAuthMode("login")} style={styles.linkText}>Iniciar sesión</span></>)}
           </div>
@@ -112,7 +135,7 @@ export default function IndexPage() {
         </div>
       )}
 
-      {/* BLOQUES DE NAVEGACION (Proyectos, frentes, etc) */}
+      {/* navegation blocks */}
       {step === "project" && (
         <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
       )}
@@ -140,12 +163,11 @@ export default function IndexPage() {
          <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Confirmar Actividad</h2><div style={styles.detailInfoBox}><p style={{fontWeight:'bold'}}>{selectedActivity.Nombre_Actividad}</p></div><button onClick={() => setStep("map")} style={styles.primaryButton}>Ir al Mapa / Formulario</button></div>
       )}
 
-      {/* --- FORMULARIO DE REGISTRO CON IA Y ATRIBUTOS --- */}
+      {/* --- form de registro --- */}
       {(step === "map" || step === "form") && (
         <div style={{...styles.card, margin: '0 0 24px'}}>
            <h2 style={styles.sectionTitle}>Registrar Evidencia</h2>
            
-           {/* UBICACION */}
            <div style={{backgroundColor:'#F8FAFC', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20}}>
                <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Ubicación</h3>
                <div style={{...styles.mapPlaceholder, height: '150px', marginBottom:10}}>
@@ -166,7 +188,6 @@ export default function IndexPage() {
                </div>
            </div>
            
-           {/* EVIDENCIA */}
            <div style={{backgroundColor:'#FFFFFF', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20, boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
                <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Evidencia y datos</h3>
                <div style={{marginBottom:15}}>
@@ -174,25 +195,8 @@ export default function IndexPage() {
                         {evidencePreview ? <img src={evidencePreview} style={{...styles.evidenceImage, height:'auto', maxHeight:'250px'}} /> : <span style={{color:'#94A3B8', fontSize:13}}>Sin foto seleccionada</span>}
                     </div>
 
-                    {isAnalyzing && (
-                        <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}>
-                            <b>Analizando imagen con IA...</b>
-                        </div>
-                    )}
-
-                    {aiFeedback && (
-                        <div style={{
-                            padding:10, 
-                            borderRadius:8, 
-                            fontSize:13, 
-                            marginTop:5,
-                            backgroundColor: aiFeedback.type === 'warning' ? '#FEF2F2' : (aiFeedback.type === 'info' ? '#EFF6FF' : '#F0FDF4'),
-                            border: aiFeedback.type === 'warning' ? '1px solid #FCA5A5' : (aiFeedback.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'),
-                            color: aiFeedback.type === 'warning' ? '#991B1B' : (aiFeedback.type === 'info' ? '#1E40AF' : '#166534')
-                        }}>
-                            {aiFeedback.type === 'warning' ? '⚠️' : (aiFeedback.type === 'info' ? 'ℹ️' : '✅')} <b>{aiFeedback.message}</b>
-                        </div>
-                    )}
+                    {isAnalyzing && <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}><b>Analizando imagen con IA...</b></div>}
+                    {aiFeedback && <div style={{padding:10, borderRadius:8, fontSize:13, marginTop:5, backgroundColor: aiFeedback.type === 'warning' ? '#FEF2F2' : (aiFeedback.type === 'info' ? '#EFF6FF' : '#F0FDF4'), border: aiFeedback.type === 'warning' ? '1px solid #FCA5A5' : (aiFeedback.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'), color: aiFeedback.type === 'warning' ? '#991B1B' : (aiFeedback.type === 'info' ? '#1E40AF' : '#166534')}}>{aiFeedback.type === 'warning' ? '⚠️' : (aiFeedback.type === 'info' ? 'ℹ️' : '✅')} <b>{aiFeedback.message}</b></div>}
 
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCaptureFile} style={{display:'none'}} />
                     <button onClick={() => fileInputRef.current?.click()} style={{...styles.secondaryButton, marginTop:10}}>Tomar / Seleccionar foto</button>
@@ -201,89 +205,31 @@ export default function IndexPage() {
                <textarea value={note} onChange={e => setNote(e.target.value)} style={{...styles.textArea, minHeight:'70px'}} placeholder="Escribe aquí..." />
            </div>
 
-           {/* --- NUEVO BLOQUE: ATRIBUTOS DE ACTIVIDAD --- */}
-           <div style={{
-               backgroundColor: '#FFFFFF', 
-               padding: 15, 
-               borderRadius: 12, 
-               border: '1px solid #E2E8F0', 
-               marginBottom: 20, 
-               boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-           }}>
-               <h3 style={{fontSize: 14, fontWeight: 'normal', color: '#475569', marginTop: 0, marginBottom: 10}}>
-                   Atributos de Actividad
-               </h3>
-
+           {/* --- atributos de actividad--- */}
+           <div style={{backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, border: '1px solid #E2E8F0', marginBottom: 20, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
+               <h3 style={{fontSize: 14, fontWeight: 'normal', color: '#475569', marginTop: 0, marginBottom: 10}}>Atributos de Actividad</h3>
                {isOnline ? (
                    <>
                        {registerProperties.length > 0 ? (
                            <>
                                <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Tipo de Propiedad</label>
-                               <select 
-                                   value={registerPropId} 
-                                   onChange={(e) => setRegisterPropId(Number(e.target.value))} 
-                                   style={{
-                                       ...styles.input, 
-                                       padding: '8px', 
-                                       fontSize: '13px', 
-                                       marginBottom: '10px',
-                                       height: 'auto'
-                                   }}
-                               >
+                               <select value={registerPropId} onChange={(e) => setRegisterPropId(Number(e.target.value))} style={{...styles.input, padding: '8px', fontSize: '13px', marginBottom: '10px', height: 'auto'}}>
                                    <option value="">-- Seleccionar --</option>
-                                   {registerProperties.map(p => (
-                                       <option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>
-                                   ))}
+                                   {registerProperties.map(p => (<option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>))}
                                </select>
-
                                <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Valor / Detalle</label>
-                               <input 
-                                   value={registerDetailText} 
-                                   onChange={(e) => setRegisterDetailText(e.target.value)} 
-                                   style={{
-                                       ...styles.input, 
-                                       padding: '8px', 
-                                       fontSize: '13px', 
-                                       marginBottom: '0'
-                                   }} 
-                                   placeholder="Ej: 50 metros, Color Rojo..." 
-                               />
+                               <input value={registerDetailText} onChange={(e) => setRegisterDetailText(e.target.value)} style={{...styles.input, padding: '8px', fontSize: '13px', marginBottom: '0'}} placeholder="Ej: 50 metros, Color Rojo..." />
                            </>
                        ) : (
-                           <div style={{fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', padding: '10px'}}>
-                               No hay propiedades configuradas para esta actividad.
-                           </div>
+                           <div style={{fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', padding: '10px'}}>No hay propiedades configuradas para esta actividad.</div>
                        )}
                    </>
                ) : (
-                   <div style={{
-                       backgroundColor: '#FFF1F2', 
-                       border: '1px solid #FECACA', 
-                       borderRadius: '8px', 
-                       padding: '10px', 
-                       fontSize: '12px', 
-                       color: '#991B1B', 
-                       display: 'flex', 
-                       alignItems: 'center', 
-                       gap: '8px'
-                   }}>
-                       <span>⚠️</span> 
-                       Propiedades no disponibles offline. Por favor, añada detalles importantes en las Observaciones.
-                   </div>
+                   <div style={{backgroundColor: '#FFF1F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#991B1B', display: 'flex', alignItems: 'center', gap: '8px'}}><span>⚠️</span> Propiedades no disponibles offline. Por favor, añada detalles importantes en las Observaciones.</div>
                )}
            </div>
 
-           {/* BOTÓN GUARDAR */}
-           <button 
-                onClick={saveReport} 
-                disabled={isLoading || !evidencePreview || isAnalyzing} 
-                style={{
-                    ...(isLoading || isAnalyzing ? styles.primaryButtonDisabled : styles.primaryButton), 
-                    height: '50px', fontSize: '16px', marginBottom: '20px'
-                }}
-           >
-                {isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}
-           </button>
+           <button onClick={saveReport} disabled={isLoading || !evidencePreview || isAnalyzing} style={{...(isLoading || isAnalyzing ? styles.primaryButtonDisabled : styles.primaryButton), height: '50px', fontSize: '16px', marginBottom: '20px'}}>{isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}</button>
         </div>
       )}
       
@@ -295,7 +241,6 @@ export default function IndexPage() {
             <input placeholder="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} style={styles.input} />
             <div style={styles.readOnlyBlock}><span>Creado: {new Date(profileCreatedAt).toLocaleDateString()}</span></div>
             {profileMessage && <div style={styles.profileMessage}>{profileMessage}</div>}
-            
             <div style={{marginTop: '20px'}}>
                 <button onClick={saveProfile} disabled={isProfileSaving} style={styles.primaryButton}>Actualizar Datos</button>
                 <button onClick={handleLogout} style={styles.secondaryButton}>Cerrar Sesión</button>
@@ -307,12 +252,8 @@ export default function IndexPage() {
       {step === "user_records" && (
          <div style={{...styles.card, margin: '0 0 24px', minHeight: '80vh'}}>
              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20}}>
-                <div>
-                    <h2 style={styles.sectionTitle}>Mis Registros</h2>
-                    <p style={{fontSize: '13px', color: '#64748B', margin: 0}}>{userRecords?.length || 0} evidencias registradas</p>
-                </div>
+                <div><h2 style={styles.sectionTitle}>Mis Registros</h2><p style={{fontSize: '13px', color: '#64748B', margin: 0}}>{userRecords?.length || 0} evidencias registradas</p></div>
              </div>
-
              {isLoadingRecords ? (<div style={styles.emptyState}>Cargando galería...</div>) : userRecords?.length === 0 ? (<div style={styles.emptyState}>No tienes registros aún.</div>) : (
                  <>
                     <div style={styles.gridContainer}>
@@ -323,38 +264,26 @@ export default function IndexPage() {
                             </div>
                         ))}
                     </div>
-
                     {selectedRecordId && (() => {
                         const rec = userRecords.find(r => r.id_registro === selectedRecordId);
                         if (!rec) return null;
-                        
                         const proyectoStr = rec.nombre_proyecto || (rec.bucket ? rec.bucket.replace(/_/g, ' ').toUpperCase() : "PROYECTO GENERAL");
                         let frenteStr = rec.nombre_frente || "No identificado";
                         if ((!rec.nombre_frente || rec.nombre_frente === "No identificado") && rec.ruta_archivo) {
                             const parts = rec.ruta_archivo.split('/');
                             if (parts.length > 0) {
-                                if (parts[0].toLowerCase() === 'uploads' && parts.length > 1) {
-                                    frenteStr = parts[1].replace(/_/g, ' ');
-                                } else if (parts[0].toLowerCase() !== 'uploads') {
-                                    frenteStr = parts[0].replace(/_/g, ' ');
-                                }
+                                if (parts[0].toLowerCase() === 'uploads' && parts.length > 1) { frenteStr = parts[1].replace(/_/g, ' '); } 
+                                else if (parts[0].toLowerCase() !== 'uploads') { frenteStr = parts[0].replace(/_/g, ' '); }
                             }
                         }
-
                         return (
                             <div style={styles.detailOverlay}>
                                 <div style={styles.detailHeader}>
                                     <button onClick={() => setSelectedRecordId(null)} style={styles.backArrowBtn}>←</button>
-                                    <h3 style={{margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: 'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                                        {rec.nombre_actividad}
-                                    </h3>
+                                    <h3 style={{margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: 'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{rec.nombre_actividad}</h3>
                                 </div>
-
                                 <div style={styles.detailContent}>
-                                    <div style={{textAlign:'center'}}>
-                                        {rec.url_foto ? (<img src={rec.url_foto} style={styles.detailImageLarge} alt="Evidencia Grande" />) : (<div style={{...styles.detailImageLarge, backgroundColor:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8'}}>Sin Foto</div>)}
-                                    </div>
-
+                                    <div style={{textAlign:'center'}}>{rec.url_foto ? (<img src={rec.url_foto} style={styles.detailImageLarge} alt="Evidencia Grande" />) : (<div style={{...styles.detailImageLarge, backgroundColor:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8'}}>Sin Foto</div>)}</div>
                                     <div style={styles.attributeList}>
                                         <div style={styles.attributeItem}><span style={styles.attributeLabel}>Proyecto</span><span style={styles.attributeValue}>{proyectoStr}</span></div>
                                         <div style={styles.attributeItem}><span style={styles.attributeLabel}>Frente</span><span style={styles.attributeValue}>{frenteStr.toUpperCase()}</span></div>
@@ -364,7 +293,6 @@ export default function IndexPage() {
                                         <div style={styles.attributeItem}><span style={styles.attributeLabel}>Comentario</span><span style={{...styles.attributeValue, fontStyle: rec.comentario ? 'normal' : 'italic', color: rec.comentario ? '#0F172A' : '#94A3B8'}}>{rec.comentario || "Sin comentarios"}</span></div>
                                         <div style={{...styles.attributeItem, borderBottom: 'none'}}><span style={styles.attributeLabel}>Ubicación</span><span style={{...styles.attributeValue, fontFamily: 'monospace', fontSize: '12px', backgroundColor:'#F1F5F9', padding:'4px 8px', borderRadius:'4px', display:'inline-block'}}>{rec.latitud ? `${rec.latitud.toFixed(6)}, ${rec.longitud?.toFixed(6)}` : "Sin coordenadas"}</span></div>
                                     </div>
-
                                     <div style={{marginTop: '40px', display: 'flex', gap: '10px', paddingBottom: '40px'}}>
                                         <button onClick={() => requestDeleteRecord(rec)} style={{...styles.dangerButton, flex: 1, marginTop: 0}}>Eliminar</button>
                                         <button onClick={openEditModal} style={{...styles.secondaryButton, flex: 1, marginTop: 0}}>Editar</button>
@@ -384,7 +312,6 @@ export default function IndexPage() {
                 <h2 style={{...styles.sectionTitle, marginBottom:0}}>Archivos</h2>
                 <button onClick={handleDownloadCSV} style={{...styles.secondaryButtonSmall, width:'auto'}}>Descargar CSV</button>
              </div>
-             
              <div style={styles.tableContainer}>
                  <table style={styles.table}>
                    <thead><tr style={styles.tableHeaderRow}><th style={styles.tableTh}>ID</th><th style={styles.tableTh}>Localidad</th><th style={styles.tableTh}>Sector</th><th style={styles.tableTh}>Actividad</th><th style={styles.tableTh}>Fecha</th></tr></thead>

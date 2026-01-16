@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
 
-// Definición local de las propiedades
+// definición local de las propiedades
 export interface ActivityPropertyDef {
   id?: number; 
   ID_Actividad: number;
@@ -9,7 +9,7 @@ export interface ActivityPropertyDef {
   Nombre_Propiedad: string;
 }
 
-// Tipos para registros pendientes de subida:
+// tipos para registros pendientes de subida:
 export interface PendingRecord {
   id?: number;
   timestamp: number;
@@ -39,7 +39,7 @@ class OfflineDatabase extends Dexie {
 
   constructor() {
     super('AppObraDB');
-    // Estructura final
+    // estructura final
     this.version(6).stores({
       projects: 'ID_Proyectos',
       fronts: 'ID_Frente, ID_Proyecto',
