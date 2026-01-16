@@ -3,34 +3,43 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = "AIzaSyBLQUR7hW1sO_Iyf_g8EvKFXGogu0tbguA"; 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-export const validarFotoConIA = async (file: File, nombreActividad: string) => {
+// Interface de respuesta extendida
+export interface IAValidationResult {
+    aprobado: boolean;
+    mensaje: string;
+    esErrorTecnico?: boolean; // Nueva bandera para saber si fue error de red
+}
+
+export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
   try {
     const base64Data = await fileToBase64(file);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-// Cambia la instrucción estricta por esta más flexible:
-    const prompt = `Actúa como asistente de obra. Actividad: ${nombreActividad}.
-                    Analiza la imagen.
-                    APRUEBA si la imagen muestra una construcción, suelo, herramientas o algo técnico.
-                    SOLO REPRUEBA si es algo absurdo (una selfie, una mascota, pantalla negra, autos, comida).
-                    Responde solo este JSON: { "aprobado": boolean, "mensaje": "razón breve" }`;    const result = await model.generateContent([
+    
+    // Prompt ajustado para ser analítico
+    const prompt = `Analiza esta imagen para la actividad: "${nombreActividad}".
+                    Si la imagen coincide razonablemente (construcción, planos, herramientas, terreno), aprueba.
+                    Si es algo claramente incorrecto (selfie, mascota, pantalla negra, comida), reprueba y di qué es.
+                    Responde SOLO JSON: { "aprobado": boolean, "mensaje": "razón corta" }`;
+    
+    const result = await model.generateContent([
         prompt,
         { inlineData: { data: base64Data, mimeType: file.type } }
     ]);
+    
     const response = await result.response;
     const text = response.text();  
     const cleanText = text.replace(/```json|```/g, "").trim();
     return JSON.parse(cleanText);
+
   } catch (error: any) {
     console.error("Error IA:", error);
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
-        return { 
-            aprobado: false, 
-            mensaje: "Error técnico: El modelo de IA no está disponible en esta región/cuenta. Prueba usar 'gemini-pro'." 
-        };
-    }
+    
+    // DETECCIÓN DE ERROR DE CONEXIÓN / OFFLINE
+    // Si falla el fetch o no hay internet, devolvemos un estado especial
     return { 
         aprobado: false, 
-        mensaje: `Error: ${error.message || "Desconocido"}` 
+        esErrorTecnico: true, // Marcamos que fue error técnico, no rechazo de imagen
+        mensaje: "Validación automática no disponible (Offline)" 
     };
   }
 };
