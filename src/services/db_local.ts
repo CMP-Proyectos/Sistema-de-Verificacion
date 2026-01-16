@@ -1,31 +1,55 @@
-import Dexie, { type Table } from 'dexie';
+import Dexie, { Table } from 'dexie';
+import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
 
+// Definición local de las propiedades
+export interface ActivityPropertyDef {
+  id?: number; 
+  ID_Actividad: number;
+  ID_Propiedad: number;
+  Nombre_Propiedad: string;
+}
+
+// Tipos para registros pendientes de subida:
 export interface PendingRecord {
   id?: number;
   timestamp: number;
-  evidenceBlob: Blob; 
+  evidenceBlob: Blob;
   fileType: string;
-  meta: any;
+  meta: {
+    bucketName: string;
+    fullPath: string;
+    fileName: string;
+    userId: string;
+    detailId: number;
+    lat: number;
+    lng: number;
+    comment: string;
+    properties?: { id_propiedad: number; valor: string }[];
+  };
 }
 
 class OfflineDatabase extends Dexie {
-  pendingUploads!: Table<PendingRecord>; 
-  projects!: Table<any>;
-  fronts!: Table<any>;
-  localities!: Table<any>;
-  details!: Table<any>;
+  projects!: Table<ProjectRecord>;
+  fronts!: Table<FrontRecord>;
+  localities!: Table<LocalityRecord>;
+  details!: Table<DetailRecord>;
+  activities!: Table<ActivityRecord>;
+  pendingUploads!: Table<PendingRecord>;
+  activityProperties!: Table<ActivityPropertyDef>;
 
   constructor() {
-    super('CenepaOfflineDB');
-    this.version(2).stores({
-      pendingUploads: '++id, timestamp', 
-      projects: 'ID_Proyecto',
+    super('AppObraDB');
+    // Estructura final
+    this.version(6).stores({
+      projects: 'ID_Proyectos',
       fronts: 'ID_Frente, ID_Proyecto',
       localities: 'ID_Localidad, ID_Frente',
-      details: 'ID_DetallesActividad, ID_Localidad'
+      details: 'ID_DetallesActividad, ID_Localidad', 
+      activities: 'ID_Actividad',
+      pendingUploads: '++id',
+      activityProperties: '++id, ID_Actividad'
     });
   }
 }
 
-// Protección contra Server Side Rendering
-export const db = typeof window !== "undefined" ? new OfflineDatabase() : {} as any;
+export const db = new OfflineDatabase();

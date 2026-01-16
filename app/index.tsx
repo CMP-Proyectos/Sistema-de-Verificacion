@@ -25,9 +25,13 @@ export default function IndexPage() {
     availableProperties, selectedPropId, setSelectedPropId, detailText, setDetailText, handleRowClick, handleSaveProperty,
     isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
     isAnalyzing, 
-    aiFeedback, // NUEVA VARIABLE
+    aiFeedback,
     toast, confirmModal, setConfirmModal,
-    isMenuOpen, setIsMenuOpen 
+    isMenuOpen, setIsMenuOpen,
+    // --- NUEVOS ESTADOS DESTRUCTURADOS ---
+    registerProperties,
+    registerPropId, setRegisterPropId,
+    registerDetailText, setRegisterDetailText
   } = useReportFlow();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -108,7 +112,7 @@ export default function IndexPage() {
         </div>
       )}
 
-      {/* BLOQUES DE NAVEGACION (Proyectos, frentes, etc) SE MANTIENEN IGUAL... */}
+      {/* BLOQUES DE NAVEGACION (Proyectos, frentes, etc) */}
       {step === "project" && (
         <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
       )}
@@ -136,7 +140,7 @@ export default function IndexPage() {
          <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Confirmar Actividad</h2><div style={styles.detailInfoBox}><p style={{fontWeight:'bold'}}>{selectedActivity.Nombre_Actividad}</p></div><button onClick={() => setStep("map")} style={styles.primaryButton}>Ir al Mapa / Formulario</button></div>
       )}
 
-      {/* --- FORMULARIO DE REGISTRO CON IA FLEXIBLE --- */}
+      {/* --- FORMULARIO DE REGISTRO CON IA Y ATRIBUTOS --- */}
       {(step === "map" || step === "form") && (
         <div style={{...styles.card, margin: '0 0 24px'}}>
            <h2 style={styles.sectionTitle}>Registrar Evidencia</h2>
@@ -170,14 +174,12 @@ export default function IndexPage() {
                         {evidencePreview ? <img src={evidencePreview} style={{...styles.evidenceImage, height:'auto', maxHeight:'250px'}} /> : <span style={{color:'#94A3B8', fontSize:13}}>Sin foto seleccionada</span>}
                     </div>
 
-                    {/* STATUS DE IA */}
                     {isAnalyzing && (
                         <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}>
                             <b>Analizando imagen con IA...</b>
                         </div>
                     )}
 
-                    {/* FEEDBACK DE IA (No bloqueante) */}
                     {aiFeedback && (
                         <div style={{
                             padding:10, 
@@ -199,7 +201,79 @@ export default function IndexPage() {
                <textarea value={note} onChange={e => setNote(e.target.value)} style={{...styles.textArea, minHeight:'70px'}} placeholder="Escribe aquí..." />
            </div>
 
-           {/* BOTÓN GUARDAR (Siempre habilitado excepto cuando está subiendo o analizando) */}
+           {/* --- NUEVO BLOQUE: ATRIBUTOS DE ACTIVIDAD --- */}
+           <div style={{
+               backgroundColor: '#FFFFFF', 
+               padding: 15, 
+               borderRadius: 12, 
+               border: '1px solid #E2E8F0', 
+               marginBottom: 20, 
+               boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+           }}>
+               <h3 style={{fontSize: 14, fontWeight: 'normal', color: '#475569', marginTop: 0, marginBottom: 10}}>
+                   Atributos de Actividad
+               </h3>
+
+               {isOnline ? (
+                   <>
+                       {registerProperties.length > 0 ? (
+                           <>
+                               <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Tipo de Propiedad</label>
+                               <select 
+                                   value={registerPropId} 
+                                   onChange={(e) => setRegisterPropId(Number(e.target.value))} 
+                                   style={{
+                                       ...styles.input, 
+                                       padding: '8px', 
+                                       fontSize: '13px', 
+                                       marginBottom: '10px',
+                                       height: 'auto'
+                                   }}
+                               >
+                                   <option value="">-- Seleccionar --</option>
+                                   {registerProperties.map(p => (
+                                       <option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>
+                                   ))}
+                               </select>
+
+                               <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Valor / Detalle</label>
+                               <input 
+                                   value={registerDetailText} 
+                                   onChange={(e) => setRegisterDetailText(e.target.value)} 
+                                   style={{
+                                       ...styles.input, 
+                                       padding: '8px', 
+                                       fontSize: '13px', 
+                                       marginBottom: '0'
+                                   }} 
+                                   placeholder="Ej: 50 metros, Color Rojo..." 
+                               />
+                           </>
+                       ) : (
+                           <div style={{fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', padding: '10px'}}>
+                               No hay propiedades configuradas para esta actividad.
+                           </div>
+                       )}
+                   </>
+               ) : (
+                   <div style={{
+                       backgroundColor: '#FFF1F2', 
+                       border: '1px solid #FECACA', 
+                       borderRadius: '8px', 
+                       padding: '10px', 
+                       fontSize: '12px', 
+                       color: '#991B1B', 
+                       display: 'flex', 
+                       alignItems: 'center', 
+                       gap: '8px'
+                   }}>
+                       <span>⚠️</span> 
+                       Propiedades no disponibles offline. Por favor, añada detalles importantes en las Observaciones.
+                   </div>
+               )}
+           </div>
+
+           {/* BOTÓN GUARDAR */}
            <button 
                 onClick={saveReport} 
                 disabled={isLoading || !evidencePreview || isAnalyzing} 
@@ -208,13 +282,10 @@ export default function IndexPage() {
                     height: '50px', fontSize: '16px', marginBottom: '20px'
                 }}
            >
-               {isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}
+                {isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}
            </button>
         </div>
       )}
-
-      {/* (Resto de secciones: Profile, User Records, Files, Modals... se mantienen igual) */}
-      {/* ... [Se mantienen las secciones Perfil, User Records y Files igual que en el código anterior] ... */}
       
       {step === "profile" && (
          <div style={{...styles.card, margin: '0 0 24px'}}>

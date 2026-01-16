@@ -79,9 +79,16 @@ export function useReportFlow() {
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  
+  // --- PROPIEDADES (Edición en pestaña Archivos) ---
   const [availableProperties, setAvailableProperties] = useState<ActivitiesTypes[]>([]);
   const [selectedPropId, setSelectedPropId] = useState<number | "">("");
   const [detailText, setDetailText] = useState("");
+
+  // --- NUEVO: PROPIEDADES (Creación en pestaña Mapa/Formulario) ---
+  const [registerProperties, setRegisterProperties] = useState<ActivitiesTypes[]>([]);
+  const [registerPropId, setRegisterPropId] = useState<number | "">("");
+  const [registerDetailText, setRegisterDetailText] = useState("");
 
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [editEvidenceFile, setEditEvidenceFile] = useState<File | null>(null);
@@ -89,8 +96,6 @@ export function useReportFlow() {
   const [editPreviewUrl, setEditPreviewUrl] = useState("");
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  
-  // CAMBIO: Estado para feedback de IA (Advertencia o Info), no bloqueo
   const [aiFeedback, setAiFeedback] = useState<{ type: 'warning' | 'info' | 'success', message: string } | null>(null);
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -116,6 +121,33 @@ export function useReportFlow() {
         if (step !== "profile") loadUserRecords(); 
     }
   }, [step, sessionUser]);
+
+  // --- NUEVO: CARGA AUTOMÁTICA DE PROPIEDADES PARA REGISTRO (ONLINE-ONLY) ---
+  useEffect(() => {
+    const loadRegisterProperties = async () => {
+      // Solo cargar si estamos en el paso de formulario y tenemos internet
+      if ((step === "map" || step === "form") && isOnline && selectedActivity) {
+        try {
+          const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { 
+            nombre_input: selectedActivity.Nombre_Actividad 
+          });
+          if (data) {
+            setRegisterProperties(data.map((x: any) => ({
+              Tipo_Actividad: x.nombre_tipo,
+              ID_Propiedad: x.id_propiedad,
+              Propiedad: x.nombre_propiedad
+            })));
+          }
+        } catch (err) {
+          console.error("Error cargando propiedades registro:", err);
+        }
+      } else {
+        // Limpiar si salimos del paso o estamos offline
+        setRegisterProperties([]);
+      }
+    };
+    loadRegisterProperties();
+  }, [step, selectedActivity, isOnline]);
 
   const performFullSync = async () => {
     if (!navigator.onLine) return;
@@ -255,8 +287,13 @@ export function useReportFlow() {
   };
   
   const handleGoHome = () => {
+      // Limpiar estados de selección
       setSelectedProjectId(null); setSelectedFrontId(null); setSelectedLocalityId(null); setSelectedDetail(null); setSelectedActivity(null);
       setGpsLocation(null); setNote(""); setStep("project"); setIsMenuOpen(false);
+      
+      // Limpiar datos del formulario de registro
+      setRegisterPropId("");
+      setRegisterDetailText("");
   };
 
   const selectProject = (id: number) => { setSelectedProjectId(id); loadFrontsLocal(id); setStep("front"); };
@@ -301,15 +338,11 @@ export function useReportFlow() {
             const nombreActividad = selectedActivity?.Nombre_Actividad || "Actividad de obra";
             const resultado = await validarFotoConIA(file, nombreActividad);
             
-            // LÓGICA DE ADVERTENCIA (No bloqueante)
             if (resultado.esErrorTecnico) {
-                // Caso Offline / Error Red
                 setAiFeedback({ type: 'info', message: "No se pudo validar imagen (Sin conexión). Puedes guardar." });
             } else if (!resultado.aprobado) {
-                // Caso Detección Negativa
                 setAiFeedback({ type: 'warning', message: `La IA detectó: "${resultado.mensaje}". ¿Deseas guardar de todos modos?` });
             } else {
-                // Caso Éxito
                 setAiFeedback({ type: 'success', message: "Imagen verificada correctamente." });
             }
         } catch (err) {
@@ -322,27 +355,82 @@ export function useReportFlow() {
   };
 
   const saveReport = async () => {
-    // CAMBIO: Ya no hay bloqueo por aiError. 
-    // Solo bloqueamos si sigue analizando para evitar race conditions.
     if (isAnalyzing) return showToast("Espera un momento, analizando imagen...", "info");
 
     if (!evidenceFile || !sessionUser || !selectedDetail) return showToast("Faltan datos (foto o sector)", "error"); setIsLoading(true);
     const timestamp = Date.now(); const fileName = `evidencia-${timestamp}.jpg`;
     const pName = projects.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre || "default";
     const bucket = pName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_"); const path = `uploads/${fileName}`;
+    
     try {
         if(navigator.onLine) {
+            // 1. Subir archivo
             const pubUrl = await uploadEvidence(bucket, path, evidenceFile, "image/jpeg");
-            const checked = await createCheckedActivity({ ID_DetallesActividad: selectedDetail.ID_DetallesActividad, Latitud: gpsLocation?.latitude || selectedDetail.Latitud, Longitud: gpsLocation?.longitude || selectedDetail.Longitud });
-            await createRegistro({ Nombre_Archivo: fileName, URL_Archivo: pubUrl, user_id: sessionUser.id, ID_Verificada: checked.ID_Verificada, Comentario: note, Ruta_Archivo: path, Bucket: bucket });
-            showToast("Reporte guardado exitosamente", "success");
+            
+            // 2. Crear actividad verificada
+            const checked = await createCheckedActivity({ 
+                ID_DetallesActividad: selectedDetail.ID_DetallesActividad, 
+                Latitud: gpsLocation?.latitude || selectedDetail.Latitud, 
+                Longitud: gpsLocation?.longitude || selectedDetail.Longitud 
+            });
+
+            // 3. Crear Registro Principal
+            // createRegistro devuelve { data, error }. 'data' es un array de objetos creados.
+            const { data: regData, error: regError } = await createRegistro({ 
+                Nombre_Archivo: fileName, 
+                URL_Archivo: pubUrl, 
+                user_id: sessionUser.id, 
+                ID_Verificada: checked.ID_Verificada, 
+                Comentario: note, 
+                Ruta_Archivo: path, 
+                Bucket: bucket 
+            });
+
+            if (regError) throw regError;
+
+            // 4. --- NUEVO: GUARDAR PROPIEDAD/ATRIBUTO (ONLINE-ONLY) ---
+            const newRecordId = regData && regData[0] ? regData[0].ID_Registros : null;
+
+            if (newRecordId && registerPropId && registerDetailText.trim() !== "") {
+                const { error: propError } = await supabase.from('Detalle_Propiedad').insert([{ 
+                    ID_Registro: newRecordId, 
+                    ID_Propiedad: Number(registerPropId), 
+                    Detalle_Propiedad: registerDetailText 
+                }]);
+                
+                if (propError) console.error("Error guardando propiedad:", propError);
+                else showToast("Reporte y atributos guardados", "success");
+            } else {
+                showToast("Reporte guardado exitosamente", "success");
+            }
+
         } else {
-            const pend: PendingRecord = { timestamp, evidenceBlob: evidenceFile, fileType: "image/jpeg", meta: { bucketName: bucket, fullPath: path, fileName, userId: sessionUser.id, detailId: selectedDetail.ID_DetallesActividad, lat: gpsLocation?.latitude || selectedDetail.Latitud, lng: gpsLocation?.longitude || selectedDetail.Longitud, comment: note } };
+            // Lógica Offline (Se ignoran las propiedades como se pidió)
+            const pend: PendingRecord = { 
+                timestamp, evidenceBlob: evidenceFile, fileType: "image/jpeg", 
+                meta: { bucketName: bucket, fullPath: path, fileName, userId: sessionUser.id, detailId: selectedDetail.ID_DetallesActividad, lat: gpsLocation?.latitude || selectedDetail.Latitud, lng: gpsLocation?.longitude || selectedDetail.Longitud, comment: note } 
+            };
             await db.pendingUploads.add(pend);
-            showToast("Guardado localmente (Offline)", "info");
+            showToast("Guardado localmente (Atributos no disponibles offline)", "info");
         }
-        setStep("map"); setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiFeedback(null);
-    } catch { showToast("Ocurrió un error al guardar", "error"); } finally { setIsLoading(false); }
+        
+        // Limpieza y Reset
+        setStep("map"); 
+        setEvidenceFile(null); 
+        setEvidencePreview(null); 
+        setNote(""); 
+        setAiFeedback(null);
+        
+        // Resetear campos de atributos
+        setRegisterPropId("");
+        setRegisterDetailText("");
+
+    } catch (err: any) { 
+        console.error(err);
+        showToast("Ocurrió un error al guardar", "error"); 
+    } finally { 
+        setIsLoading(false); 
+    }
   };
   
   const syncPendingUploads = async () => { const count = await db.pendingUploads.count(); if(count > 0) { const recs = await db.pendingUploads.toArray(); for(const r of recs) { try { const pub = await uploadEvidence(r.meta.bucketName, r.meta.fullPath, r.evidenceBlob, "image/jpeg"); const chk = await createCheckedActivity({ ID_DetallesActividad: r.meta.detailId, Latitud: r.meta.lat, Longitud: r.meta.lng }); await createRegistro({ Nombre_Archivo: r.meta.fileName, URL_Archivo: pub, user_id: r.meta.userId, ID_Verificada: chk.ID_Verificada, Comentario: r.meta.comment, Ruta_Archivo: r.meta.fullPath, Bucket: r.meta.bucketName }); if(r.id) await db.pendingUploads.delete(r.id); } catch {} } } };
@@ -373,8 +461,12 @@ export function useReportFlow() {
     isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
     handleLogin, handleLogout, goBack, handleGoHome,
     isAnalyzing, 
-    aiFeedback, // EXPORTAMOS ESTE ESTADO
+    aiFeedback, 
     toast, confirmModal, setConfirmModal,
-    isMenuOpen, setIsMenuOpen
+    isMenuOpen, setIsMenuOpen,
+    // --- EXPORTAR ESTADOS NUEVOS PARA UI ---
+    registerProperties,
+    registerPropId, setRegisterPropId,
+    registerDetailText, setRegisterDetailText
   };
 }
