@@ -1,22 +1,20 @@
 import React from "react";
 
 export const styles: Record<string, React.CSSProperties> = {
-  // --- LAYOUT GENERAL (Fondo más "hormigón" suave) ---
   page: { 
     minHeight: "100vh", 
-    backgroundColor: "#F1F5F9", // Gris pizarra muy claro (Slate-100)
+    backgroundColor: "#F1F5F9", 
     fontFamily: "system-ui, -apple-system, sans-serif",
-    color: "#0F172A" // Texto base oscuro
+    color: "#0F172A" 
   },
   
-  // --- NAVBAR "INDUSTRIAL DARK" ---
   navbar: {
-    backgroundColor: "#1E293B", // Azul Pizarra Oscuro (Slate-800)
+    backgroundColor: "#1E293B", 
     padding: "16px 24px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    color: "#FFFFFF", // Texto blanco puro
+    color: "#FFFFFF", 
     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
     position: "sticky",
     top: 0,
@@ -26,7 +24,7 @@ export const styles: Record<string, React.CSSProperties> = {
     fontSize: "18px",
     fontWeight: "700",
     letterSpacing: "0.5px",
-    color: "#F8FAFC" // Blanco humo
+    color: "#F8FAFC" // blanco humo
   },
   hamburgerBtn: {
     background: "transparent",
@@ -39,9 +37,8 @@ export const styles: Record<string, React.CSSProperties> = {
     transition: "background 0.2s"
   },
   
-  // --- MENÚ DESPLEGABLE ---
   dropdownMenu: {
-    backgroundColor: "#1E293B", // Mismo fondo que navbar
+    backgroundColor: "#1E293B", 
     borderTop: "1px solid #334155",
     boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
     position: "absolute",
@@ -55,8 +52,8 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   menuItem: {
     padding: "12px 24px",
-    borderBottom: "1px solid #334155", // Separadores sutiles
-    color: "#E2E8F0", // Texto claro
+    borderBottom: "1px solid #334155", // separadores 
+    color: "#E2E8F0", 
     fontSize: "14px",
     fontWeight: "500",
     cursor: "pointer",
@@ -66,7 +63,6 @@ export const styles: Record<string, React.CSSProperties> = {
     width: "100%"
   },
 
-  // --- BARRA DE ESTADO Y NAVEGACIÓN ---
   statusBar: {
     backgroundColor: "#FFFFFF",
     padding: "8px 24px",
@@ -84,11 +80,11 @@ export const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     gap: "12px"
   },
-  // Botón "Inicio" (Sobrio)
+
   navButtonPrimary: {
     padding: "10px 16px",
     borderRadius: "6px",
-    backgroundColor: "#334155", // Gris Acero (Slate-700)
+    backgroundColor: "#334155", // gris acero (Slate-700)
     color: "#FFFFFF",
     fontSize: "13px",
     fontWeight: "600",
@@ -97,13 +93,13 @@ export const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
   },
-  // Botón "Atrás" (Borde oscuro)
+
   navButton: {
     padding: "10px 16px",
     borderRadius: "6px",
     border: "1px solid #CBD5F5",
     backgroundColor: "#FFFFFF",
-    color: "#334155", // Texto oscuro
+    color: "#334155", // texto oscuro
     fontSize: "13px",
     fontWeight: "600",
     cursor: "pointer",
@@ -111,7 +107,6 @@ export const styles: Record<string, React.CSSProperties> = {
     textAlign: "center"
   },
 
-  // --- COMPONENTES UI ---
   breadcrumbs: { 
     display: "flex", 
     flexWrap: "wrap", 
@@ -121,37 +116,36 @@ export const styles: Record<string, React.CSSProperties> = {
     fontSize: "12px",
     color: "#475569" 
   },
-  breadcrumbItem: { color: "#1E293B", fontWeight: 700 }, // Slate oscuro
-  breadcrumbSeparator: { color: "#94A3B8", fontSize: "14px" }, // Slate claro
+  breadcrumbItem: { color: "#1E293B", fontWeight: 700 }, // slate oscuro
+  breadcrumbSeparator: { color: "#94A3B8", fontSize: "14px" }, // slate claro
   
   card: { 
     backgroundColor: "#FFFFFF", 
     margin: "0 24px 24px", 
     padding: "24px", 
-    borderRadius: "8px", // Bordes menos redondeados (más industrial)
+    borderRadius: "8px",
     boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
     border: "1px solid #E2E8F0"
   },
   sectionTitle: { 
     fontSize: "16px", 
     fontWeight: 700, 
-    color: "#1E293B", // Slate oscuro
+    color: "#1E293B", // slate oscuro
     marginBottom: "12px",
     textTransform: "uppercase",
     letterSpacing: "0.5px"
   },
   
-  // --- FORMULARIOS ---
+  // --- forms ---
   label: { fontSize: "12px", fontWeight: 700, color: "#475569", marginBottom: "6px", display: "block", textTransform: "uppercase" },
   input: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", marginBottom: "16px", backgroundColor: "#FFFFFF" },
   inputCompact: { border: "1px solid #CBD5F5", borderRadius: "6px", padding: "8px", fontSize: "13px", backgroundColor: "#FFFFFF", color: "#0F172A" },
   textArea: { width: "100%", boxSizing: "border-box", minHeight: "100px", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "16px", fontFamily: "inherit" },
   
-  // --- BOTONES DE ACCIÓN ---
-  // Acción Principal (Guardar - Mantiene Azul sólido)
+  // guardar 
   primaryButton: { 
     width: "100%", boxSizing: "border-box", 
-    backgroundColor: "#0B5FFF", // Azul Industrial brillante
+    backgroundColor: "#0B5FFF",
     color: "#FFFFFF", 
     border: "none", borderRadius: "6px", 
     padding: "14px", fontSize: "15px", fontWeight: 700, 
@@ -160,7 +154,6 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   primaryButtonDisabled: { width: "100%", boxSizing: "border-box", backgroundColor: "#94A3B8", color: "#F1F5F9", border: "none", borderRadius: "6px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "not-allowed", marginTop: "12px" },
   
-  // Secundarios (Gris/Pizarra)
   secondaryButton: { 
     width: "100%", boxSizing: "border-box", marginTop: "12px", 
     border: "1px solid #475569", // Borde gris pizarra

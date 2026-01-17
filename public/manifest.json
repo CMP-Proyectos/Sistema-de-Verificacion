@@ -1,0 +1,22 @@
+{
+  "name": "Sistema de Verificación",
+  "short_name": "Verificación",
+  "description": "Aplicación para verificación y subida de imágenes geolocalizadas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/iconos/logo-principal.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/iconos/logo-consorcio-cenepa.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

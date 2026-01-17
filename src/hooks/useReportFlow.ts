@@ -9,8 +9,10 @@ import { db, PendingRecord } from "../services/db_local";
 import { validarFotoConIA, IAValidationResult } from "../services/GoogleAI"; 
 import proj4 from 'proj4';
 
+//Listado de steps de la pagina
 export type Step = "auth" | "project" | "front" | "locality" | "detail" | "activity" | "map" | "form" | "profile" | "user_records" | "files";
 
+//Plantilla de registros de usuario que se extrae de la base de datos
 export interface UserRecord { 
     id_registro: number; 
     fecha_subida: string; 

@@ -68,9 +68,23 @@ export default function IndexPage() {
             </div>
           )}
 
+          {/* --- state bar (con botón Cerrar Sesión) --- */}
           <div style={styles.statusBar}>
-             <div style={{color: isOnline ? 'green' : 'red', fontWeight: 'bold'}}>{isOnline ? "● Online" : "● Offline"}</div>
-             {sessionUser && <div style={{color: '#64748B'}}>{sessionUser.email}</div>}
+             <div style={{color: isOnline ? 'green' : 'red', fontWeight: 'bold'}}>
+                {isOnline ? "● Online" : "● Offline"}
+             </div>
+             
+             {sessionUser && (
+                <div style={{display: 'flex', alignItems: 'center'}}>
+                    <div style={{color: '#64748B'}}>{sessionUser.email}</div>
+                    <button 
+                        onClick={handleLogout} 
+                        style={{...styles.secondaryButtonSmall, width:'auto', marginLeft: '15px'}}
+                    >
+                        Cerrar Sesión
+                    </button>
+                </div>
+             )}
           </div>
 
           <div style={styles.navControls}>
@@ -102,7 +116,7 @@ export default function IndexPage() {
           
           <h2 style={styles.sectionTitle}>{authMode === "login" ? "Inicia sesión" : "Crear cuenta"}</h2>
           
-          {/* formulario con Enter */}
+          {/* formulario con tecla Enter */}
           <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
               <label style={styles.label}>Email</label>
               <input 
@@ -135,7 +149,7 @@ export default function IndexPage() {
         </div>
       )}
 
-      {/* navegation blocks */}
+      {/* navigation blocks */}
       {step === "project" && (
         <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
       )}
@@ -196,6 +210,7 @@ export default function IndexPage() {
                     </div>
 
                     {isAnalyzing && <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}><b>Analizando imagen con IA...</b></div>}
+                    
                     {aiFeedback && <div style={{padding:10, borderRadius:8, fontSize:13, marginTop:5, backgroundColor: aiFeedback.type === 'warning' ? '#FEF2F2' : (aiFeedback.type === 'info' ? '#EFF6FF' : '#F0FDF4'), border: aiFeedback.type === 'warning' ? '1px solid #FCA5A5' : (aiFeedback.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'), color: aiFeedback.type === 'warning' ? '#991B1B' : (aiFeedback.type === 'info' ? '#1E40AF' : '#166534')}}>{aiFeedback.type === 'warning' ? '⚠️' : (aiFeedback.type === 'info' ? 'ℹ️' : '✅')} <b>{aiFeedback.message}</b></div>}
 
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCaptureFile} style={{display:'none'}} />
@@ -205,7 +220,7 @@ export default function IndexPage() {
                <textarea value={note} onChange={e => setNote(e.target.value)} style={{...styles.textArea, minHeight:'70px'}} placeholder="Escribe aquí..." />
            </div>
 
-           {/* --- atributos de actividad--- */}
+           {/* --- atributos (solo online) --- */}
            <div style={{backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, border: '1px solid #E2E8F0', marginBottom: 20, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
                <h3 style={{fontSize: 14, fontWeight: 'normal', color: '#475569', marginTop: 0, marginBottom: 10}}>Atributos de Actividad</h3>
                {isOnline ? (
