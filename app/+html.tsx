@@ -13,8 +13,6 @@ export default function Root({ children }: PropsWithChildren) {
       </head>
       <body>
         {children}
-        
-        {/* --- AGREGA ESTO AQUÍ --- */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
