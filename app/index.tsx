@@ -244,7 +244,7 @@ export default function IndexPage() {
                )}
            </div>
 
-           <button onClick={saveReport} disabled={isLoading || !evidencePreview || isAnalyzing} style={{...(isLoading || isAnalyzing ? styles.primaryButtonDisabled : styles.primaryButton), height: '50px', fontSize: '16px', marginBottom: '20px'}}>{isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}</button>
+           <button onClick={() => {setStep("profile"); saveReport();}} disabled={isLoading || !evidencePreview || isAnalyzing} style={{...(isLoading || isAnalyzing ? styles.primaryButtonDisabled : styles.primaryButton), height: '50px', fontSize: '16px', marginBottom: '20px'}}>{isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}</button>
         </div>
       )}
       
