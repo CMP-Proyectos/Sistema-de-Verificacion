@@ -9,7 +9,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export type ProjectRecord = { ID_Proyectos: number; Proyecto_Nombre: string; };
 export type FrontRecord = { ID_Frente: number; ID_Proyecto: number; Nombre_Frente: string; };
 export type LocalityRecord = { ID_Localidad: number; ID_Frente: number; Nombre_Localidad: string; };
-export type DetailRecord = { ID_DetallesActividad: number; ID_Actividad: number; ID_Localidad: number; Latitud: number; Longitud: number; Cantidad: number | null; Nombre_Detalle: string; };
+export type DetailRecord = { ID_DetallesActividad: number; ID_Actividad: number; ID_Localidad: number; Latitud: number; Longitud: number| null; Nombre_Detalle: string; };
 export type ActivityRecord = { ID_Actividad: number; Nombre_Actividad: string; Categoria: string | null; Unidad: string | null; };
 
 // --- fetch ---
