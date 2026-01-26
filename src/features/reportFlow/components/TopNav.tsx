@@ -22,7 +22,7 @@ export const TopNav = ({ step, isOnline, onBack, breadcrumbNames }: Props) => {
     <>
         <div style={styles.navbar}>
              {/* Opción A: Texto estilizado */}
-             <div style={styles.navbarBrand}>CONSORCIO CENEPA</div>
+             <div style={styles.navbarBrand}>CMP CONTRATISTAS E.I.R.L.</div>
              
              {/* Opción B: Logo Imagen (Descomentar si tienes la imagen) */}
              {/* <img src={logoImg} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} /> */}
