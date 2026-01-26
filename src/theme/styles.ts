@@ -1,230 +1,144 @@
 import React from "react";
 
+// --- 1. PALETA DE COLORES ---
+const palette = {
+  navy: "#003366",       // Azul Corporativo
+  activeNavy: "#004080", // Azul Activo
+  background: "#F4F7F9", // Fondo Gris Claro
+  orange: "#FF6600",     // Naranja Seguridad
+  white: "#FFFFFF",
+  slateDark: "#1E293B",  // Texto Principal (Oscuro)
+  slateLight: "#64748B", // Texto Secundario
+  border: "#CBD5E1",     // Bordes
+  success: "#10B981",    
+  error: "#EF4444",      
+  warning: "#F59E0B",    
+  consoleBg: "#1E293B",
+  consoleText: "#38BDF8"
+};
+
+// --- 2. MIXINS (Estilos Base) ---
+const actionBtnBase: React.CSSProperties = {
+    display: "flex", justifyContent: "center", alignItems: "center",
+    height: "48px", padding: "0 16px", borderRadius: "4px",
+    fontSize: "13px", fontWeight: "700", textTransform: "uppercase",
+    cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box",
+    width: "100%", marginTop: 0, marginBottom: 0, lineHeight: "1",
+    transition: "background 0.2s, opacity 0.2s"
+};
+
+// [CORRECCIÓN AQUÍ] - Forzamos colores explícitos
+const baseInput: React.CSSProperties = {
+    width: "100%", padding: "12px", fontSize: "14px",
+    border: `1px solid ${palette.border}`, borderRadius: "4px",
+    boxSizing: "border-box", fontFamily: "inherit", outline: "none",
+    transition: "border-color 0.2s",
+    
+    // Agregados para evitar texto blanco fantasma:
+    color: palette.slateDark,       // Texto siempre oscuro (#1E293B)
+    backgroundColor: palette.white, // Fondo siempre blanco (#FFFFFF)
+};
+
+// =============================================================================
+// BLOQUE A: ESTILOS GLOBALES
+// =============================================================================
 export const styles: Record<string, React.CSSProperties> = {
-  page: { 
-    minHeight: "100vh", 
-    backgroundColor: "#F1F5F9", 
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    color: "#0F172A" 
-  },
-  
-  navbar: {
-    backgroundColor: "#1E293B", 
-    padding: "16px 24px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    color: "#FFFFFF", 
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    position: "sticky",
-    top: 0,
-    zIndex: 1000
-  },
-  navbarBrand: {
-    fontSize: "18px",
-    fontWeight: "700",
-    letterSpacing: "0.5px",
-    color: "#F8FAFC" // blanco humo
-  },
-  hamburgerBtn: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.2)",
-    borderRadius: "6px",
-    color: "white",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: "4px 10px",
-    transition: "background 0.2s"
-  },
-  
-  dropdownMenu: {
-    backgroundColor: "#1E293B", 
-    borderTop: "1px solid #334155",
-    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-    position: "absolute",
-    top: "60px", 
-    left: 0,
-    right: 0,
-    zIndex: 999,
-    display: "flex",
-    flexDirection: "column",
-    padding: "8px 0"
-  },
-  menuItem: {
-    padding: "12px 24px",
-    borderBottom: "1px solid #334155", // separadores 
-    color: "#E2E8F0", 
-    fontSize: "14px",
-    fontWeight: "500",
-    cursor: "pointer",
-    textAlign: "left",
-    background: "none",
-    border: "none",
-    width: "100%"
-  },
+  // --- LAYOUT ---
+  page: { minHeight: "100vh", backgroundColor: palette.background, fontFamily: "'Inter', sans-serif", color: palette.slateDark, display: "flex", flexDirection: "column", overflow: "hidden" },
+  container: { maxWidth: "900px", width: "100%", margin: "0 auto", padding: "20px 20px 90px 20px", flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
+  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "65vh", paddingRight: "6px", scrollbarWidth: "thin" },
 
-  statusBar: {
-    backgroundColor: "#FFFFFF",
-    padding: "8px 24px",
-    borderBottom: "1px solid #E2E8F0",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "11px",
-    fontWeight: "600",
-    color: "#64748B",
-    letterSpacing: "0.5px"
-  },
-  navControls: {
-    padding: "16px 24px 0",
-    display: "flex",
-    gap: "12px"
-  },
+  // --- COMPONENTES BASE ---
+  card: { backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "6px", padding: "24px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "20px", display: "flex", flexDirection: "column", maxHeight: "85vh" },
 
-  navButtonPrimary: {
-    padding: "10px 16px",
-    borderRadius: "6px",
-    backgroundColor: "#334155", // gris acero (Slate-700)
-    color: "#FFFFFF",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    border: "none",
-    flex: 1,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-  },
+  // --- NAV ---
+  navbar: { backgroundColor: palette.navy, color: palette.white, height: "50px", padding: "0 20px", display: "flex", justifyContent: "center", alignItems: "center", flexShrink: 0, boxShadow: "0 2px 4px rgba(0,0,0,0.1)", zIndex: 1000, position: 'relative' },
+  navbarBrand: { fontSize: "14px", fontWeight: "700", letterSpacing: "1px", textTransform: "uppercase" },
+  
+  statusBar: { backgroundColor: "#F8FAFC", padding: "4px 20px", borderBottom: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px", color: palette.slateLight, flexShrink: 0, height: "36px" },
 
-  navButton: {
-    padding: "10px 16px",
-    borderRadius: "6px",
-    border: "1px solid #CBD5F5",
-    backgroundColor: "#FFFFFF",
-    color: "#334155", // texto oscuro
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    flex: 1, 
-    textAlign: "center"
-  },
+  bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, height: "64px", backgroundColor: palette.white, borderTop: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-around", alignItems: "center", zIndex: 2000, boxShadow: "0 -4px 20px rgba(0,0,0,0.03)", paddingBottom: "env(safe-area-inset-bottom)" },
+  bottomNavItem: { flex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", background: "none", border: "none", cursor: "pointer", color: palette.slateLight, transition: "color 0.2s", padding: "8px 0" },
+  bottomNavItemActive: { color: palette.navy, fontWeight: "700" },
+  navLabel: { fontSize: "10px", marginTop: "4px", textTransform: "uppercase", fontWeight: "inherit", letterSpacing: "0.5px" },
 
-  breadcrumbs: { 
-    display: "flex", 
-    flexWrap: "wrap", 
-    alignItems: "center", 
-    gap: "6px", 
-    padding: "12px 24px", 
-    fontSize: "12px",
-    color: "#475569" 
-  },
-  breadcrumbItem: { color: "#1E293B", fontWeight: 700 }, // slate oscuro
-  breadcrumbSeparator: { color: "#94A3B8", fontSize: "14px" }, // slate claro
+  // --- INPUTS & TYPO ---
+  heading: { fontSize: "15px", fontWeight: "700", color: palette.navy, textTransform: "uppercase", marginBottom: "16px", paddingBottom: "8px", borderBottom: `2px solid ${palette.background}`, flexShrink: 0 },
+  label: { display: "block", fontSize: "11px", fontWeight: "700", color: palette.slateLight, textTransform: "uppercase", marginBottom: "6px" },
   
-  card: { 
-    backgroundColor: "#FFFFFF", 
-    margin: "0 24px 24px", 
-    padding: "24px", 
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-    border: "1px solid #E2E8F0"
-  },
-  sectionTitle: { 
-    fontSize: "16px", 
-    fontWeight: 700, 
-    color: "#1E293B", // slate oscuro
-    marginBottom: "12px",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px"
-  },
-  
-  // --- forms ---
-  label: { fontSize: "12px", fontWeight: 700, color: "#475569", marginBottom: "6px", display: "block", textTransform: "uppercase" },
-  input: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", marginBottom: "16px", backgroundColor: "#FFFFFF" },
-  inputCompact: { border: "1px solid #CBD5F5", borderRadius: "6px", padding: "8px", fontSize: "13px", backgroundColor: "#FFFFFF", color: "#0F172A" },
-  textArea: { width: "100%", boxSizing: "border-box", minHeight: "100px", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "16px", fontFamily: "inherit" },
-  
-  // guardar 
-  primaryButton: { 
-    width: "100%", boxSizing: "border-box", 
-    backgroundColor: "#0B5FFF",
-    color: "#FFFFFF", 
-    border: "none", borderRadius: "6px", 
-    padding: "14px", fontSize: "15px", fontWeight: 700, 
-    cursor: "pointer", marginTop: "12px",
-    boxShadow: "0 4px 6px -1px rgba(11, 95, 255, 0.2)"
-  },
-  primaryButtonDisabled: { width: "100%", boxSizing: "border-box", backgroundColor: "#94A3B8", color: "#F1F5F9", border: "none", borderRadius: "6px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "not-allowed", marginTop: "12px" },
-  
-  secondaryButton: { 
-    width: "100%", boxSizing: "border-box", marginTop: "12px", 
-    border: "1px solid #475569", // Borde gris pizarra
-    borderRadius: "6px", padding: "12px", 
-    backgroundColor: "transparent", 
-    color: "#475569", // Texto gris pizarra
-    fontSize: "14px", fontWeight: 600, cursor: "pointer",
-    transition: "all 0.2s"
-  },
-  secondaryButtonSmall: { 
-    border: "1px solid #475569", borderRadius: "6px", padding: "6px 12px", 
-    backgroundColor: "transparent", color: "#475569", 
-    fontSize: "12px", fontWeight: 600, cursor: "pointer" 
-  },
-  dangerButton: { width: "100%", boxSizing: "border-box", marginTop: "12px", border: "1px solid #EF4444", borderRadius: "6px", padding: "12px", backgroundColor: "#FEF2F2", color: "#B91C1C", fontSize: "14px", fontWeight: 600, cursor: "pointer" },
-  
-  // --- GRID & OPCIONES ---
-  optionGrid: { display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" },
-  optionButton: { 
-    border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px 16px", 
-    backgroundColor: "#FFFFFF", 
-    fontSize: "13px", fontWeight: 600, color: "#334155", 
-    cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.05)" 
-  },
-  
-  mapPlaceholder: { borderRadius: "8px", overflow: "hidden", border: "1px solid #CBD5F5", backgroundColor: "#E2E8F0" },
-  mapFrame: { width: "100%", border: "0" },
-  emptyState: { padding: "30px", fontSize: "14px", color: "#64748B", textAlign: "center", fontStyle: "italic" },
-  
-  detailInfoBox: { borderRadius: "6px", backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", marginBottom: "16px" },
-  
-  evidenceBox: { 
-    border: "2px dashed #CBD5F5", // Borde discontinuo más técnico
-    borderRadius: "8px", padding: "10px", 
-    display: "flex", alignItems: "center", justifyContent: "center", 
-    backgroundColor: "#F8FAFC", marginBottom: "16px", 
-    flexDirection: "column", minHeight: "200px"
-  },
-  evidenceImage: { width: "100%", height: "auto", objectFit: "contain", borderRadius: "4px" },
-  
-  searchInput: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "10px" },
-  searchResults: { display: "flex", flexDirection: "column", gap: "8px", maxHeight: "260px", overflowY: "auto", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "8px", backgroundColor: "#F8FAFC" },
-  searchOption: { border: "1px solid #E2E8F0", borderRadius: "6px", padding: "12px", backgroundColor: "#FFFFFF", textAlign: "left", cursor: "pointer" },
-  searchOptionTitle: { display: "block", fontSize: "13px", fontWeight: 700, color: "#1E293B" },
-  searchOptionMeta: { display: "block", fontSize: "11px", color: "#64748B", marginTop: "4px", textTransform: "uppercase" },
+  // Usamos el baseInput corregido
+  input: { ...baseInput, marginBottom: "16px" },
 
-  readOnlyBlock: { display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginBottom: "16px", padding: "16px", borderRadius: "8px", backgroundColor: "#F1F5F9", border: "1px solid #E2E8F0" },
-  profileMessage: { marginTop: "8px", padding: "10px 12px", borderRadius: "6px", backgroundColor: "#EFF6FF", fontSize: "13px", color: "#1E293B", borderLeft: "4px solid #3B82F6" },
-  
-  authFooter: { marginTop: "24px", textAlign: "center", fontSize: "13px", color: "#64748B" },
-  linkText: { color: "#0F172A", fontWeight: 700, cursor: "pointer", textDecoration: "underline" },
+  text: { fontSize: "14px", color: palette.slateDark, lineHeight: "1.5" },
+  monoText: { fontFamily: "'Roboto Mono', monospace", fontSize: "12px", color: palette.slateDark, backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px", display: "inline-block", border: "1px solid #E2E8F0" },
 
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px", backdropFilter: "blur(2px)" },
-  modalCard: { backgroundColor: "#FFFFFF", width: "100%", maxWidth: "420px", borderRadius: "8px", padding: "24px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column" },
-  modalButtons: { display: "flex", gap: "12px", marginTop: "24px", width: "100%" },
+  // --- BOTONES ---
+  btnPrimary: { ...actionBtnBase, backgroundColor: palette.orange, color: palette.white, border: "none", marginTop: "10px", boxShadow: "0 2px 4px rgba(255, 102, 0, 0.2)" },
+  btnSecondary: { ...actionBtnBase, backgroundColor: palette.white, border: `1px solid ${palette.slateLight}`, color: palette.slateDark },
+  btnDanger: { ...actionBtnBase, backgroundColor: "#FEF2F2", border: "1px solid #EF4444", color: "#DC2626" },
+  btnLink: { background: "none", border: "none", color: palette.navy, textDecoration: "underline", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "inherit", padding: "8px" },
 
-  gridContainer: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "16px", padding: "10px 0", marginBottom: "20px" },
-  cardItem: { backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", overflow: "hidden", display: "flex", flexDirection: "column", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", transition: "transform 0.1s ease", height: "100%" },
-  cardImagePlaceholder: { width: "100%", height: "120px", backgroundColor: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: "24px" },
-  cardImage: { width: "100%", height: "120px", objectFit: "cover", borderBottom: "1px solid #E2E8F0" },
-  cardFooter: { padding: "10px", display: "flex", flexDirection: "column", gap: "4px", flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF" },
-  cardTitle: { fontSize: "11px", fontWeight: "700", color: "#1E293B", lineHeight: "1.3", textAlign: "center", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" },
+  // --- UTILS ---
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" },
+  gridItem: { padding: "20px", backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "4px", textAlign: "center", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
+  flexBetween: { display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 },
+  breadcrumbs: { padding: "12px 20px", fontSize: "12px", color: palette.slateLight, display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", flexShrink: 0 },
+  breadcrumbItem: { fontWeight: "700", color: palette.navy },
+
+  // --- MODALES ---
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, backdropFilter: "blur(2px)" },
+  modalCard: { backgroundColor: palette.white, width: "90%", maxWidth: "400px", padding: "24px", borderRadius: "6px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" },
+  detailOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#F4F7F9", zIndex: 3000, display: "flex", flexDirection: "column", overflow: "hidden" },
+  detailHeader: { padding: "16px 20px", backgroundColor: "#FFFFFF", borderBottom: "1px solid #CBD5E1", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", zIndex: 10 },
+  detailContent: { flex: 1, overflowY: "auto", padding: "20px 20px 100px 20px", maxWidth: "800px", width: "100%", margin: "0 auto", boxSizing: "border-box" },
+  backArrowBtn: { background: "transparent", border: "1px solid #CBD5E1", borderRadius: "4px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "#334155", cursor: "pointer", transition: "background 0.2s" }
+};
+
+// =============================================================================
+// BLOQUE B: ESTILOS ESPECÍFICOS PARA EVIDENCIA
+// =============================================================================
+export const evidenceStyles: Record<string, React.CSSProperties> = {
+  // 1. Cabecera
+  headerClean: { fontSize: "15px", fontWeight: "700", color: palette.navy, textTransform: "uppercase", margin: 0, padding: 0, border: 'none' },
   
-  detailOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#FFFFFF", zIndex: 2000, display: "flex", flexDirection: "column", overflowY: "auto" },
-  detailHeader: { padding: "16px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", position: "sticky", top: 0, zIndex: 10, gap: "16px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" },
-  backArrowBtn: { background: "none", border: "none", fontSize: "24px", color: "#334155", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" },
-  detailContent: { padding: "24px", maxWidth: "640px", margin: "0 auto", width: "100%", boxSizing: "border-box", flex: 1 },
-  detailImageLarge: { width: "100%", height: "auto", maxHeight: "none", objectFit: "contain", borderRadius: "8px", backgroundColor: "#0F172A", marginBottom: "24px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" },
-  attributeList: { display: "flex", flexDirection: "column", gap: "16px" },
-  attributeItem: { display: "flex", flexDirection: "column", borderBottom: "1px solid #F1F5F9", paddingBottom: "12px" },
-  attributeLabel: { fontSize: "11px", fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginBottom: "4px", letterSpacing: "0.5px" },
-  attributeValue: { fontSize: "15px", color: "#0F172A", lineHeight: "1.5" }
+  // 2. Badge
+  badgeBase: { display: "inline-block", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "700", textTransform: "uppercase" },
+  badgeOnline: { backgroundColor: '#D1FAE5', color: '#065F46' },
+  badgeOffline: { backgroundColor: '#F1F5F9', color: '#64748B' },
+
+  // 3. Toggles
+  toggleContainer: { display: 'flex', width: '100%', backgroundColor: '#F1F5F9', borderRadius: '6px', padding: '4px', marginBottom: '16px', boxSizing: 'border-box' },
+  toggleBtn: { flex: 1, padding: '6px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: 'transparent', color: '#94A3B8' },
+  toggleBtnActive: { backgroundColor: palette.white, color: palette.navy, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' },
+
+  // 4. Mapa
+  mapContainer: { width: '100%', height: '160px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${palette.border}`, backgroundColor: '#E2E8F0', marginBottom: '16px', position: 'relative' },
+  mapIframe: { width: '100%', height: '100%', border: 0, pointerEvents: 'none', display: 'block' },
+  mapPlaceholder: { display:'flex', alignItems:'center', justifyContent:'center', height:'100%', flexDirection:'column', color:'#94A3B8' },
+
+  // 5. Grillas e Inputs
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' },
+  utmRow: { display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%' },
+  
+  // Input de solo lectura
+  inputReadOnly: { ...baseInput, marginBottom: 0, backgroundColor: '#F8FAFC', color: palette.slateDark, fontFamily: 'monospace' },
+  
+  // Inputs de UTM (Heredan color oscuro de baseInput)
+  inputCenter: { ...baseInput, marginBottom: 0, textAlign: 'center' },
+  inputNoMargin: { ...baseInput, marginBottom: 0 },
+  
+  // 6. Botones Específicos
+  btnSquare: { ...actionBtnBase, backgroundColor: palette.orange, color: palette.white, border: "none", width: '42px', height: '42px', padding: 0, marginTop: 0, flexShrink: 0 },
+  btnSmall: { ...actionBtnBase, backgroundColor: palette.white, border: `1px solid ${palette.slateLight}`, color: palette.slateDark, fontSize: '11px', gap: '6px', height: '32px' },
+
+  // 7. Carga
+  uploadRow: { display: 'flex', gap: '12px', height: '120px', marginBottom: '16px', width: '100%' },
+  uploadBtnLarge: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: `2px dashed ${palette.border}`, borderRadius: '8px', backgroundColor: '#F8FAFC', cursor: 'pointer', color: palette.slateLight, transition: 'background 0.2s', padding: '10px' },
+  uploadBtnLargeActive: { color: palette.navy, borderColor: palette.navy, backgroundColor: "#F0F9FF" },
+
+  previewContainer: { borderRadius: '6px', border: `1px solid ${palette.border}`, overflow: 'hidden', height: '240px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', marginBottom: '16px' },
+  actionsRow: { display: 'flex', gap: '10px', marginTop: '12px' },
+
+  // 8. Consola
+  console: { backgroundColor: palette.consoleBg, color: palette.consoleText, padding: '12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', marginBottom: '16px', borderLeft: `4px solid ${palette.success}` }
 };

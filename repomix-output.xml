@@ -1,0 +1,1744 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+app.json
+app/_layout.tsx
+app/+html.tsx
+app/index.tsx
+eslint.config.js
+package.json
+public/assests/images/android-icon-background.png
+public/assests/images/android-icon-foreground.png
+public/assests/images/android-icon-monochrome.png
+public/assests/images/favicon.png
+public/assests/images/icon.png
+public/assests/images/partial-react-logo.png
+public/assests/images/react-logo.png
+public/assests/images/react-logo@2x.png
+public/assests/images/react-logo@3x.png
+public/assests/images/splash-icon.png
+public/iconos/logo-consorcio-cenepa.png
+public/iconos/logo-principal.png
+public/manifest.json
+public/sw.js
+README.md
+src/hooks/useReportFlow.ts
+src/services/dataService.ts
+src/services/db_local.ts
+src/services/GoogleAI.ts
+src/services/supabaseClient.ts
+src/theme/styles.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="public/manifest.json">
+{
+  "name": "Sistema de Verificación",
+  "short_name": "Verificación",
+  "description": "Aplicación para verificación y subida de imágenes geolocalizadas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/iconos/logo-principal.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/iconos/logo-consorcio-cenepa.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
+</file>
+
+<file path="public/sw.js">
+self.addEventListener('install', (event) => {
+  console.log('Service Worker instalado');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activado');
+});
+
+self.addEventListener('fetch', (event) => {
+  
+});
+</file>
+
+<file path="README.md">
+# Welcome to your Expo app 👋
+
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+
+## Get started
+
+1. Install dependencies
+
+   ```bash
+   npm install
+   ```
+
+2. Start the app
+
+   ```bash
+   npx expo start
+   ```
+
+In the output, you'll find options to open the app in a
+
+- [development build](https://docs.expo.dev/develop/development-buil
+ds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Get a fresh project
+
+When you're ready, run:
+
+```bash
+npm run reset-project
+```
+
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+
+## Learn more
+
+To learn more about developing your project with Expo, look at the following resources:
+
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+
+## Join the community
+
+Join our community of developers creating universal apps.
+
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+</file>
+
+<file path="src/services/supabaseClient.ts">
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://torwsfbxltzibydrlrqc.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</file>
+
+<file path=".gitignore">
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+</file>
+
+<file path="app.json">
+{
+  "expo": {
+    "name": "app-ejemplo",
+    "slug": "app-ejemplo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "appejemplo",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
+</file>
+
+<file path="app/+html.tsx">
+import { ScrollViewStyleReset } from 'expo-router/html';
+import { type PropsWithChildren } from 'react';
+
+export default function Root({ children }: PropsWithChildren) {
+  return (
+    <html lang="es">
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <link rel="manifest" href="/manifest.json" />
+        <ScrollViewStyleReset />
+      </head>
+      <body>
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('Service Worker registrado con éxito:', registration.scope);
+                  }, function(err) {
+                    console.log('Fallo al registrar Service Worker:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />  
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="eslint.config.js">
+// https://docs.expo.dev/guides/using-eslint/
+const { defineConfig } = require('eslint/config');
+const expoConfig = require('eslint-config-expo/flat');
+
+module.exports = defineConfig([
+  expoConfig,
+  {
+    ignores: ['dist/*'],
+  },
+]);
+</file>
+
+<file path="tsconfig.json">
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "app-ejemplo",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@google/generative-ai": "^0.24.1",
+    "@react-navigation/bottom-tabs": "^7.4.0",
+    "@react-navigation/elements": "^2.6.3",
+    "@react-navigation/native": "^7.1.8",
+    "@supabase/supabase-js": "^2.89.0",
+    "dexie": "^4.2.1",
+    "expo": "~54.0.30",
+    "expo-constants": "~18.0.12",
+    "expo-font": "~14.0.10",
+    "expo-haptics": "~15.0.8",
+    "expo-image": "~3.0.11",
+    "expo-image-picker": "~17.0.10",
+    "expo-linking": "~8.0.11",
+    "expo-location": "~19.0.8",
+    "expo-router": "~6.0.21",
+    "expo-splash-screen": "~31.0.13",
+    "expo-status-bar": "~3.0.9",
+    "expo-symbols": "~1.0.8",
+    "expo-system-ui": "~6.0.9",
+    "expo-web-browser": "~15.0.10",
+    "proj4": "^2.20.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-maps": "1.20.1",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.5.1",
+    "react-webcam": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/proj4": "^2.5.6",
+    "@types/react": "~19.1.0",
+    "eslint": "^9.25.0",
+    "eslint-config-expo": "~10.0.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
+</file>
+
+<file path="src/services/GoogleAI.ts">
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const API_KEY = "AIzaSyBLQUR7hW1sO_Iyf_g8EvKFXGogu0tbguA"; 
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+// interfaz de respuesta
+export interface IAValidationResult {
+    aprobado: boolean;
+    mensaje: string;
+    esErrorTecnico?: boolean; // bandera para identificar error de red
+}
+
+export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
+  try {
+    const base64Data = await fileToBase64(file);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    
+    // prompt "analítico"
+    const prompt = `Analiza esta imagen para la actividad: "${nombreActividad}".
+                    Si la imagen coincide razonablemente (construcción, planos, herramientas, terreno), aprueba.
+                    Si es algo claramente incorrecto (selfie, mascota, pantalla negra, comida), reprueba y di qué es.
+                    Responde SOLO JSON: { "aprobado": boolean, "mensaje": "razón corta" }`;
+    
+    const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data, mimeType: file.type } }
+    ]);
+    
+    const response = await result.response;
+    const text = response.text();  
+    const cleanText = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleanText);
+
+  } catch (error: any) {
+    console.error("Error IA:", error);
+    
+    // detección de error técnico (conexión) u offline
+    // si falla el fetch o no hay internet, devolvemos un estado especial
+    return { 
+        aprobado: false, 
+        esErrorTecnico: true, // error técnico, no rechazo de imagen
+        mensaje: "Validación automática no disponible (Offline)" 
+    };
+  }
+};
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1]; 
+        resolve(base64);
+    };
+    reader.onerror = error => reject(error);
+  });
+}
+</file>
+
+<file path="app/_layout.tsx">
+import { Stack } from "expo-router";
+
+export default function Layout() {
+  return (
+    <Stack 
+      screenOptions={{ 
+        headerShown: false, // eliminar encabezado azul
+        animation: 'fade',  // transición suave
+        contentStyle: { backgroundColor: '#F5F7FB' } // fondo gris claro base
+      }} 
+    />
+  );
+}
+</file>
+
+<file path="src/services/db_local.ts">
+import Dexie, { Table } from 'dexie';
+import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
+
+// definición local de las propiedades
+export interface ActivityPropertyDef {
+  id?: number; 
+  ID_Actividad: number;
+  ID_Propiedad: number;
+  Nombre_Propiedad: string;
+}
+
+// tipos para registros pendientes de subida:
+export interface PendingRecord {
+  id?: number;
+  timestamp: number;
+  evidenceBlob: Blob;
+  fileType: string;
+  meta: {
+    bucketName: string;
+    fullPath: string;
+    fileName: string;
+    userId: string;
+    detailId: number;
+    lat: number;
+    lng: number;
+    comment: string;
+    properties?: { id_propiedad: number; valor: string }[];
+  };
+}
+
+class OfflineDatabase extends Dexie {
+  projects!: Table<ProjectRecord>;
+  fronts!: Table<FrontRecord>;
+  localities!: Table<LocalityRecord>;
+  details!: Table<DetailRecord>;
+  activities!: Table<ActivityRecord>;
+  pendingUploads!: Table<PendingRecord>;
+  activityProperties!: Table<ActivityPropertyDef>;
+
+  constructor() {
+    super('AppObraDB');
+    // estructura final
+    this.version(6).stores({
+      projects: 'ID_Proyectos',
+      fronts: 'ID_Frente, ID_Proyecto',
+      localities: 'ID_Localidad, ID_Frente',
+      details: 'ID_DetallesActividad, ID_Localidad', 
+      activities: 'ID_Actividad',
+      pendingUploads: '++id',
+      activityProperties: '++id, ID_Actividad'
+    });
+  }
+}
+
+export const db = new OfflineDatabase();
+</file>
+
+<file path="src/hooks/useReportFlow.ts">
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { 
+  supabase, 
+  getAllProjects, getAllFronts, getAllLocalities, getAllDetails, getAllActivities, 
+  uploadEvidence, createCheckedActivity, createRegistro, 
+  ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord 
+} from "../services/dataService";
+import { db, PendingRecord } from "../services/db_local";
+import { validarFotoConIA, IAValidationResult } from "../services/GoogleAI"; 
+import proj4 from 'proj4';
+
+//Listado de steps de la pagina
+export type Step = "auth" | "project" | "front" | "locality" | "detail" | "activity" | "map" | "form" | "profile" | "user_records" | "files";
+
+//Plantilla de registros de usuario que se extrae de la base de datos
+export interface UserRecord { 
+    id_registro: number; 
+    fecha_subida: string; 
+    url_foto: string | null; 
+    nombre_actividad: string; 
+    nombre_localidad: string; 
+    nombre_detalle: string; 
+    comentario: string | null; 
+    ruta_archivo: string | null; 
+    bucket: string | null; 
+    latitud: number | null; 
+    longitud: number | null;
+    nombre_proyecto?: string;
+    nombre_frente?: string;
+}
+
+export interface ActivitiesTypes { Tipo_Actividad: string; ID_Propiedad: number; Propiedad: string; }
+type DetailWithActivity = DetailRecord & { activityName: string };
+type GpsLocation = { latitude: number; longitude: number; };
+
+const WGS84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+const utmZones: Record<string, string> = { "17": "+proj=utm +zone=17 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", "18": "+proj=utm +zone=18 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", "19": "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs" };
+
+export function useReportFlow() {
+  const [step, setStep] = useState<Step>("auth");
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("");
+  const [sessionUser, setSessionUser] = useState<{ email: string; id: string } | null>(null);
+  
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"login"|"signup">("login");
+
+  const [profileName, setProfileName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileCreatedAt, setProfileCreatedAt] = useState("");
+  const [profileLastSignInAt, setProfileLastSignInAt] = useState("");
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [fronts, setFronts] = useState<FrontRecord[]>([]);
+  const [localities, setLocalities] = useState<LocalityRecord[]>([]);
+  const [details, setDetails] = useState<DetailRecord[]>([]);
+  const [activities, setActivities] = useState<ActivityRecord[]>([]);
+
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedFrontId, setSelectedFrontId] = useState<number | null>(null);
+  const [selectedLocalityId, setSelectedLocalityId] = useState<number | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<DetailWithActivity | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityRecord | null>(null);
+  const [detailSearch, setDetailSearch] = useState("");
+
+  const [gpsLocation, setGpsLocation] = useState<GpsLocation | null>(null);
+  const [isFetchingGps, setIsFetchingGps] = useState(false);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [utmZone, setUtmZone] = useState("19");
+  const [utmEast, setUtmEast] = useState("");
+  const [utmNorth, setUtmNorth] = useState("");
+
+  const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
+  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  
+  // --- propiedad (pestaña archivos) ---
+  const [availableProperties, setAvailableProperties] = useState<ActivitiesTypes[]>([]);
+  const [selectedPropId, setSelectedPropId] = useState<number | "">("");
+  const [detailText, setDetailText] = useState("");
+
+  // --- propieidad (pestaña mapa / formulario) ---
+  const [registerProperties, setRegisterProperties] = useState<ActivitiesTypes[]>([]);
+  const [registerPropId, setRegisterPropId] = useState<number | "">("");
+  const [registerDetailText, setRegisterDetailText] = useState("");
+
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [editEvidenceFile, setEditEvidenceFile] = useState<File | null>(null);
+  const [editComment, setEditComment] = useState("");
+  const [editPreviewUrl, setEditPreviewUrl] = useState("");
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<{ type: 'warning' | 'info' | 'success', message: string } | null>(null);
+
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
+      setToast({ msg, type });
+      setTimeout(() => setToast(null), 3500);
+  };
+
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleStatus = () => { setIsOnline(navigator.onLine); if(navigator.onLine) syncPendingUploads(); };
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    checkSession();
+    return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
+  }, []);
+
+  useEffect(() => {
+    if ((step === "profile" || step === "user_records" || step === "files") && sessionUser) { 
+        loadProfileData(); 
+        if (step !== "profile") loadUserRecords(); 
+    }
+  }, [step, sessionUser]);
+
+  // --- carga automática de propiedades para registro (solo online) ---
+  useEffect(() => {
+    const loadRegisterProperties = async () => {
+      if ((step === "map" || step === "form") && isOnline && selectedActivity) {
+        try {
+          const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { 
+            nombre_input: selectedActivity.Nombre_Actividad 
+          });
+          if (data) {
+            setRegisterProperties(data.map((x: any) => ({
+              Tipo_Actividad: x.nombre_tipo,
+              ID_Propiedad: x.id_propiedad,
+              Propiedad: x.nombre_propiedad
+            })));
+          }
+        } catch (err) {
+          console.error("Error cargando propiedades registro:", err);
+        }
+      } else {
+        setRegisterProperties([]);
+      }
+    };
+    loadRegisterProperties();
+  }, [step, selectedActivity, isOnline]);
+
+  const performFullSync = async () => {
+    if (!navigator.onLine) return;
+    setSyncStatus("Sincronizando...");
+    try {
+        const [p, f, l, d, a] = await Promise.all([ getAllProjects(), getAllFronts(), getAllLocalities(), getAllDetails(), getAllActivities() ]);
+        await db.transaction('rw', db.projects, db.fronts, db.localities, db.details, async () => {
+            await db.projects.bulkPut(p); await db.fronts.bulkPut(f); await db.localities.bulkPut(l); await db.details.bulkPut(d);
+        });
+        setActivities(a);
+        setSyncStatus("");
+    } catch (e) { console.error("Sync error", e); setSyncStatus("Error Sync"); }
+  };
+
+  const loadProjectsLocal = useCallback(async () => { setProjects(await db.projects.toArray()); }, []);
+  const loadFrontsLocal = useCallback(async (pid: number) => { setFronts(await db.fronts.where("ID_Proyecto").equals(pid).toArray()); }, []);
+  const loadLocalitiesLocal = useCallback(async (fid: number) => { setLocalities(await db.localities.where("ID_Frente").equals(fid).toArray()); }, []);
+  const loadDetailsLocal = useCallback(async (lid: number) => { setDetails(await db.details.where("ID_Localidad").equals(lid).toArray()); }, []);
+
+  const checkSession = async () => {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      setSessionUser({ email: data.session.user.email!, id: data.session.user.id });
+      const count = await db.projects.count();
+      if(count === 0 && navigator.onLine) await performFullSync();
+      else if(navigator.onLine) performFullSync().then(loadProjectsLocal);
+      await loadProjectsLocal();
+      setStep("project");
+    }
+  };
+
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+      if (authMode === "signup") {
+         const { data, error } = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword.trim() });
+         if (error) throw error; if (!data.user) return showToast("Verifica tu correo para continuar", "info");
+         setSessionUser({ email: data.user.email!, id: data.user.id });
+      } else {
+         const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword.trim() });
+         if (error) throw error; if (data.user) setSessionUser({ email: data.user.email!, id: data.user.id });
+      }
+      await performFullSync();
+      await loadProjectsLocal();
+      setStep("project");
+    } catch (e: any) { showToast(e.message || "Error al ingresar", "error"); } finally { setIsLoading(false); }
+  };
+
+  const handleLogout = async () => {
+    await db.projects.clear(); await db.fronts.clear(); await db.localities.clear(); await db.details.clear();
+    await supabase.auth.signOut();
+    setSessionUser(null); setStep("auth"); setProjects([]); setIsMenuOpen(false);
+  };
+
+  const loadProfileData = async () => {
+      const {data} = await supabase.auth.getUser();
+      if(data.user) {
+          setProfileEmail(data.user.email||"");
+          setProfileName(data.user.user_metadata?.full_name||"");
+          setProfileLastName(data.user.user_metadata?.last_name||"");
+          setProfileCreatedAt(data.user.created_at||"");
+          setProfileLastSignInAt(data.user.last_sign_in_at||"");
+      }
+  };
+  const saveProfile = async () => { 
+      if(!sessionUser) return; 
+      setIsProfileSaving(true); 
+      try { await supabase.from('Detalle_Perfil').update({Nombre: profileName, Apellido: profileLastName}).eq('id', sessionUser.id); showToast("Perfil actualizado", "success"); loadProfileData(); } 
+      catch { showToast("No se pudo actualizar el perfil", "error"); } 
+      finally { setIsProfileSaving(false); } 
+  };
+  
+  const requestDeleteAccount = () => {
+      setConfirmModal({
+          open: true,
+          title: "Eliminar cuenta",
+          message: "¿Estás seguro de que quieres eliminar tu cuenta y todos tus datos? Esta acción no se puede deshacer.",
+          onConfirm: async () => {
+              setConfirmModal(null);
+              setIsDeletingAccount(true);
+              try { await supabase.rpc("delete_user"); handleLogout(); showToast("Cuenta eliminada", "info"); } 
+              catch { showToast("Error al eliminar cuenta", "error"); setIsDeletingAccount(false); }
+          }
+      });
+  };
+  
+  const loadUserRecords = async () => { if(!sessionUser) return; setIsLoadingRecords(true); try { const {data} = await supabase.rpc('obtener_historial_usuario', { usuario_uid: sessionUser.id }); setUserRecords(data || []); } catch {} finally { setIsLoadingRecords(false); } };
+  
+  const requestDeleteRecord = (i: UserRecord) => { 
+      setConfirmModal({
+          open: true,
+          title: "Borrar registro",
+          message: "¿Deseas eliminar este registro y su foto permanentemente?",
+          onConfirm: async () => {
+              setConfirmModal(null);
+              setIsLoading(true); 
+              try { 
+                  if(i.bucket && i.ruta_archivo) await supabase.storage.from(i.bucket).remove([i.ruta_archivo]); 
+                  await supabase.rpc('eliminar_evidencia_completa', { p_id_registro: i.id_registro }); 
+                  await loadUserRecords(); 
+                  setSelectedRecordId(null);
+                  showToast("Registro eliminado", "success");
+              } catch { showToast("Error al eliminar", "error"); } 
+              finally { setIsLoading(false); } 
+          }
+      });
+  };
+
+  const handleDownloadCSV = () => { 
+      if(!userRecords.length) return showToast("No hay datos para descargar", "info"); 
+      const h=["ID","Fecha","Actividad","Localidad","Detalle","Comentario","Latitud","Longitud"]; 
+      const r=userRecords.map(i=>[i.id_registro, i.fecha_subida, `"${i.nombre_actividad}"`, `"${i.nombre_localidad}"`, `"${i.nombre_detalle}"`, `"${(i.comentario||'').replace(/"/g, '""')}"`, i.latitud, i.longitud].join(";")); 
+      const csvContent = "\uFEFF" + [h.join(";"), ...r].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `data_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast("Descarga iniciada", "success");
+  };
+
+  const saveRecordEdits = async () => {
+      const item = userRecords.find(r => r.id_registro === selectedRecordId); if(!item) return; setIsLoading(true);
+      try {
+          let u=item.url_foto, r=item.ruta_archivo, n=null;
+          if(editEvidenceFile && item.bucket) {
+              const fn=`ev-${Date.now()}.jpg`; const {data}=await supabase.storage.from(item.bucket).upload(`${item.ruta_archivo?.split('/').slice(0,-1).join('/')}/${fn}`, editEvidenceFile);
+              if(data){ const {data:p}=supabase.storage.from(item.bucket).getPublicUrl(data.path); u=p.publicUrl; r=data.path; n=fn; if(item.ruta_archivo) await supabase.storage.from(item.bucket).remove([item.ruta_archivo]); }
+          }
+          await supabase.from('Registros').update({ Comentario: editComment, ...(editEvidenceFile && { URL_Archivo: u, Ruta_Archivo: r, Nombre_Archivo: n }) }).eq('ID_Registros', item.id_registro);
+          showToast("Registro actualizado correctamente", "success");
+          setIsPhotoModalOpen(false); setEditEvidenceFile(null); loadUserRecords();
+      } catch { showToast("No se pudo actualizar", "error"); } finally { setIsLoading(false); }
+  };
+  
+  const handleGoHome = () => {
+      setSelectedProjectId(null); setSelectedFrontId(null); setSelectedLocalityId(null); setSelectedDetail(null); setSelectedActivity(null);
+      setGpsLocation(null); setNote(""); setStep("project"); setIsMenuOpen(false);
+      // Limpiar datos del formulario de registro
+      setRegisterPropId("");
+      setRegisterDetailText("");
+  };
+
+  const selectProject = (id: number) => { setSelectedProjectId(id); loadFrontsLocal(id); setStep("front"); };
+  const selectFront = (id: number) => { setSelectedFrontId(id); loadLocalitiesLocal(id); setStep("locality"); };
+  const selectLocality = (id: number) => { setSelectedLocalityId(id); loadDetailsLocal(id); setStep("detail"); };
+  const selectDetail = (d: DetailWithActivity) => { setSelectedDetail(d); setSelectedActivity(activityMap.get(d.ID_Actividad) || null); setStep("activity"); };
+  
+  const goBack = () => { 
+      if(step==="front")setStep("project");
+      else if(step==="locality")setStep("front");
+      else if(step==="detail")setStep("locality");
+      else if(step==="activity")setStep("detail");
+      else if(step==="map")setStep("activity");
+      else if(step==="form")setStep("map");
+      else if(step==="profile")setStep("project");
+      else if(step==="user_records"||step==="files")setStep("profile");
+      else setStep("project");
+  };
+  
+  const handleCaptureGps = () => { 
+      if (!navigator.geolocation) return showToast("Tu navegador no soporta GPS", "error"); 
+      setIsFetchingGps(true); 
+      navigator.geolocation.getCurrentPosition(
+          (p) => { setGpsLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setIsFetchingGps(false); showToast("GPS Actualizado", "success"); }, 
+          (e) => { showToast(`Error GPS: ${e.message}`, "error"); setIsFetchingGps(false); },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+      ); 
+  };
+  
+  const handleUpdateFromUtm = () => { if (!utmEast || !utmNorth) return showToast("Faltan coordenadas UTM", "info"); try { const [lng, lat] = proj4(utmZones[utmZone], WGS84, [Number(utmEast), Number(utmNorth)]); setGpsLocation({ latitude: lat, longitude: lng }); showToast("Ubicación actualizada desde UTM", "success"); } catch { showToast("Coordenadas UTM inválidas", "error"); } };
+  const getMapUrl = () => { const lat = gpsLocation?.latitude ?? selectedDetail?.Latitud; const lng = gpsLocation?.longitude ?? selectedDetail?.Longitud; if (!lat || !lng) return null; return `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}`; };
+  
+  const handleCaptureFile = async (e: React.ChangeEvent<HTMLInputElement>) => { 
+    if (e.target.files?.[0]) { 
+        const file = e.target.files[0];
+        setEvidenceFile(file); 
+        setEvidencePreview(URL.createObjectURL(file)); 
+        
+        setAiFeedback(null); 
+        setIsAnalyzing(true);
+        try {
+            const nombreActividad = selectedActivity?.Nombre_Actividad || "Actividad de obra";
+            const resultado = await validarFotoConIA(file, nombreActividad);
+            
+            if (resultado.esErrorTecnico) {
+                setAiFeedback({ type: 'info', message: "No se pudo validar imagen (Sin conexión). Puedes guardar." });
+            } else if (!resultado.aprobado) {
+                setAiFeedback({ type: 'warning', message: `La IA detectó: "${resultado.mensaje}". ¿Deseas guardar de todos modos?` });
+            } else {
+                setAiFeedback({ type: 'success', message: "Imagen verificada correctamente." });
+            }
+        } catch (err) {
+            console.error(err);
+            setAiFeedback({ type: 'info', message: "Verificación IA omitida (Error interno)." });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    } 
+  };
+
+  const saveReport = async () => {
+    if (isAnalyzing) return showToast("Espera un momento, analizando imagen...", "info");
+    if (!evidenceFile || !sessionUser || !selectedDetail) return showToast("Faltan datos (foto o sector)", "error"); setIsLoading(true);
+    const timestamp = Date.now(); const fileName = `evidencia-${timestamp}.jpg`;
+    const pName = projects.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre || "default";
+    const bucket = pName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_"); const path = `uploads/${fileName}`;
+    
+    try {
+        if(navigator.onLine) {
+            const pubUrl = await uploadEvidence(bucket, path, evidenceFile, "image/jpeg");
+            const checked = await createCheckedActivity({ 
+                ID_DetallesActividad: selectedDetail.ID_DetallesActividad, 
+                Latitud: gpsLocation?.latitude || selectedDetail.Latitud, 
+                Longitud: gpsLocation?.longitude || selectedDetail.Longitud 
+            });
+
+            // guardar registro
+            const { data: regData, error: regError } = await createRegistro({ 
+                Nombre_Archivo: fileName, 
+                URL_Archivo: pubUrl, 
+                user_id: sessionUser.id, 
+                ID_Verificada: checked.ID_Verificada, 
+                Comentario: note, 
+                Ruta_Archivo: path, 
+                Bucket: bucket 
+            });
+
+            if (regError) throw regError;
+
+            // guardar atributos si aplica
+            const newRecordId = regData && regData[0] ? regData[0].ID_Registros : null;
+            if (newRecordId && registerPropId && registerDetailText.trim() !== "") {
+                const { error: propError } = await supabase.from('Detalle_Propiedad').insert([{ 
+                    ID_Registro: newRecordId, 
+                    ID_Propiedad: Number(registerPropId), 
+                    Detalle_Propiedad: registerDetailText 
+                }]);
+                if (propError) console.error("Error guardando propiedad:", propError);
+                else showToast("Reporte y atributos guardados", "success");
+            } else {
+                showToast("Reporte guardado exitosamente", "success");
+            }
+
+        } else {
+            // offline case (se ignoran atributos)
+            const pend: PendingRecord = { 
+                timestamp, evidenceBlob: evidenceFile, fileType: "image/jpeg", 
+                meta: { bucketName: bucket, fullPath: path, fileName, userId: sessionUser.id, detailId: selectedDetail.ID_DetallesActividad, lat: gpsLocation?.latitude || selectedDetail.Latitud, lng: gpsLocation?.longitude || selectedDetail.Longitud, comment: note } 
+            };
+            await db.pendingUploads.add(pend);
+            showToast("Guardado localmente (Atributos no disponibles offline)", "info");
+        }
+        
+        setStep("map"); setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiFeedback(null);
+        setRegisterPropId(""); setRegisterDetailText(""); // Limpieza de campos
+
+    } catch (err: any) { 
+        console.error(err);
+        showToast("Ocurrió un error al guardar", "error"); 
+    } finally { 
+        setIsLoading(false); 
+    }
+  };
+  
+  const syncPendingUploads = async () => { const count = await db.pendingUploads.count(); if(count > 0) { const recs = await db.pendingUploads.toArray(); for(const r of recs) { try { const pub = await uploadEvidence(r.meta.bucketName, r.meta.fullPath, r.evidenceBlob, "image/jpeg"); const chk = await createCheckedActivity({ ID_DetallesActividad: r.meta.detailId, Latitud: r.meta.lat, Longitud: r.meta.lng }); await createRegistro({ Nombre_Archivo: r.meta.fileName, URL_Archivo: pub, user_id: r.meta.userId, ID_Verificada: chk.ID_Verificada, Comentario: r.meta.comment, Ruta_Archivo: r.meta.fullPath, Bucket: r.meta.bucketName }); if(r.id) await db.pendingUploads.delete(r.id); } catch {} } } };
+  const handleRowClick = async (r: UserRecord) => { setSelectedRecordId(r.id_registro); try { const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { nombre_input: r.nombre_actividad }); if(data) setAvailableProperties(data.map((x:any)=>({Tipo_Actividad:x.nombre_tipo, ID_Propiedad:x.id_propiedad, Propiedad:x.nombre_propiedad}))); } catch {} };
+  const handleSaveProperty = async () => { if(!selectedRecordId || !selectedPropId) return; try { await supabase.from('Detalle_Propiedad').insert([{ ID_Registro: selectedRecordId, ID_Propiedad: Number(selectedPropId), Detalle_Propiedad: detailText }]); showToast("Propiedad guardada", "success"); setDetailText(""); } catch { showToast("Error al guardar propiedad", "error"); } };
+  const openEditModal = () => { const r = userRecords.find(i => i.id_registro === selectedRecordId); if(r){ setEditComment(r.comentario??""); setEditEvidenceFile(null); setEditPreviewUrl(r.url_foto??""); setIsPhotoModalOpen(true); } };
+  const closeEditModal = () => { setIsPhotoModalOpen(false); setEditEvidenceFile(null); };
+  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if(e.target.files?.[0]) { setEditEvidenceFile(e.target.files[0]); setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } };
+
+  const activityMap = useMemo(() => new Map((activities||[]).map((a) => [a.ID_Actividad, a])), [activities]);
+  const derivedDetails = useMemo(() => (details||[]).map((d) => ({ ...d, activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." })), [details, activityMap]);
+  const filteredDetails = useMemo(() => { const query = detailSearch.trim().toLowerCase(); return query ? derivedDetails.filter((d) => `${d.Nombre_Detalle} ${d.activityName}`.toLowerCase().includes(query)) : derivedDetails; }, [detailSearch, derivedDetails]);
+  const selectedActivities = useMemo(() => { if (!selectedDetail) return []; const activity = activityMap.get(selectedDetail.ID_Actividad); return activity ? [activity] : []; }, [activityMap, selectedDetail]);
+
+  return {
+    step, setStep, isOnline, isLoading, syncStatus, sessionUser, authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
+    projects, fronts, localities, derivedDetails, filteredDetails, selectedActivities, selectedDetail, selectedActivity,
+    selectProject, selectFront, selectLocality, selectDetail, detailSearch, setDetailSearch,
+    gpsLocation, setGpsLocation, evidencePreview, setEvidencePreview, note, setNote, isFetchingGps,
+    utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm, getMapUrl, handleCaptureGps, handleCaptureFile,
+    saveReport, profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, setProfileEmail, profileCreatedAt, profileLastSignInAt, profileMessage, isProfileSaving, isDeletingAccount, saveProfile, 
+    requestDeleteAccount, 
+    userRecords, isLoadingRecords, selectedRecordId, setSelectedRecordId, availableProperties, selectedPropId, setSelectedPropId, detailText, setDetailText, 
+    handleDownloadCSV, 
+    requestDeleteRecord, 
+    handleUpdateRecord: saveRecordEdits, 
+    handleRowClick, handleSaveProperty,
+    isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
+    handleLogin, handleLogout, goBack, handleGoHome,
+    isAnalyzing, aiFeedback, toast, confirmModal, setConfirmModal, isMenuOpen, setIsMenuOpen,
+    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
+  };
+}
+</file>
+
+<file path="src/services/dataService.ts">
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://torwsfbxltzibydrlrqc.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Types
+export type ProjectRecord = {
+  ID_Proyectos: number;
+  Proyecto_Nombre: string;
+};
+
+export type FrontRecord = {
+  ID_Frente: number;
+  ID_Proyecto: number;
+  Nombre_Frente: string;
+};
+
+export type LocalityRecord = {
+  ID_Localidad: number;
+  ID_Frente: number;
+  Nombre_Localidad: string;
+};
+
+export type DetailRecord = {
+  ID_DetallesActividad: number;
+  ID_Actividad: number;
+  ID_Localidad: number;
+  Latitud: number;
+  Longitud: number;
+  Cantidad: number | null;
+  Nombre_Detalle: string;
+};
+
+export type ActivityRecord = {
+  ID_Actividad: number;
+  Nombre_Actividad: string;
+  Categoria: string | null;
+};
+
+type ActivityPropertyRow = {
+  ID_Actividad: number;
+  ID_Propiedad: number;
+  Propiedades?: { Propiedad?: string } | null;
+};
+
+export type ActivityPropertyDef = {
+  ID_Actividad: number;
+  ID_Propiedad: number;
+  Nombre_Propiedad: string;
+};
+
+// Helpers
+const fetchCatalog = async <T>(table: string, columns: string, orderBy: string): Promise<T[]> => {
+  const { data, error } = await supabase.from(table).select(columns).order(orderBy, { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as T[];
+};
+
+// Read
+export const getAllProjects = () =>
+  fetchCatalog<ProjectRecord>("Proyectos", "ID_Proyectos, Proyecto_Nombre", "Proyecto_Nombre");
+
+export const getAllFronts = () =>
+  fetchCatalog<FrontRecord>("Frentes", "ID_Frente, ID_Proyecto, Nombre_Frente", "Nombre_Frente");
+
+export const getAllLocalities = () =>
+  fetchCatalog<LocalityRecord>("Localidades", "ID_Localidad, ID_Frente, Nombre_Localidad", "Nombre_Localidad");
+
+export const getAllDetails = () =>
+  fetchCatalog<DetailRecord>(
+    "Detalles Actividad",
+    "ID_DetallesActividad, ID_Actividad, ID_Localidad, Latitud, Longitud, Cantidad, Nombre_Detalle",
+    "Nombre_Detalle"
+  );
+
+export const getAllActivities = () =>
+  fetchCatalog<ActivityRecord>("Actividades", "ID_Actividad, Nombre_Actividad, Categoria", "Nombre_Actividad");
+
+export const getAllActivityProperties = async (): Promise<ActivityPropertyDef[]> => {
+  const { data, error } = await supabase
+    .from("Config_Propiedades_Actividad")
+    .select("ID_Actividad, ID_Propiedad, Propiedades (Propiedad)");
+
+  if (error || !data) return [];
+
+  return (data as ActivityPropertyRow[]).map((item) => ({
+    ID_Actividad: item.ID_Actividad,
+    ID_Propiedad: item.ID_Propiedad,
+    Nombre_Propiedad: item.Propiedades?.Propiedad || "Propiedad",
+  }));
+};
+
+// Write
+export const uploadEvidence = async (bucket: string, path: string, file: Blob, type: string) => {
+  const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+    contentType: type,
+    upsert: true,
+  });
+  if (error) throw error;
+
+  const { data: publicUrl } = supabase.storage.from(bucket).getPublicUrl(data.path);
+  return publicUrl.publicUrl;
+};
+
+export const createCheckedActivity = async (payload: {
+  ID_DetallesActividad?: number;
+  Latitud: number;
+  Longitud: number;
+}) => {
+  const { data, error } = await supabase
+    .from("Actividad_Verificada")
+    .insert(payload)
+    .select("ID_Verificada")
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const createRegistro = async (payload: {
+  Nombre_Archivo: string;
+  URL_Archivo: string;
+  user_id: string;
+  ID_Verificada?: number | null;
+  Comentario: string | null;
+  Ruta_Archivo: string;
+  Bucket: string;
+}) => {
+  const { data, error } = await supabase.from("Registros").insert(payload).select();
+  if (error) throw error;
+  return { data, error };
+};
+</file>
+
+<file path="src/theme/styles.ts">
+import React from "react";
+
+export const styles: Record<string, React.CSSProperties> = {
+  page: { 
+    minHeight: "100vh", 
+    backgroundColor: "#F1F5F9", 
+    fontFamily: "system-ui, -apple-system, sans-serif",
+    color: "#0F172A" 
+  },
+  
+  navbar: {
+    backgroundColor: "#1E293B", 
+    padding: "16px 24px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    color: "#FFFFFF", 
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    position: "sticky",
+    top: 0,
+    zIndex: 1000
+  },
+  navbarBrand: {
+    fontSize: "18px",
+    fontWeight: "700",
+    letterSpacing: "0.5px",
+    color: "#F8FAFC" // blanco humo
+  },
+  hamburgerBtn: {
+    background: "transparent",
+    border: "1px solid rgba(255,255,255,0.2)",
+    borderRadius: "6px",
+    color: "white",
+    fontSize: "20px",
+    cursor: "pointer",
+    padding: "4px 10px",
+    transition: "background 0.2s"
+  },
+  
+  dropdownMenu: {
+    backgroundColor: "#1E293B", 
+    borderTop: "1px solid #334155",
+    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+    position: "absolute",
+    top: "60px", 
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    display: "flex",
+    flexDirection: "column",
+    padding: "8px 0"
+  },
+  menuItem: {
+    padding: "12px 24px",
+    borderBottom: "1px solid #334155", // separadores 
+    color: "#E2E8F0", 
+    fontSize: "14px",
+    fontWeight: "500",
+    cursor: "pointer",
+    textAlign: "left",
+    background: "none",
+    border: "none",
+    width: "100%"
+  },
+
+  statusBar: {
+    backgroundColor: "#FFFFFF",
+    padding: "8px 24px",
+    borderBottom: "1px solid #E2E8F0",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "11px",
+    fontWeight: "600",
+    color: "#64748B",
+    letterSpacing: "0.5px"
+  },
+  navControls: {
+    padding: "16px 24px 0",
+    display: "flex",
+    gap: "12px"
+  },
+
+  navButtonPrimary: {
+    padding: "10px 16px",
+    borderRadius: "6px",
+    backgroundColor: "#334155", // gris acero (Slate-700)
+    color: "#FFFFFF",
+    fontSize: "13px",
+    fontWeight: "600",
+    cursor: "pointer",
+    border: "none",
+    flex: 1,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+  },
+
+  navButton: {
+    padding: "10px 16px",
+    borderRadius: "6px",
+    border: "1px solid #CBD5F5",
+    backgroundColor: "#FFFFFF",
+    color: "#334155", // texto oscuro
+    fontSize: "13px",
+    fontWeight: "600",
+    cursor: "pointer",
+    flex: 1, 
+    textAlign: "center"
+  },
+
+  breadcrumbs: { 
+    display: "flex", 
+    flexWrap: "wrap", 
+    alignItems: "center", 
+    gap: "6px", 
+    padding: "12px 24px", 
+    fontSize: "12px",
+    color: "#475569" 
+  },
+  breadcrumbItem: { color: "#1E293B", fontWeight: 700 }, // slate oscuro
+  breadcrumbSeparator: { color: "#94A3B8", fontSize: "14px" }, // slate claro
+  
+  card: { 
+    backgroundColor: "#FFFFFF", 
+    margin: "0 24px 24px", 
+    padding: "24px", 
+    borderRadius: "8px",
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+    border: "1px solid #E2E8F0"
+  },
+  sectionTitle: { 
+    fontSize: "16px", 
+    fontWeight: 700, 
+    color: "#1E293B", // slate oscuro
+    marginBottom: "12px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px"
+  },
+  
+  // --- forms ---
+  label: { fontSize: "12px", fontWeight: 700, color: "#475569", marginBottom: "6px", display: "block", textTransform: "uppercase" },
+  input: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", marginBottom: "16px", backgroundColor: "#FFFFFF" },
+  inputCompact: { border: "1px solid #CBD5F5", borderRadius: "6px", padding: "8px", fontSize: "13px", backgroundColor: "#FFFFFF", color: "#0F172A" },
+  textArea: { width: "100%", boxSizing: "border-box", minHeight: "100px", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "16px", fontFamily: "inherit" },
+  
+  // guardar 
+  primaryButton: { 
+    width: "100%", boxSizing: "border-box", 
+    backgroundColor: "#0B5FFF",
+    color: "#FFFFFF", 
+    border: "none", borderRadius: "6px", 
+    padding: "14px", fontSize: "15px", fontWeight: 700, 
+    cursor: "pointer", marginTop: "12px",
+    boxShadow: "0 4px 6px -1px rgba(11, 95, 255, 0.2)"
+  },
+  primaryButtonDisabled: { width: "100%", boxSizing: "border-box", backgroundColor: "#94A3B8", color: "#F1F5F9", border: "none", borderRadius: "6px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "not-allowed", marginTop: "12px" },
+  
+  secondaryButton: { 
+    width: "100%", boxSizing: "border-box", marginTop: "12px", 
+    border: "1px solid #475569", // Borde gris pizarra
+    borderRadius: "6px", padding: "12px", 
+    backgroundColor: "transparent", 
+    color: "#475569", // Texto gris pizarra
+    fontSize: "14px", fontWeight: 600, cursor: "pointer",
+    transition: "all 0.2s"
+  },
+  secondaryButtonSmall: { 
+    border: "1px solid #475569", borderRadius: "6px", padding: "6px 12px", 
+    backgroundColor: "transparent", color: "#475569", 
+    fontSize: "12px", fontWeight: 600, cursor: "pointer" 
+  },
+  dangerButton: { width: "100%", boxSizing: "border-box", marginTop: "12px", border: "1px solid #EF4444", borderRadius: "6px", padding: "12px", backgroundColor: "#FEF2F2", color: "#B91C1C", fontSize: "14px", fontWeight: 600, cursor: "pointer" },
+  
+  // --- GRID & OPCIONES ---
+  optionGrid: { display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" },
+  optionButton: { 
+    border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px 16px", 
+    backgroundColor: "#FFFFFF", 
+    fontSize: "13px", fontWeight: 600, color: "#334155", 
+    cursor: "pointer",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.05)" 
+  },
+  
+  mapPlaceholder: { borderRadius: "8px", overflow: "hidden", border: "1px solid #CBD5F5", backgroundColor: "#E2E8F0" },
+  mapFrame: { width: "100%", border: "0" },
+  emptyState: { padding: "30px", fontSize: "14px", color: "#64748B", textAlign: "center", fontStyle: "italic" },
+  
+  detailInfoBox: { borderRadius: "6px", backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", marginBottom: "16px" },
+  
+  evidenceBox: { 
+    border: "2px dashed #CBD5F5", // Borde discontinuo más técnico
+    borderRadius: "8px", padding: "10px", 
+    display: "flex", alignItems: "center", justifyContent: "center", 
+    backgroundColor: "#F8FAFC", marginBottom: "16px", 
+    flexDirection: "column", minHeight: "200px"
+  },
+  evidenceImage: { width: "100%", height: "auto", objectFit: "contain", borderRadius: "4px" },
+  
+  searchInput: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "10px" },
+  searchResults: { display: "flex", flexDirection: "column", gap: "8px", maxHeight: "260px", overflowY: "auto", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "8px", backgroundColor: "#F8FAFC" },
+  searchOption: { border: "1px solid #E2E8F0", borderRadius: "6px", padding: "12px", backgroundColor: "#FFFFFF", textAlign: "left", cursor: "pointer" },
+  searchOptionTitle: { display: "block", fontSize: "13px", fontWeight: 700, color: "#1E293B" },
+  searchOptionMeta: { display: "block", fontSize: "11px", color: "#64748B", marginTop: "4px", textTransform: "uppercase" },
+
+  readOnlyBlock: { display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginBottom: "16px", padding: "16px", borderRadius: "8px", backgroundColor: "#F1F5F9", border: "1px solid #E2E8F0" },
+  profileMessage: { marginTop: "8px", padding: "10px 12px", borderRadius: "6px", backgroundColor: "#EFF6FF", fontSize: "13px", color: "#1E293B", borderLeft: "4px solid #3B82F6" },
+  
+  authFooter: { marginTop: "24px", textAlign: "center", fontSize: "13px", color: "#64748B" },
+  linkText: { color: "#0F172A", fontWeight: 700, cursor: "pointer", textDecoration: "underline" },
+
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px", backdropFilter: "blur(2px)" },
+  modalCard: { backgroundColor: "#FFFFFF", width: "100%", maxWidth: "420px", borderRadius: "8px", padding: "24px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column" },
+  modalButtons: { display: "flex", gap: "12px", marginTop: "24px", width: "100%" },
+
+  gridContainer: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "16px", padding: "10px 0", marginBottom: "20px" },
+  cardItem: { backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", overflow: "hidden", display: "flex", flexDirection: "column", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", transition: "transform 0.1s ease", height: "100%" },
+  cardImagePlaceholder: { width: "100%", height: "120px", backgroundColor: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: "24px" },
+  cardImage: { width: "100%", height: "120px", objectFit: "cover", borderBottom: "1px solid #E2E8F0" },
+  cardFooter: { padding: "10px", display: "flex", flexDirection: "column", gap: "4px", flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF" },
+  cardTitle: { fontSize: "11px", fontWeight: "700", color: "#1E293B", lineHeight: "1.3", textAlign: "center", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" },
+  
+  detailOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#FFFFFF", zIndex: 2000, display: "flex", flexDirection: "column", overflowY: "auto" },
+  detailHeader: { padding: "16px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", position: "sticky", top: 0, zIndex: 10, gap: "16px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" },
+  backArrowBtn: { background: "none", border: "none", fontSize: "24px", color: "#334155", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" },
+  detailContent: { padding: "24px", maxWidth: "640px", margin: "0 auto", width: "100%", boxSizing: "border-box", flex: 1 },
+  detailImageLarge: { width: "100%", height: "auto", maxHeight: "none", objectFit: "contain", borderRadius: "8px", backgroundColor: "#0F172A", marginBottom: "24px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" },
+  attributeList: { display: "flex", flexDirection: "column", gap: "16px" },
+  attributeItem: { display: "flex", flexDirection: "column", borderBottom: "1px solid #F1F5F9", paddingBottom: "12px" },
+  attributeLabel: { fontSize: "11px", fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginBottom: "4px", letterSpacing: "0.5px" },
+  attributeValue: { fontSize: "15px", color: "#0F172A", lineHeight: "1.5" }
+};
+</file>
+
+<file path="app/index.tsx">
+import React, { useRef, useState, useMemo } from "react";
+import { useReportFlow } from "../src/hooks/useReportFlow";
+import { styles } from "../src/theme/styles";
+import proj4 from 'proj4';
+
+const LOGO_SRC = "https://i.imgur.com/Ej1MRpv.png";
+
+export default function IndexPage() {
+  const {
+    step, setStep, isOnline, isLoading, sessionUser,
+    authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
+    projects, fronts, localities, filteredDetails, selectedActivities, selectedDetail, selectedActivity,
+    selectedProjectId, selectedFrontId, selectedLocalityId, detailSearch, setDetailSearch,
+    gpsLocation, setGpsLocation, evidencePreview, note, setNote, isFetchingGps, syncStatus,
+    utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm, getMapUrl,
+    handleLogin, handleLogout, selectProject, selectFront, selectLocality, selectDetail, 
+    goBack,
+    handleGoHome, 
+    handleCaptureGps, handleCaptureFile, saveReport,
+    profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, setProfileEmail, profileCreatedAt, profileLastSignInAt, profileMessage, isProfileSaving, saveProfile, 
+    requestDeleteAccount,
+    userRecords, isLoadingRecords, selectedRecordId, setSelectedRecordId, 
+    requestDeleteRecord,
+    handleDownloadCSV, 
+    availableProperties, selectedPropId, setSelectedPropId, detailText, setDetailText, handleRowClick, handleSaveProperty,
+    isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
+    isAnalyzing, 
+    aiFeedback,
+    toast, confirmModal, setConfirmModal,
+    isMenuOpen, setIsMenuOpen,
+    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
+  } = useReportFlow();
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const editFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const mapUrl = getMapUrl();
+  const displayLat = gpsLocation?.latitude ?? selectedDetail?.Latitud ?? 0;
+  const displayLng = gpsLocation?.longitude ?? selectedDetail?.Longitud ?? 0;
+
+  const selectedProjectName = useMemo(() => projects?.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre, [projects, selectedProjectId]);
+  const selectedFrontName = useMemo(() => fronts?.find(f => f.ID_Frente === selectedFrontId)?.Nombre_Frente, [fronts, selectedFrontId]);
+  const selectedLocalityName = useMemo(() => localities?.find(l => l.ID_Localidad === selectedLocalityId)?.Nombre_Localidad, [localities, selectedLocalityId]);
+
+  return (
+    <div style={{
+        ...styles.page, 
+        height: '100dvh', 
+        minHeight: 'unset', 
+        overflowY: 'auto', 
+        display: 'flex', 
+        flexDirection: 'column',
+        paddingBottom: '40px'
+    }}>
+      
+      {step !== "auth" && (
+        <>
+          <div style={styles.navbar}>
+            <div style={styles.navbarBrand}>CMP Contratistas E.I.R.L.</div>
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.hamburgerBtn}>☰</button>
+          </div>
+
+          {isMenuOpen && (
+            <div style={styles.dropdownMenu}>
+              <button onClick={() => { setStep("profile"); setIsMenuOpen(false); }} style={styles.menuItem}>Perfil</button>
+              <button onClick={() => { setStep("user_records"); setIsMenuOpen(false); }} style={styles.menuItem}>Mis Registros</button>
+              <button onClick={() => { setStep("files"); setIsMenuOpen(false); }} style={styles.menuItem}>Archivos</button>
+            </div>
+          )}
+
+          {/* --- state bar (con botón Cerrar Sesión) --- */}
+          <div style={styles.statusBar}>
+             <div style={{color: isOnline ? 'green' : 'red', fontWeight: 'bold'}}>
+                {isOnline ? "● Online" : "● Offline"}
+             </div>
+             
+             {sessionUser && (
+                <div style={{display: 'flex', alignItems: 'center'}}>
+                    <div style={{color: '#64748B'}}>{sessionUser.email}</div>
+                    <button 
+                        onClick={handleLogout} 
+                        style={{...styles.secondaryButtonSmall, width:'auto', marginLeft: '15px'}}
+                    >
+                        Cerrar Sesión
+                    </button>
+                </div>
+             )}
+          </div>
+
+          <div style={styles.navControls}>
+             <button onClick={handleGoHome} style={styles.navButtonPrimary}>Inicio</button>
+             {(step !== "project" && step !== "profile") && (
+                <button onClick={goBack} style={styles.navButton}>Atrás</button>
+             )}
+          </div>
+
+          {selectedProjectId && step !== "profile" && step !== "user_records" && step !== "files" && (
+             <div style={styles.breadcrumbs}>
+                <span style={styles.breadcrumbItem}>{selectedProjectName || "Proyecto"}</span>
+                {selectedFrontId && <><span style={styles.breadcrumbSeparator}>›</span><span style={styles.breadcrumbItem}>{selectedFrontName || "Frente"}</span></>}
+                {selectedLocalityId && <><span style={styles.breadcrumbSeparator}>›</span><span style={styles.breadcrumbItem}>{selectedLocalityName || "Loc"}</span></>}
+                {selectedDetail && <><span style={styles.breadcrumbSeparator}>›</span><span style={styles.breadcrumbItem}>{selectedDetail.Nombre_Detalle}</span></>}
+             </div>
+          )}
+        </>
+      )}
+
+      <div style={{flex: 1, padding: '0 24px', marginTop: '20px'}}>
+
+      {step === "auth" && (
+        <div style={{...styles.card, margin: '0 0 24px'}}>
+          <div style={styles.logoRow}>
+            <img src={LOGO_SRC} alt="Logo" style={styles.logo} />
+            <span style={styles.logoText}>Consorcio Cenepa Asociados</span>
+          </div>
+          
+          <h2 style={styles.sectionTitle}>{authMode === "login" ? "Inicia sesión" : "Crear cuenta"}</h2>
+          
+          {/* formulario con tecla Enter */}
+          <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+              <label style={styles.label}>Email</label>
+              <input 
+                  placeholder="tu@email.com" 
+                  value={authEmail} 
+                  onChange={(e) => setAuthEmail(e.target.value)} 
+                  style={styles.input} 
+              />
+              <label style={styles.label}>Contraseña</label>
+              <input 
+                  placeholder="Contraseña" 
+                  type="password" 
+                  value={authPassword} 
+                  onChange={(e) => setAuthPassword(e.target.value)} 
+                  style={styles.input} 
+              />
+              <button 
+                  onClick={handleLogin} 
+                  disabled={isLoading || !authEmail || !authPassword} 
+                  style={(!authEmail || !authPassword) ? styles.primaryButtonDisabled : styles.primaryButton}
+              >
+                  {isLoading ? "Cargando..." : (authMode === "login" ? "Ingresar" : "Crear")}
+              </button>
+          </form>
+
+          <div style={styles.authFooter}>
+              {authMode === "login" ? (<span onClick={() => setAuthMode("signup")} style={styles.linkText}>Crear cuenta</span>) : (<>¿Ya tienes una cuenta? <span onClick={() => setAuthMode("login")} style={styles.linkText}>Iniciar sesión</span></>)}
+          </div>
+          {syncStatus && <p style={{textAlign:'center', fontSize:12, color:'blue', marginTop:10}}>{syncStatus}</p>}
+        </div>
+      )}
+
+      {/* navigation blocks */}
+      {step === "project" && (
+        <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
+      )}
+      {step === "front" && (<div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un frente</h2><div style={styles.optionGrid}>{fronts?.map(f => <button key={f.ID_Frente} onClick={() => selectFront(f.ID_Frente)} style={styles.optionButton}>{f.Nombre_Frente}</button>)}</div></div>)}
+      {step === "locality" && (<div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona una localidad</h2><div style={styles.optionGrid}>{localities?.map(l => <button key={l.ID_Localidad} onClick={() => selectLocality(l.ID_Localidad)} style={styles.optionButton}>{l.Nombre_Localidad}</button>)}</div></div>)}
+      {step === "detail" && (
+        <div style={{...styles.card, margin: '0 0 24px'}}>
+            <h2 style={styles.sectionTitle}>Selecciona un sector</h2>
+            <input placeholder="Buscar..." value={detailSearch} onChange={e => setDetailSearch(e.target.value)} style={styles.searchInput} />
+            <div style={styles.searchResults}>
+                {filteredDetails && filteredDetails.length > 0 ? (
+                    filteredDetails.map(d => (
+                        <button key={d.ID_DetallesActividad} onClick={() => selectDetail(d)} style={styles.searchOption}>
+                            <span style={styles.searchOptionTitle}>{d.Nombre_Detalle}</span>
+                            <span style={styles.searchOptionMeta}>{d.activityName}</span>
+                        </button>
+                    ))
+                ) : (
+                    <div style={{padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '13px'}}>No se encontraron actividades</div>
+                )}
+            </div>
+        </div>
+      )}
+      {step === "activity" && selectedActivity && (
+         <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Confirmar Actividad</h2><div style={styles.detailInfoBox}><p style={{fontWeight:'bold'}}>{selectedActivity.Nombre_Actividad}</p></div><button onClick={() => setStep("map")} style={styles.primaryButton}>Ir al Mapa / Formulario</button></div>
+      )}
+
+      {/* --- form de registro --- */}
+      {(step === "map" || step === "form") && (
+        <div style={{...styles.card, margin: '0 0 24px'}}>
+           <h2 style={styles.sectionTitle}>Registrar Evidencia</h2>
+           
+           <div style={{backgroundColor:'#F8FAFC', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20}}>
+               <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Ubicación</h3>
+               <div style={{...styles.mapPlaceholder, height: '150px', marginBottom:10}}>
+                   {isOnline && mapUrl ? <iframe title="Mapa" src={mapUrl} style={{...styles.mapFrame, height:'150px'}} /> : <div style={styles.emptyState}>Mapa Offline<br/>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div>}
+               </div>
+               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, paddingBottom:12, borderBottom:'1px dashed #CBD5F5'}}>
+                   <div><span style={{fontSize:11, color:'#64748B'}}>Automática (GPS)</span><div style={{fontSize:14, color:'#0F172A'}}>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div></div>
+                   <button onClick={handleCaptureGps} disabled={isFetchingGps} style={styles.secondaryButtonSmall}>{isFetchingGps ? "..." : "Actualizar"}</button>
+               </div>
+               <div>
+                   <span style={{fontSize:11, color:'#64748B', display:'block', marginBottom:5}}>Manual (UTM)</span>
+                   <div style={{display:'flex', gap:5}}>
+                        <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={{...styles.inputCompact, width:'25%'}}><option value="17">17S</option><option value="18">18S</option><option value="19">19S</option></select>
+                        <input placeholder="Este (E)" value={utmEast} onChange={(e) => setUtmEast(e.target.value)} style={{...styles.inputCompact, width:'30%'}} />
+                        <input placeholder="Norte (N)" value={utmNorth} onChange={(e) => setUtmNorth(e.target.value)} style={{...styles.inputCompact, width:'30%'}} />
+                        <button onClick={handleUpdateFromUtm} style={{...styles.secondaryButtonSmall, width:'auto', padding:'0 8px'}}>Aplicar</button>
+                   </div>
+               </div>
+           </div>
+           
+           <div style={{backgroundColor:'#FFFFFF', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20, boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
+               <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Evidencia y datos</h3>
+               <div style={{marginBottom:15}}>
+                    <div style={{...styles.evidenceBox, backgroundColor:'#F1F5F9', borderStyle:'dashed', minHeight:'180px'}}>
+                        {evidencePreview ? <img src={evidencePreview} style={{...styles.evidenceImage, height:'auto', maxHeight:'250px'}} /> : <span style={{color:'#94A3B8', fontSize:13}}>Sin foto seleccionada</span>}
+                    </div>
+
+                    {isAnalyzing && <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}><b>Analizando imagen con IA...</b></div>}
+                    
+                    {aiFeedback && <div style={{padding:10, borderRadius:8, fontSize:13, marginTop:5, backgroundColor: aiFeedback.type === 'warning' ? '#FEF2F2' : (aiFeedback.type === 'info' ? '#EFF6FF' : '#F0FDF4'), border: aiFeedback.type === 'warning' ? '1px solid #FCA5A5' : (aiFeedback.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'), color: aiFeedback.type === 'warning' ? '#991B1B' : (aiFeedback.type === 'info' ? '#1E40AF' : '#166534')}}>{aiFeedback.type === 'warning' ? '⚠️' : (aiFeedback.type === 'info' ? 'ℹ️' : '✅')} <b>{aiFeedback.message}</b></div>}
+
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCaptureFile} style={{display:'none'}} />
+                    <button onClick={() => fileInputRef.current?.click()} style={{...styles.secondaryButton, marginTop:10}}>Tomar / Seleccionar foto</button>
+               </div>
+               <label style={styles.label}>Observaciones</label>
+               <textarea value={note} onChange={e => setNote(e.target.value)} style={{...styles.textArea, minHeight:'70px'}} placeholder="Escribe aquí..." />
+           </div>
+
+           {/* --- atributos (solo online) --- */}
+           <div style={{backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, border: '1px solid #E2E8F0', marginBottom: 20, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
+               <h3 style={{fontSize: 14, fontWeight: 'normal', color: '#475569', marginTop: 0, marginBottom: 10}}>Atributos de Actividad</h3>
+               {isOnline ? (
+                   <>
+                       {registerProperties.length > 0 ? (
+                           <>
+                               <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Tipo de Propiedad</label>
+                               <select value={registerPropId} onChange={(e) => setRegisterPropId(Number(e.target.value))} style={{...styles.input, padding: '8px', fontSize: '13px', marginBottom: '10px', height: 'auto'}}>
+                                   <option value="">-- Seleccionar --</option>
+                                   {registerProperties.map(p => (<option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>))}
+                               </select>
+                               <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Valor / Detalle</label>
+                               <input value={registerDetailText} onChange={(e) => setRegisterDetailText(e.target.value)} style={{...styles.input, padding: '8px', fontSize: '13px', marginBottom: '0'}} placeholder="Ej: 50 metros, Color Rojo..." />
+                           </>
+                       ) : (
+                           <div style={{fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', padding: '10px'}}>No hay propiedades configuradas para esta actividad.</div>
+                       )}
+                   </>
+               ) : (
+                   <div style={{backgroundColor: '#FFF1F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#991B1B', display: 'flex', alignItems: 'center', gap: '8px'}}><span>⚠️</span> Propiedades no disponibles offline. Por favor, añada detalles importantes en las Observaciones.</div>
+               )}
+           </div>
+
+           <button onClick={() => {setStep("profile"); saveReport();}} disabled={isLoading || !evidencePreview || isAnalyzing} style={{...(isLoading || isAnalyzing ? styles.primaryButtonDisabled : styles.primaryButton), height: '50px', fontSize: '16px', marginBottom: '20px'}}>{isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}</button>
+        </div>
+      )}
+      
+      {step === "profile" && (
+         <div style={{...styles.card, margin: '0 0 24px'}}>
+            <h2 style={styles.sectionTitle}>Mi Perfil</h2>
+            <input placeholder="Nombre" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={styles.input} />
+            <input placeholder="Apellido" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={styles.input} />
+            <input placeholder="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} style={styles.input} />
+            <div style={styles.readOnlyBlock}><span>Creado: {new Date(profileCreatedAt).toLocaleDateString()}</span></div>
+            {profileMessage && <div style={styles.profileMessage}>{profileMessage}</div>}
+            <div style={{marginTop: '20px'}}>
+                <button onClick={saveProfile} disabled={isProfileSaving} style={styles.primaryButton}>Actualizar Datos</button>
+                <button onClick={handleLogout} style={styles.secondaryButton}>Cerrar Sesión</button>
+                <button onClick={requestDeleteAccount} style={styles.dangerButton}>Eliminar Cuenta</button>
+            </div>
+         </div>
+      )}
+
+      {step === "user_records" && (
+         <div style={{...styles.card, margin: '0 0 24px', minHeight: '80vh'}}>
+             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20}}>
+                <div><h2 style={styles.sectionTitle}>Mis Registros</h2><p style={{fontSize: '13px', color: '#64748B', margin: 0}}>{userRecords?.length || 0} evidencias registradas</p></div>
+             </div>
+             {isLoadingRecords ? (<div style={styles.emptyState}>Cargando galería...</div>) : userRecords?.length === 0 ? (<div style={styles.emptyState}>No tienes registros aún.</div>) : (
+                 <>
+                    <div style={styles.gridContainer}>
+                        {userRecords?.map(rec => (
+                            <div key={rec.id_registro} style={styles.cardItem} onClick={() => setSelectedRecordId(rec.id_registro)}>
+                                {rec.url_foto ? (<img src={rec.url_foto} alt="Evidencia" style={styles.cardImage} loading="lazy" />) : (<div style={styles.cardImagePlaceholder}>📷</div>)}
+                                <div style={styles.cardFooter}><span style={styles.cardTitle}>{rec.nombre_actividad}</span></div>
+                            </div>
+                        ))}
+                    </div>
+                    {selectedRecordId && (() => {
+                        const rec = userRecords.find(r => r.id_registro === selectedRecordId);
+                        if (!rec) return null;
+                        const proyectoStr = rec.nombre_proyecto || (rec.bucket ? rec.bucket.replace(/_/g, ' ').toUpperCase() : "PROYECTO GENERAL");
+                        let frenteStr = rec.nombre_frente || "No identificado";
+                        if ((!rec.nombre_frente || rec.nombre_frente === "No identificado") && rec.ruta_archivo) {
+                            const parts = rec.ruta_archivo.split('/');
+                            if (parts.length > 0) {
+                                if (parts[0].toLowerCase() === 'uploads' && parts.length > 1) { frenteStr = parts[1].replace(/_/g, ' '); } 
+                                else if (parts[0].toLowerCase() !== 'uploads') { frenteStr = parts[0].replace(/_/g, ' '); }
+                            }
+                        }
+                        return (
+                            <div style={styles.detailOverlay}>
+                                <div style={styles.detailHeader}>
+                                    <button onClick={() => setSelectedRecordId(null)} style={styles.backArrowBtn}>←</button>
+                                    <h3 style={{margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: 'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{rec.nombre_actividad}</h3>
+                                </div>
+                                <div style={styles.detailContent}>
+                                    <div style={{textAlign:'center'}}>{rec.url_foto ? (<img src={rec.url_foto} style={styles.detailImageLarge} alt="Evidencia Grande" />) : (<div style={{...styles.detailImageLarge, backgroundColor:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8'}}>Sin Foto</div>)}</div>
+                                    <div style={styles.attributeList}>
+                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Proyecto</span><span style={styles.attributeValue}>{proyectoStr}</span></div>
+                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Frente</span><span style={styles.attributeValue}>{frenteStr.toUpperCase()}</span></div>
+                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Localidad</span><span style={styles.attributeValue}>{rec.nombre_localidad}</span></div>
+                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Sector</span><span style={styles.attributeValue}>{rec.nombre_detalle}</span></div>
+                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Actividad</span><span style={styles.attributeValue}>{rec.nombre_actividad}</span></div>
+                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Comentario</span><span style={{...styles.attributeValue, fontStyle: rec.comentario ? 'normal' : 'italic', color: rec.comentario ? '#0F172A' : '#94A3B8'}}>{rec.comentario || "Sin comentarios"}</span></div>
+                                        <div style={{...styles.attributeItem, borderBottom: 'none'}}><span style={styles.attributeLabel}>Ubicación</span><span style={{...styles.attributeValue, fontFamily: 'monospace', fontSize: '12px', backgroundColor:'#F1F5F9', padding:'4px 8px', borderRadius:'4px', display:'inline-block'}}>{rec.latitud ? `${rec.latitud.toFixed(6)}, ${rec.longitud?.toFixed(6)}` : "Sin coordenadas"}</span></div>
+                                    </div>
+                                    <div style={{marginTop: '40px', display: 'flex', gap: '10px', paddingBottom: '40px'}}>
+                                        <button onClick={() => requestDeleteRecord(rec)} style={{...styles.dangerButton, flex: 1, marginTop: 0}}>Eliminar</button>
+                                        <button onClick={openEditModal} style={{...styles.secondaryButton, flex: 1, marginTop: 0}}>Editar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                 </>
+             )}
+         </div>
+      )}
+
+      {step === "files" && (
+         <div style={{...styles.card, margin: '0 0 24px'}}>
+             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10}}>
+                <h2 style={{...styles.sectionTitle, marginBottom:0}}>Archivos</h2>
+                <button onClick={handleDownloadCSV} style={{...styles.secondaryButtonSmall, width:'auto'}}>Descargar CSV</button>
+             </div>
+             <div style={styles.tableContainer}>
+                 <table style={styles.table}>
+                   <thead><tr style={styles.tableHeaderRow}><th style={styles.tableTh}>ID</th><th style={styles.tableTh}>Localidad</th><th style={styles.tableTh}>Sector</th><th style={styles.tableTh}>Actividad</th><th style={styles.tableTh}>Fecha</th></tr></thead>
+                   <tbody>
+                       {userRecords?.map(r => (
+                          <tr key={r.id_registro} onClick={() => handleRowClick(r)} style={selectedRecordId === r.id_registro ? styles.tableRowActive : styles.tableRow}>
+                             <td style={{padding:8}}>{r.id_registro}</td><td style={{padding:8}}>{r.nombre_localidad}</td><td style={{padding:8}}>{r.nombre_detalle}</td><td style={{padding:8}}>{r.nombre_actividad}</td><td style={{padding:8}}>{new Date(r.fecha_subida).toLocaleDateString()}</td>
+                          </tr>
+                       ))}
+                   </tbody>
+                 </table>
+             </div>
+             {selectedRecordId ? (
+                 <div style={{marginTop:20, borderTop:'1px solid #eee', paddingTop:15, backgroundColor:'#FAFAFA', padding:15, borderRadius:8}}>
+                     <h4 style={{marginTop:0, fontSize:14, color:'#0B5FFF'}}>Propiedades del Registro #{selectedRecordId}</h4>
+                     <label style={styles.label}>Tipo de Propiedad</label>
+                     <select value={selectedPropId} onChange={e=>setSelectedPropId(Number(e.target.value))} style={styles.input}><option value="">-- Seleccionar --</option>{availableProperties?.map(p=><option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>)}</select>
+                     <label style={styles.label}>Valor / Detalle</label>
+                     <input value={detailText} onChange={e=>setDetailText(e.target.value)} style={styles.input} placeholder="Ej: 50 metros..." />
+                     <button onClick={handleSaveProperty} style={styles.secondaryButtonSmall}>Guardar Propiedad</button>
+                 </div>
+             ) : (<div style={{marginTop:20, padding:15, textAlign:'center', color:'#94A3B8', border:'1px dashed #CBD5F5', borderRadius:8}}>Selecciona una fila para anadir propiedades.</div>)}
+         </div>
+      )}
+
+      {isPhotoModalOpen && (
+         <div style={styles.modalOverlay}><div style={styles.modalCard}><h3>Editar</h3>{editPreviewUrl && <img src={editPreviewUrl} style={styles.evidenceImage} />}<button onClick={() => editFileInputRef.current?.click()} style={styles.secondaryButton}>Cambiar Foto</button><input ref={editFileInputRef} type="file" onChange={handleEditFileSelect} style={{display:'none'}} /><input value={editComment} onChange={e => setEditComment(e.target.value)} style={styles.input} /><div style={styles.modalButtons}><button onClick={closeEditModal} style={styles.secondaryButton}>Cancelar</button><button onClick={saveRecordEdits} style={styles.primaryButton}>Guardar</button></div></div></div>
+      )}
+
+      {toast && (
+        <div style={{position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', backgroundColor: toast.type === 'error' ? '#FEF2F2' : (toast.type === 'info' ? '#EFF6FF' : '#F0FDF4'), border: toast.type === 'error' ? '1px solid #FCA5A5' : (toast.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'), color: toast.type === 'error' ? '#991B1B' : (toast.type === 'info' ? '1E40AF' : '#166534'), padding: '12px 24px', borderRadius: '50px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap'}}>
+            <span>{toast.type === 'error' ? '⚠️' : (toast.type === 'info' ? 'ℹ️' : '✅')}</span>{toast.msg}
+        </div>
+      )}
+
+      {confirmModal?.open && (
+        <div style={styles.modalOverlay}>
+            <div style={styles.modalCard}>
+                <h3 style={{marginTop:0, color:'#0F172A'}}>{confirmModal.title}</h3>
+                <p style={{color:'#64748B', marginBottom:20}}>{confirmModal.message}</p>
+                <div style={styles.modalButtons}><button onClick={() => setConfirmModal(null)} style={styles.secondaryButton}>Cancelar</button><button onClick={confirmModal.onConfirm} style={styles.dangerButton}>Confirmar</button></div>
+            </div>
+        </div>
+      )}
+
+      </div>
+    </div>
+  );
+}
+</file>
+
+</files>

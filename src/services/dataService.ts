@@ -1,9 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+// Importamos la instancia compartida
+import { supabase } from "./supabaseClient";
 
-const SUPABASE_URL = "https://torwsfbxltzibydrlrqc.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ¡IMPORTANTE! Re-exportamos la instancia para que otros archivos puedan usarla
+export { supabase };
 
 // Types
 export type ProjectRecord = {
@@ -52,10 +51,34 @@ export type ActivityPropertyDef = {
 };
 
 // Helpers
-const fetchCatalog = async <T>(table: string, columns: string, orderBy: string): Promise<T[]> => {
-  const { data, error } = await supabase.from(table).select(columns).order(orderBy, { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as T[];
+const fetchCatalog = async <T>(table: string, columns: string, orderBy: string) => {
+    let allData: T[] = [];
+    let from = 0;
+    const step = 1000;
+    let moreData = true;
+
+    while (moreData) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(columns)
+            .order(orderBy, { ascending: true })
+            .range(from, from + step - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allData = [...allData, ...data as T[]];
+            from += step;
+            if (data.length < step) {
+                moreData = false;
+            }
+        } else {
+            moreData = false;
+        }
+    }
+    
+    console.log(`Descarga completa de ${table}: ${allData.length} registros.`);
+    return allData;
 };
 
 // Read
