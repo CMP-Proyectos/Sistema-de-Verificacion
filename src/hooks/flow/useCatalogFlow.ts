@@ -20,17 +20,17 @@ export function useCatalogFlow(isOnline: boolean) {
   const [selectedFrontId, setSelectedFrontId] = useState<number | null>(null);
   const [selectedLocalityId, setSelectedLocalityId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<DetailWithActivity | null>(null);
-  // Eliminamos selectedActivity si no se usa explícitamente en la UI, o lo mantenemos si lo necesitas
   const [selectedActivity, setSelectedActivity] = useState<ActivityRecord | null>(null);
   
+  // --- BUSCADORES ---
   const [detailSearch, setDetailSearch] = useState("");
+  const [localitySearch, setLocalitySearch] = useState("");
 
-  // --- 1. CARGA INICIAL (HÍBRIDA) ---
-  // Al iniciar, cargamos lo que haya en local para que la app no arranque vacía
+  // --- 1. CARGA INICIAL ---
   useEffect(() => {
     const loadInitialData = async () => {
         setProjects(await db.catalog_projects.toArray());
-        setActivities(await db.catalog_activities.toArray()); // Carga actividades offline
+        setActivities(await db.catalog_activities.toArray()); 
     };
     loadInitialData();
   }, []);
@@ -48,7 +48,6 @@ export function useCatalogFlow(isOnline: boolean) {
             getAllActivities() 
         ]);
 
-        // CORRECCIÓN: Usamos los nombres correctos 'catalog_...'
         await db.transaction('rw', db.catalog_projects, db.catalog_fronts, db.catalog_localities, db.catalog_details, db.catalog_activities, async () => {
             await db.catalog_projects.clear(); await db.catalog_projects.bulkPut(p);
             await db.catalog_fronts.clear(); await db.catalog_fronts.bulkPut(f);
@@ -57,7 +56,6 @@ export function useCatalogFlow(isOnline: boolean) {
             await db.catalog_activities.clear(); await db.catalog_activities.bulkPut(a);
         });
 
-        // Actualizamos estado visual
         setProjects(p);
         setActivities(a);
         setSyncStatus("");
@@ -68,7 +66,6 @@ export function useCatalogFlow(isOnline: boolean) {
   };
 
   // --- 3. CARGA DE DEPENDENCIAS LOCALES ---
-  // Estas funciones ahora usan los nombres correctos de las tablas
   const loadProjectsLocal = useCallback(async () => { 
       setProjects(await db.catalog_projects.toArray()); 
   }, []);
@@ -85,9 +82,19 @@ export function useCatalogFlow(isOnline: boolean) {
       setDetails(await db.catalog_details.where("ID_Localidad").equals(lid).toArray()); 
   }, []);
 
-  // --- COMPUTED DATA ---
+  // --- COMPUTED DATA (FILTROS) ---
   const activityMap = useMemo(() => new Map((activities||[]).map((a) => [a.ID_Actividad, a])), [activities]);
   
+  // 2. NUEVO: Lógica de filtrado para Localidades
+  const filteredLocalities = useMemo(() => {
+    const query = localitySearch.trim().toLowerCase();
+    if (!query) return localities;
+    
+    return localities.filter(l => 
+        l.Nombre_Localidad.toLowerCase().includes(query)
+    );
+  }, [localities, localitySearch]);
+
   const derivedDetails = useMemo(() => (details||[]).map((d) => ({ 
     ...d, 
     activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." 
@@ -107,10 +114,16 @@ export function useCatalogFlow(isOnline: boolean) {
   const resetSelection = () => {
       setSelectedProjectId(null); setSelectedFrontId(null); setSelectedLocalityId(null); 
       setSelectedDetail(null); setSelectedActivity(null);
+      // 3. NUEVO: Limpiamos ambos buscadores al resetear
+      setDetailSearch("");
+      setLocalitySearch("");
   };
 
   return {
     syncStatus, projects, fronts, localities, activities, derivedDetails, filteredDetails,
+    // Exportamos lo nuevo
+    filteredLocalities, localitySearch, setLocalitySearch,
+    
     selectedProjectId, setSelectedProjectId,
     selectedFrontId, setSelectedFrontId,
     selectedLocalityId, setSelectedLocalityId,

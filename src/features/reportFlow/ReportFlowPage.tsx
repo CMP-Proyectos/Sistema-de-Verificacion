@@ -14,6 +14,8 @@ import { AuthScreen } from "./screens/AuthScreen";
 import { SelectionScreen } from "./screens/SelectionScreen";
 import { EvidenceFormScreen } from "./screens/EvidenceFormScreen";
 import { UserGalleryScreen } from "./screens/UserGalleryScreen";
+// Pantalla de historial
+import { ActivityConfirmationScreen } from "./screens/ActivityConfirmationScreen";
 
 export default function ReportFlowPage() {
   const flow = useReportFlow();
@@ -44,7 +46,7 @@ export default function ReportFlowPage() {
 
       <div style={styles.container}>
 
-        {/* LOGIN */}
+        {/* --- PANTALLAS DE AUTENTICACIÓN --- */}
         {flow.step === "auth" && (
             <AuthScreen 
                 authEmail={flow.authEmail} setAuthEmail={flow.setAuthEmail}
@@ -55,7 +57,7 @@ export default function ReportFlowPage() {
             />
         )}
 
-        {/* SELECCIONES INICIALES */}
+        {/* --- SELECCIÓN DE PROYECTO --- */}
         {flow.step === "project" && (
             <SelectionScreen 
                 title="Seleccionar Proyecto"
@@ -64,6 +66,7 @@ export default function ReportFlowPage() {
             />
         )}
         
+        {/* --- SELECCIÓN DE FRENTE --- */}
         {flow.step === "front" && (
             <SelectionScreen 
                 title="Seleccionar Frente"
@@ -72,15 +75,61 @@ export default function ReportFlowPage() {
             />
         )}
 
+        {/* --- SELECCIÓN DE LOCALIDAD (CON BUSCADOR Y ALINEACIÓN IZQUIERDA) --- */}
         {flow.step === "locality" && (
-            <SelectionScreen 
-                title="Seleccionar Localidad"
-                items={flow.localities.map(l => ({ id: l.ID_Localidad, label: l.Nombre_Localidad }))}
-                onSelect={flow.selectLocality}
-            />
+            <div style={styles.card}>
+                <h2 style={styles.heading}>SELECCIONAR LOCALIDAD</h2>
+                
+                {/* INPUT DE BÚSQUEDA */}
+                <input 
+                    placeholder="Buscar localidad..." 
+                    value={flow.localitySearch} 
+                    onChange={e => flow.setLocalitySearch(e.target.value)}
+                    style={styles.input}
+                    autoFocus 
+                />
+
+                {/* LISTA FILTRADA */}
+                <div style={styles.scrollableY}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {flow.filteredLocalities && flow.filteredLocalities.length > 0 ? (
+                            flow.filteredLocalities.map(l => (
+                                <button 
+                                    key={l.ID_Localidad} 
+                                    onClick={() => flow.selectLocality(l.ID_Localidad)}
+                                    style={{
+                                        ...styles.gridItem,
+                                        // CORRECCIÓN DE ALINEACIÓN:
+                                        display: 'flex',
+                                        flexDirection: 'row',        // Flujo horizontal
+                                        justifyContent: 'flex-start', // Pegado a la izquierda
+                                        alignItems: 'center',         // Centrado verticalmente
+                                        textAlign: 'left',            // Texto a la izquierda
+                                        
+                                        // ESTILOS:
+                                        padding: '16px',
+                                        width: '100%',
+                                        minHeight: 'auto',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        borderLeft: '4px solid #003366',
+                                        boxSizing: 'border-box'
+                                    }}
+                                >
+                                    {l.Nombre_Localidad}
+                                </button>
+                            ))
+                        ) : (
+                            <div style={{ padding: '30px', textAlign: 'center', color: '#94A3B8' }}>
+                                No se encontraron localidades
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
         )}
         
-        {/* BUSCAR SECTOR (CORREGIDO Y RESALTADO) */}
+        {/* --- SELECCIÓN DE SECTOR (CON BUSCADOR) --- */}
         {flow.step === "detail" && (
             <div style={styles.card}>
                 <h2 style={styles.heading}>BUSCAR SECTOR</h2>
@@ -104,19 +153,17 @@ export default function ReportFlowPage() {
                                         justifyContent: 'space-between', 
                                         textAlign: 'left', 
                                         padding: '16px', 
-                                        minHeight: 'auto',
+                                        minHeight: 'auto', 
                                         width: '100%',
-                                        borderLeft: '4px solid #003366',
+                                        borderLeft: '4px solid #003366', 
                                         boxSizing: 'border-box'
                                     }}
                                 >
-                                    {/* IZQUIERDA: TIPO DE ARMADO (MÁS RESALTADO) */}
                                     <div style={{ flex: 1, paddingRight: '10px' }}>
                                         <div style={{ fontSize: '12px', fontWeight: '770', color: '#1E293B' }}>
                                             {d.activityName}
                                         </div>
                                     </div>
-                                    {/* DERECHA: CÓDIGO (IDENTIFICADOR) */}
                                     <div style={{ backgroundColor: '#F1F5F9', padding: '4px 8px', borderRadius: '4px' }}>
                                         <span style={{ fontSize: '11px', fontWeight: '700', color: '#003366', fontFamily: 'monospace' }}>
                                             {d.Nombre_Detalle}
@@ -132,23 +179,16 @@ export default function ReportFlowPage() {
             </div>
         )}
 
-        {/* CONFIRMACIÓN DE ACTIVIDAD (REINSTAURADA) */}
-        {flow.step === "activity" && flow.selectedActivity && (
-             <div style={styles.card}>
-                <h2 style={styles.heading}>CONFIRMAR</h2>
-                <div style={{ padding: '24px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', marginBottom: '20px', borderRadius: '4px' }}>
-                    <label style={styles.label}>ACTIVIDAD</label>
-                    <p style={{ fontSize: '14px', fontWeight: '700', color: '#003366', margin: 0 }}>
-                        {flow.selectedActivity.Nombre_Actividad}
-                    </p>
-                </div>
-                <button onClick={() => flow.setStep("map")} style={{ ...styles.btnPrimary, height: '56px' }}>
-                    COMENZAR REPORTE
-                </button>
-             </div>
+        {/* --- PANTALLA DE CONFIRMACIÓN MODULARIZADA --- */}
+        {flow.step === "activity" && (
+             <ActivityConfirmationScreen 
+                selectedActivity={flow.selectedActivity}
+                selectedDetail={flow.selectedDetail}
+                onContinue={() => flow.setStep("map")}
+             />
         )}
 
-        {/* FORMULARIO DE EVIDENCIA */}
+        {/* --- FORMULARIOS Y OTRAS PANTALLAS --- */}
         {(flow.step === "map" || flow.step === "form") && (
             <EvidenceFormScreen 
                 isOnline={flow.isOnline}
@@ -162,7 +202,6 @@ export default function ReportFlowPage() {
             />
         )}
         
-        {/* PANTALLAS DE NAVEGACIÓN INFERIOR */}
         {flow.step === "profile" && (
              <div style={styles.card}>
                 <h2 style={styles.heading}>Mi Perfil</h2>

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-// Importamos la nueva función del servicio
 import { uploadEvidence, createCheckedActivity, createRegistro, supabase, fetchLastEvidenceForDetail } from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
@@ -18,7 +17,6 @@ export function useReportFlow() {
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Estado para guardar el registro previo on-demand
   const [previousRecord, setPreviousRecord] = useState<any>(null);
 
   const showToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
@@ -32,15 +30,13 @@ export function useReportFlow() {
 
   const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
 
-  // --- NUEVA LÓGICA: CONSULTA ON-DEMAND ---
+  // --- CONSULTA ON-DEMAND ---
   useEffect(() => {
     const checkPreviousRecord = async () => {
-      // Solo consultamos si hay un detalle seleccionado y tenemos internet
       if (!catalog.selectedDetail || !session.isOnline) {
         setPreviousRecord(null);
         return;
       }
-
       try {
         const record = await fetchLastEvidenceForDetail(catalog.selectedDetail.ID_DetallesActividad);
         setPreviousRecord(record);
@@ -49,7 +45,6 @@ export function useReportFlow() {
         setPreviousRecord(null);
       }
     };
-
     checkPreviousRecord();
   }, [catalog.selectedDetail, session.isOnline]);
 
@@ -176,9 +171,7 @@ export function useReportFlow() {
             await db.pendingUploads.add(pend);
             showToast("Guardado localmente (Pendiente)", "info");
         }
-        
         handleGoHome();
-
     } catch (err) { console.error(err); showToast("Error al guardar", "error"); } 
     finally { session.setIsLoading(false); }
   };
@@ -213,13 +206,13 @@ export function useReportFlow() {
     setConfirmModal({
       open: true,
       title: "Eliminar mi cuenta",
-      message: "La eliminación total de la cuenta requiere validación de administración. ¿Deseas cerrar sesión y solicitar la eliminación?",
+      message: "La eliminación total de la cuenta requiere validación de administración.",
       onConfirm: async () => {
         try {
           await handleLogoutBridge();
-          showToast("Sesión cerrada. Solicita la eliminación al administrador.", "info");
+          showToast("Sesión cerrada.", "info");
         } catch {
-          showToast("No se pudo completar la solicitud", "error");
+          showToast("No se pudo completar", "error");
         } finally {
           setConfirmModal(null);
         }
@@ -229,6 +222,146 @@ export function useReportFlow() {
   
   const getMapUrl = () => { const lat = evidence.gpsLocation?.latitude ?? catalog.selectedDetail?.Latitud; const lng = evidence.gpsLocation?.longitude ?? catalog.selectedDetail?.Longitud; return (lat && lng) ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}` : null; };
 
+  // ==========================================
+  // LÓGICA DE CSV SEGURA (SPLIT QUERIES)
+  // ==========================================
+  const handleSmartCSVExport = async () => {
+    if (!session.sessionUser) {
+        showToast("Sesión no válida", "error");
+        return;
+    }
+
+    session.setIsLoading(true);
+
+    try {
+        // FASE 1: REGISTROS
+        const { data: registros, error: errReg } = await supabase
+            .from('Registros')
+            .select('ID_Registros, Fecha_Subida, Comentario, URL_Archivo, ID_Verificada')
+            .eq('user_id', session.sessionUser.id)
+            .order('Fecha_Subida', { ascending: true }); 
+
+        if (errReg || !registros || registros.length === 0) {
+            throw new Error("No hay registros para exportar.");
+        }
+
+        // FASE 2: VERIFICADAS
+        const idsVerificada = registros.map(r => r.ID_Verificada).filter(id => id !== null);
+        let verificadasMap: Record<number, any> = {};
+        
+        if (idsVerificada.length > 0) {
+            const { data: verificadas, error: errVerif } = await supabase
+                .from('Actividad_Verificada')
+                .select('ID_Verificada, Latitud, Longitud, ID_DetallesActividad')
+                .in('ID_Verificada', idsVerificada);
+            
+            if (!errVerif && verificadas) {
+                verificadas.forEach(v => { verificadasMap[v.ID_Verificada] = v; });
+            }
+        }
+
+        // FASE 3: DETALLES CATÁLOGO
+        const idsDetalle = Object.values(verificadasMap).map((v: any) => v.ID_DetallesActividad);
+        let detallesMap: Record<number, any> = {};
+        
+        if (idsDetalle.length > 0) {
+            const { data: detalles, error: errDet } = await supabase
+                .from('Detalles Actividad') 
+                .select(`
+                    ID_DetallesActividad, Nombre_Detalle, Latitud, Longitud,
+                    Actividad ( Nombre_Actividad ),
+                    Localidad ( 
+                        Nombre_Localidad, 
+                        Frente ( Nombre_Frente, Proyectos ( Proyecto_Nombre ) ) 
+                    )
+                `)
+                .in('ID_DetallesActividad', idsDetalle);
+
+            if (!errDet && detalles) {
+                detalles.forEach(d => { detallesMap[d.ID_DetallesActividad] = d; });
+            }
+        }
+
+        // FASE 4: PROCESAMIENTO
+        const lastKnownLocation = new Map<string, { lat: number, lng: number }>();
+        const escapeCsv = (text: any) => {
+            if (text === null || text === undefined) return "";
+            return `"${String(text).replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+        };
+
+        const processedRows = registros.map((r: any) => {
+            const verif = verificadasMap[r.ID_Verificada];
+            const detalle = verif ? detallesMap[verif.ID_DetallesActividad] : null;
+
+            const proyecto = detalle?.Localidad?.Frente?.Proyectos?.Proyecto_Nombre || "---";
+            const frente = detalle?.Localidad?.Frente?.Nombre_Frente || "---";
+            const localidad = detalle?.Localidad?.Nombre_Localidad || "---";
+            const actividad = detalle?.Actividad?.Nombre_Actividad || "---";
+            const nombreDetalle = detalle?.Nombre_Detalle || "---";
+
+            // Coordenadas
+            const latPlan = parseFloat(detalle?.Latitud || 0);
+            const lngPlan = parseFloat(detalle?.Longitud || 0);
+            const latReal = parseFloat(verif?.Latitud || 0);
+            const lngReal = parseFloat(verif?.Longitud || 0);
+
+            // Memoria
+            const uniqueKey = `${proyecto}_${frente}_${localidad}_${nombreDetalle}`;
+            const isModifiedHere = latReal !== 0 && (Math.abs(latReal - latPlan) > 0.000001 || Math.abs(lngReal - lngPlan) > 0.000001);
+
+            if (isModifiedHere) {
+                lastKnownLocation.set(uniqueKey, { lat: latReal, lng: lngReal });
+            }
+
+            const effectiveLocation = lastKnownLocation.get(uniqueKey);
+            const csvLatMod = effectiveLocation ? String(effectiveLocation.lat).replace('.', ',') : "";
+            const csvLngMod = effectiveLocation ? String(effectiveLocation.lng).replace('.', ',') : "";
+
+            return [
+                escapeCsv(r.ID_Registros),
+                escapeCsv(new Date(r.Fecha_Subida).toLocaleString()),
+                escapeCsv(proyecto),
+                escapeCsv(frente),
+                escapeCsv(localidad),
+                escapeCsv(actividad),
+                escapeCsv(nombreDetalle),
+                // Solo Lat/Lng Modificada (Reporte)
+                csvLatMod, 
+                csvLngMod,
+                escapeCsv(r.Comentario),
+                escapeCsv(r.URL_Archivo)
+            ].join(";");
+        });
+
+        processedRows.reverse();
+
+        // FASE 5: DESCARGA
+        const headers = [
+            "ID", "Fecha", "Proyecto", "Frente", "Localidad", "Actividad", "Codigo_Elemento",
+            "Lat_Reporte", "Lng_Reporte", 
+            "Comentario", "Foto_URL"
+        ].join(";");
+
+        const csvContent = "\uFEFF" + [headers, ...processedRows].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Reporte_Obra_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast("Excel generado correctamente", "success");
+
+    } catch (e: any) {
+        console.error("Error CSV Smart:", e);
+        showToast("Error al generar reporte", "error");
+    } finally {
+        session.setIsLoading(false);
+    }
+  };
+
   return {
     step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
     isOnline: session.isOnline, syncStatus,
@@ -236,7 +369,21 @@ export function useReportFlow() {
     authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
     handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
-    projects: catalog.projects, fronts: catalog.fronts, localities: catalog.localities, filteredDetails: catalog.filteredDetails, selectedDetail: catalog.selectedDetail, selectedActivity: catalog.selectedActivity, detailSearch: catalog.detailSearch, setDetailSearch: catalog.setDetailSearch,
+    
+    // CATALOGO EXPORTS (Aquí agregamos lo nuevo)
+    projects: catalog.projects, 
+    fronts: catalog.fronts, 
+    localities: catalog.localities,
+    filteredLocalities: catalog.filteredLocalities, // <--- NUEVO
+    localitySearch: catalog.localitySearch,         // <--- NUEVO
+    setLocalitySearch: catalog.setLocalitySearch,   // <--- NUEVO
+    
+    filteredDetails: catalog.filteredDetails, 
+    selectedDetail: catalog.selectedDetail, 
+    selectedActivity: catalog.selectedActivity, 
+    detailSearch: catalog.detailSearch, 
+    setDetailSearch: catalog.setDetailSearch,
+    
     selectedProjectId: catalog.selectedProjectId, selectedFrontId: catalog.selectedFrontId, selectedLocalityId: catalog.selectedLocalityId,
     selectProject, selectFront, selectLocality, selectDetail,
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
@@ -245,14 +392,14 @@ export function useReportFlow() {
     registerProperties: evidence.registerProperties, registerPropId: evidence.registerPropId, setRegisterPropId: evidence.setRegisterPropId, registerDetailText: evidence.registerDetailText, setRegisterDetailText: evidence.setRegisterDetailText,
     saveReport, getMapUrl,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
-    requestDeleteRecord: records.requestDeleteRecord, handleDownloadCSV: records.handleDownloadCSV,
+    requestDeleteRecord: records.requestDeleteRecord, 
+    handleDownloadCSV: handleSmartCSVExport,
     isPhotoModalOpen: records.isPhotoModalOpen,
     openEditModal: records.openEditModal,
     closeEditModal: () => records.setIsPhotoModalOpen(false),
     editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } }, 
     saveRecordEdits: records.saveRecordEdits,
     handleGoHome, goBack,
-    // EXPORTAMOS LAS NUEVAS VARIABLES ON-DEMAND
     previousRecord,
     isAlreadyRegistered
   };
