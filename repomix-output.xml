@@ -80,10 +80,34 @@ src/services/GoogleAI.ts
 src/services/supabaseClient.ts
 src/theme/styles.ts
 tsconfig.json
+vercel.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="vercel.json">
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}
+</file>
 
 <file path=".gitignore">
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
@@ -136,49 +160,26 @@ app-example
 <file path="app.json">
 {
   "expo": {
-    "name": "app-ejemplo",
-    "slug": "app-ejemplo",
+    "name": "ReportFlow",
+    "slug": "report-flow",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "appejemplo",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "meta": {
+        "apple": {
+          "mobileWebAppCapable": "yes",
+          "mobileWebAppStatusBarStyle": "black-translucent"
         }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      }
     }
   }
 }
@@ -241,10 +242,28 @@ export default function Root({ children }: PropsWithChildren) {
 </file>
 
 <file path="app/index.tsx">
-import React from "react";
+import React, { useEffect } from "react"; // 1. Importamos useEffect
 import ReportFlowPage from "../src/features/reportFlow/ReportFlowPage";
 
 export default function IndexPage() {
+
+  // --- EL INTERRUPTOR OFFLINE (Service Worker) ---
+  useEffect(() => {
+    // Verificamos si el navegador soporta Service Workers
+    // y evitamos activarlo en localhost para que no te moleste mientras programas
+    if ('serviceWorker' in navigator && !window.location.host.includes('localhost')) {
+      
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('✅ Modo Offline Activado (SW registrado):', registration.scope);
+        })
+        .catch((err) => {
+          console.error('❌ Error al activar Modo Offline:', err);
+        });
+        
+    }
+  }, []); // El array vacío [] hace que esto corra solo una vez al iniciar la app
+
   return <ReportFlowPage />;
 }
 </file>
@@ -348,17 +367,85 @@ module.exports = defineConfig([
 </file>
 
 <file path="public/sw.js">
+// public/sw.js
+const CACHE_NAME = 'reportflow-v1-dynamic';
+
+// Archivos críticos que SIEMPRE deben estar (App Shell)
+// Nota: En Vite los nombres de JS cambian (hashing), así que confiamos 
+// en el caching dinámico (abajo) para guardarlos conforme se usan.
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.ico'
+];
+
+// 1. INSTALACIÓN: Pre-carga lo básico
 self.addEventListener('install', (event) => {
-  console.log('Service Worker instalado');
-  self.skipWaiting();
+  console.log('[SW] Instalando y cacheando app shell...');
+  self.skipWaiting(); // Fuerza la activación inmediata
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
+  );
 });
 
+// 2. ACTIVACIÓN: Limpia cachés viejos si cambias la versión
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activado');
+  console.log('[SW] Activado. Limpiando cachés antiguos...');
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('[SW] Borrando caché viejo:', key);
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  return self.clients.claim(); // Controla la página inmediatamente
 });
 
+// 3. INTERCEPTOR DE RED (El cerebro offline)
 self.addEventListener('fetch', (event) => {
-  
+  const url = new URL(event.request.url);
+
+  // A. IGNORAR SUPABASE Y APIS EXTERNAS
+  // Dejamos que tu código de React + Dexie maneje los datos.
+  // El SW solo se encarga de que la "cáscara" de la app cargue.
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('googleapis.com')) {
+    return; // Pasa directo a la red (o falla si no hay, y tu código React lo maneja)
+  }
+
+  // B. ESTRATEGIA: "Stale-While-Revalidate" para archivos estáticos (JS, CSS, Imágenes)
+  // 1. Intenta servir desde caché rápido.
+  // 2. En segundo plano, va a la red a buscar una versión nueva para la próxima vez.
+  // 3. Si no hay red, se queda con lo del caché.
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          // Si la respuesta es válida, actualizamos el caché
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Si falla la red, no hacemos nada extra aquí porque ya intentamos
+          // devolver el cachedResponse abajo.
+        });
+
+      // Devuelve lo que haya en caché, o espera a la red si no hay nada
+      return cachedResponse || fetchPromise;
+    })
+  );
 });
 </file>
 
@@ -617,8 +704,8 @@ export const TopNav = ({ step, isOnline, onBack, breadcrumbNames }: Props) => {
     <>
         <div style={styles.navbar}>
              {/* Opción A: Texto estilizado */}
-             <div style={styles.navbarBrand}>CONSORCIO CENEPA</div>
-             
+             <div style={styles.navbarBrand}>CMP CONTRASTIAS E.I.R.L.</div>
+                     
              {/* Opción B: Logo Imagen (Descomentar si tienes la imagen) */}
              {/* <img src={logoImg} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} /> */}
         </div>
@@ -676,7 +763,7 @@ import { styles } from "../../theme/styles";
 
 // Componentes UI
 import { TopNav } from "./components/TopNav";
-import { BottomNav } from "./components/BottomNav"; // <--- NUEVO
+import { BottomNav } from "./components/BottomNav";
 import { Toast } from "./components/Toast";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { PhotoEditModal } from "./components/PhotoEditModal";
@@ -702,7 +789,6 @@ export default function ReportFlowPage() {
   return (
     <div style={styles.page}>
       
-      {/* HEADER SUPERIOR (Solo marca y estado) */}
       <TopNav 
         step={flow.step}
         isOnline={flow.isOnline}
@@ -715,7 +801,6 @@ export default function ReportFlowPage() {
         }}
       />
 
-      {/* CONTENEDOR PRINCIPAL (Con padding bottom extra para la barra) */}
       <div style={styles.container}>
 
         {/* LOGIN */}
@@ -729,7 +814,7 @@ export default function ReportFlowPage() {
             />
         )}
 
-        {/* FLUJO DE SELECCIÓN */}
+        {/* SELECCIONES INICIALES */}
         {flow.step === "project" && (
             <SelectionScreen 
                 title="Seleccionar Proyecto"
@@ -754,14 +839,15 @@ export default function ReportFlowPage() {
             />
         )}
         
+        {/* BUSCAR SECTOR (CORREGIDO Y RESALTADO) */}
         {flow.step === "detail" && (
             <div style={styles.card}>
-                <h2 style={styles.heading}>Buscar Sector</h2>
+                <h2 style={styles.heading}>BUSCAR SECTOR</h2>
                 <input 
                     placeholder="Filtrar por nombre o código..." 
                     value={flow.detailSearch} 
-                    onChange={e => flow.setDetailSearch(e.target.value)} 
-                    style={styles.input} 
+                    onChange={e => flow.setDetailSearch(e.target.value)}
+                    style={styles.input}
                     autoFocus 
                 />
                 <div style={styles.scrollableY}>
@@ -770,14 +856,31 @@ export default function ReportFlowPage() {
                             flow.filteredDetails.map(d => (
                                 <button 
                                     key={d.ID_DetallesActividad} 
-                                    onClick={() => flow.selectDetail(d)} 
+                                    onClick={() => flow.selectDetail(d)}
                                     style={{
-                                        ...styles.gridItem, flexDirection: 'row', justifyContent: 'space-between', 
-                                        textAlign: 'left', padding: '16px', minHeight: 'auto'
+                                        ...styles.gridItem, 
+                                        flexDirection: 'row', 
+                                        justifyContent: 'space-between', 
+                                        textAlign: 'left', 
+                                        padding: '16px', 
+                                        minHeight: 'auto',
+                                        width: '100%',
+                                        borderLeft: '4px solid #003366',
+                                        boxSizing: 'border-box'
                                     }}
                                 >
-                                    <span style={{ fontWeight: '700', color: '#003366' }}>{d.Nombre_Detalle}</span>
-                                    <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase' }}>{d.activityName}</span>
+                                    {/* IZQUIERDA: TIPO DE ARMADO (MÁS RESALTADO) */}
+                                    <div style={{ flex: 1, paddingRight: '10px' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '770', color: '#1E293B' }}>
+                                            {d.activityName}
+                                        </div>
+                                    </div>
+                                    {/* DERECHA: CÓDIGO (IDENTIFICADOR) */}
+                                    <div style={{ backgroundColor: '#F1F5F9', padding: '4px 8px', borderRadius: '4px' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: '700', color: '#003366', fontFamily: 'monospace' }}>
+                                            {d.Nombre_Detalle}
+                                        </span>
+                                    </div>
                                 </button>
                             ))
                         ) : (
@@ -788,16 +891,17 @@ export default function ReportFlowPage() {
             </div>
         )}
 
+        {/* CONFIRMACIÓN DE ACTIVIDAD (REINSTAURADA) */}
         {flow.step === "activity" && flow.selectedActivity && (
              <div style={styles.card}>
-                <h2 style={styles.heading}>Confirmar</h2>
-                <div style={{ padding: '20px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', marginBottom: '20px', borderRadius: '4px' }}>
-                    <label style={styles.label}>Actividad</label>
-                    <p style={{ fontSize: '16px', fontWeight: '600', color: '#003366', margin: 0 }}>
+                <h2 style={styles.heading}>CONFIRMAR</h2>
+                <div style={{ padding: '24px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', marginBottom: '20px', borderRadius: '4px' }}>
+                    <label style={styles.label}>ACTIVIDAD</label>
+                    <p style={{ fontSize: '14px', fontWeight: '700', color: '#003366', margin: 0 }}>
                         {flow.selectedActivity.Nombre_Actividad}
                     </p>
                 </div>
-                <button onClick={() => flow.setStep("map")} style={styles.btnPrimary}>
+                <button onClick={() => flow.setStep("map")} style={{ ...styles.btnPrimary, height: '56px' }}>
                     COMENZAR REPORTE
                 </button>
              </div>
@@ -813,7 +917,7 @@ export default function ReportFlowPage() {
                 evidencePreview={flow.evidencePreview} isAnalyzing={flow.isAnalyzing} aiFeedback={flow.aiFeedback} onCaptureFile={flow.handleCaptureFile}
                 note={flow.note} setNote={flow.setNote}
                 registerProperties={flow.registerProperties} registerPropId={flow.registerPropId} setRegisterPropId={flow.setRegisterPropId} registerDetailText={flow.registerDetailText} setRegisterDetailText={flow.setRegisterDetailText}
-                isLoading={flow.isLoading} onSave={() => { flow.saveReport(); /* Opcional: flow.setStep("user_records"); */ }}
+                isLoading={flow.isLoading} onSave={() => { flow.saveReport(); }}
             />
         )}
         
@@ -827,10 +931,8 @@ export default function ReportFlowPage() {
                 </div>
                 <input value={flow.profileName} onChange={(e) => flow.setProfileName(e.target.value)} style={styles.input} placeholder="Nombres" />
                 <input value={flow.profileLastName} onChange={(e) => flow.setProfileLastName(e.target.value)} style={styles.input} placeholder="Apellidos" />
-                
                 <button onClick={flow.saveProfile} disabled={flow.isProfileSaving} style={styles.btnPrimary}>Actualizar Datos</button>
                 <button onClick={flow.handleLogout} style={{...styles.btnSecondary, width: '100%', marginTop: '20px'}}>Cerrar Sesión</button>
-                <button onClick={flow.requestDeleteAccount} style={{...styles.btnDanger, marginTop: '10px', background:'none', border:'none', color:'#EF4444', textDecoration:'underline'}}>Eliminar mi cuenta</button>
              </div>
         )}
 
@@ -851,10 +953,9 @@ export default function ReportFlowPage() {
                     <h2 style={{...styles.heading, borderBottom: 'none', margin: 0}}>Exportar Datos</h2>
                     <button onClick={flow.handleDownloadCSV} style={styles.btnSecondary}>DESCARGAR CSV</button>
                  </div>
-                 <hr style={{ border: 'none', borderBottom: '2px solid #F4F7F9', margin: '15px 0' }} />
                  <div style={styles.scrollableY}>
                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '500px' }}>
-                       <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 1 }}>
+                       <thead>
                            <tr style={{ backgroundColor: '#F1F5F9', color: '#64748B' }}>
                                <th style={{ padding: '10px', textAlign: 'left' }}>ID</th>
                                <th style={{ padding: '10px', textAlign: 'left' }}>Actividad</th>
@@ -865,7 +966,7 @@ export default function ReportFlowPage() {
                            {flow.userRecords?.map(r => (
                               <tr key={r.id_registro} style={{ borderBottom: '1px solid #E2E8F0' }}>
                                  <td style={{ padding: '10px' }}>{r.id_registro}</td>
-                                 <td style={{ padding: '10px', fontWeight: '600', color: '#003366' }}>{r.nombre_actividad}</td>
+                                 <td style={{ padding: '10px', fontWeight: '600' }}>{r.nombre_actividad}</td>
                                  <td style={{ padding: '10px' }}>{new Date(r.fecha_subida).toLocaleDateString()}</td>
                               </tr>
                            ))}
@@ -877,7 +978,6 @@ export default function ReportFlowPage() {
 
       </div>
 
-      {/* BARRA INFERIOR (Solo visible si estamos logueados) */}
       {flow.step !== "auth" && (
           <BottomNav 
             step={flow.step}
@@ -888,7 +988,6 @@ export default function ReportFlowPage() {
           />
       )}
 
-      {/* MODALES GLOBALES */}
       <PhotoEditModal 
         open={flow.isPhotoModalOpen}
         previewUrl={flow.editPreviewUrl}
@@ -936,7 +1035,7 @@ export const AuthScreen = ({
       <div style={{...styles.card, width: '100%', maxWidth: '400px', padding: '40px' }}>
         <div style={{ marginBottom: '30px', textAlign: 'center' }}>
           <h1 style={{ ...styles.heading, borderBottom: 'none', fontSize: '24px', marginBottom: '8px' }}>
-            Consorcio Cenepa
+            CMP Contratistas E.I.R.L.
           </h1>
           <p style={{ ...styles.text, color: '#64748B', fontSize: '14px', margin: 0 }}>
             Plataforma de Reportes de Campo
@@ -1005,7 +1104,7 @@ export const AuthScreen = ({
 import React, { useRef, useState } from 'react';
 import { styles, evidenceStyles as es } from '../../../theme/styles'; 
 import { ActivitiesTypes } from '../types';
-import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud, AlertCircle } from 'lucide-react';
 
 interface Props {
   isOnline: boolean;
@@ -1028,6 +1127,8 @@ interface Props {
   registerDetailText: string; setRegisterDetailText: (v: string) => void;
   isLoading: boolean;
   onSave: () => void;
+  // NUEVA PROP PARA EVIDENCIA PREVIA
+  previousRecord?: any; 
 }
 
 export const EvidenceFormScreen = ({
@@ -1037,7 +1138,8 @@ export const EvidenceFormScreen = ({
     evidencePreview, isAnalyzing, aiFeedback, onCaptureFile,
     note, setNote,
     registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText,
-    isLoading, onSave
+    isLoading, onSave,
+    previousRecord
 }: Props) => {
 
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -1060,9 +1162,56 @@ export const EvidenceFormScreen = ({
   });
 
   return (
-    // IMPORTANTE: Aquí se usa styles.scrollableY (con Y)
     <div style={styles.scrollableY}>
         
+        {/* --- BLOQUE NUEVO: EVIDENCIA PREVIA (SOLO SI EXISTE) --- */}
+        {previousRecord && (
+            <div style={{
+                ...styles.card,
+                backgroundColor: '#FFFFFF',
+                borderLeft: '5px solid #F59E0B',
+                padding: '16px',
+                marginBottom: '16px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <AlertCircle size={18} color="#92400E" />
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#92400E', textTransform: 'uppercase' }}>
+                        Registro previo encontrado en este sector
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {/* Miniatura de la foto anterior guardada localmente */}
+                    <img 
+                        src={previousRecord.URL_Archivo} 
+                        style={{ 
+                            width: '85px', 
+                            height: '85px', 
+                            borderRadius: '6px', 
+                            objectFit: 'cover', 
+                            border: '1px solid #E2E8F0',
+                            backgroundColor: '#F1F5F9'
+                        }} 
+                        alt="Evidencia anterior"
+                    />
+                    
+                    <div style={{ flex: 1 }}>
+                        <label style={{ ...styles.label, fontSize: '10px', color: '#64748B', marginBottom: '4px' }}>
+                            COMENTARIO ANTERIOR
+                        </label>
+                        <p style={{ fontSize: '13px', color: '#1E293B', fontWeight: '600', margin: 0, fontStyle: 'italic' }}>
+                            "{previousRecord.comentario || 'Sin comentario registrado'}"
+                        </p>
+                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+                            <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>
+                                Registrado el: {new Date(previousRecord.fecha_subida).toLocaleDateString()}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* --- BLOQUE 1: UBICACIÓN --- */}
         <div style={styles.card}>
             <div style={{...styles.flexBetween, ...styles.mb16}}>
@@ -1235,58 +1384,84 @@ export interface SelectableItem {
 }
 
 interface Props {
-  title: string;
-  items: SelectableItem[];
-  onSelect: (id: number) => void;
-  isLoading?: boolean;
+    title: string;
+    items: SelectableItem[];
+    onSelect: (id: number) => void;
+    isLoading?: boolean;
 }
 
 export const SelectionScreen = ({ title, items, onSelect, isLoading }: Props) => {
-  return (
-    <div style={styles.card}>
-      <div style={styles.flexBetween}>
-        <h2 style={styles.heading}>{title}</h2>
-        <span style={{ fontSize: '12px', color: '#64748B' }}>{items?.length || 0} ITEMS</span>
-      </div>
-      
-      {isLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', fontStyle: 'italic' }}>
-            Cargando datos...
-          </div>
-      ) : (
-          /* AQUÍ AGREGAMOS EL SCROLL WRAPPER */
-          <div style={styles.scrollableY}>
-              <div style={styles.grid}>
-                {items && items.length > 0 ? (
-                    items.map(item => (
-                        <div 
-                            key={item.id} 
-                            onClick={() => onSelect(item.id)} 
-                            style={{
-                                ...styles.gridItem,
-                                borderLeft: '4px solid #003366'
-                            }}
-                        >
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#003366', marginBottom: '4px' }}>
-                                 {item.label}
-                            </div>
-                            {item.code && (
-                                <div style={{ fontSize: '11px', color: '#64748B', fontFamily: 'monospace' }}>
-                                    {item.code}
+    return (
+        <div style={styles.card}>
+            <div style={styles.flexBetween}>
+                <h2 style={styles.heading}>{title}</h2>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>{items?.length || 0} ITEMS</span>
+            </div>
+            
+            {isLoading ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', fontStyle: 'italic' }}>
+                    Cargando datos...
+                </div>
+            ) : (
+                <div style={styles.scrollableY}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {items && items.length > 0 ? (
+                            items.map(item => (
+                                <div 
+                                    key={item.id} 
+                                    onClick={() => onSelect(item.id)} 
+                                    style={{
+                                        ...styles.gridItem,
+                                        flexDirection: 'row',        // Alineación horizontal
+                                        justifyContent: 'space-between', 
+                                        textAlign: 'left',
+                                        padding: '16px',
+                                        minHeight: 'auto',
+                                        borderLeft: '4px solid #003366',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}
+                                >
+                                    {/* LADO IZQUIERDO: TIPO DE ARMADO (MÁS RESALTADO) */}
+                                    <div style={{ flex: 1, paddingRight: '12px' }}>
+                                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#1E293B', lineHeight: '1.4' }}>
+                                            {item.label}
+                                        </div>
+                                    </div>
+
+                                    {/* LADO DERECHO: CÓDIGO (ESTILO ETIQUETA) */}
+                                    {item.code && (
+                                        <div style={{ 
+                                            backgroundColor: '#F1F5F9', 
+                                            padding: '4px 10px', 
+                                            borderRadius: '4px',
+                                            border: '1px solid #CBD5E1',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            flexShrink: 0 // Evita que el código se encoja
+                                        }}>
+                                            <span style={{ 
+                                                fontSize: '11px', 
+                                                fontWeight: '700', 
+                                                color: '#003366', 
+                                                fontFamily: 'monospace' 
+                                            }}>
+                                                {item.code}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                    ))
-                ) : (
-                    <div style={{ gridColumn: '1 / -1', padding: '30px', textAlign: 'center', border: '1px dashed #D1D5DB', borderRadius: '6px', color: '#64748B' }}>
-                        No hay registros disponibles.
+                            ))
+                        ) : (
+                            <div style={{ padding: '30px', textAlign: 'center', border: '1px dashed #D1D5DB', borderRadius: '6px', color: '#64748B' }}>
+                                No hay registros disponibles.
+                            </div>
+                        )}
                     </div>
-                )}
-              </div>
-          </div>
-      )}
-    </div>
-  );
+                </div>
+            )}
+        </div>
+    );
 };
 </file>
 
@@ -1533,9 +1708,12 @@ export interface ConfirmModalState {
 </file>
 
 <file path="src/hooks/flow/useCatalogFlow.ts">
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { db } from "../../services/db_local";
-import { getAllProjects, getAllFronts, getAllLocalities, getAllDetails, getAllActivities, ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from "../../services/dataService";
+import { 
+  getAllProjects, getAllFronts, getAllLocalities, getAllDetails, getAllActivities, 
+  ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord 
+} from "../../services/dataService";
 
 type DetailWithActivity = DetailRecord & { activityName: string };
 
@@ -1552,34 +1730,88 @@ export function useCatalogFlow(isOnline: boolean) {
   const [selectedFrontId, setSelectedFrontId] = useState<number | null>(null);
   const [selectedLocalityId, setSelectedLocalityId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<DetailWithActivity | null>(null);
+  // Eliminamos selectedActivity si no se usa explícitamente en la UI, o lo mantenemos si lo necesitas
   const [selectedActivity, setSelectedActivity] = useState<ActivityRecord | null>(null);
   
   const [detailSearch, setDetailSearch] = useState("");
 
+  // --- 1. CARGA INICIAL (HÍBRIDA) ---
+  // Al iniciar, cargamos lo que haya en local para que la app no arranque vacía
+  useEffect(() => {
+    const loadInitialData = async () => {
+        setProjects(await db.catalog_projects.toArray());
+        setActivities(await db.catalog_activities.toArray()); // Carga actividades offline
+    };
+    loadInitialData();
+  }, []);
+
+  // --- 2. SINCRONIZACIÓN (NUBE -> LOCAL) ---
   const performFullSync = async () => {
     if (!isOnline) return;
     setSyncStatus("Sincronizando...");
     try {
-        const [p, f, l, d, a] = await Promise.all([ getAllProjects(), getAllFronts(), getAllLocalities(), getAllDetails(), getAllActivities() ]);
-        await db.transaction('rw', db.projects, db.fronts, db.localities, db.details, async () => {
-            await db.projects.bulkPut(p); await db.fronts.bulkPut(f); await db.localities.bulkPut(l); await db.details.bulkPut(d);
+        const [p, f, l, d, a] = await Promise.all([ 
+            getAllProjects(), 
+            getAllFronts(), 
+            getAllLocalities(), 
+            getAllDetails(), 
+            getAllActivities() 
+        ]);
+
+        // CORRECCIÓN: Usamos los nombres correctos 'catalog_...'
+        await db.transaction('rw', db.catalog_projects, db.catalog_fronts, db.catalog_localities, db.catalog_details, db.catalog_activities, async () => {
+            await db.catalog_projects.clear(); await db.catalog_projects.bulkPut(p);
+            await db.catalog_fronts.clear(); await db.catalog_fronts.bulkPut(f);
+            await db.catalog_localities.clear(); await db.catalog_localities.bulkPut(l);
+            await db.catalog_details.clear(); await db.catalog_details.bulkPut(d);
+            await db.catalog_activities.clear(); await db.catalog_activities.bulkPut(a);
         });
+
+        // Actualizamos estado visual
+        setProjects(p);
         setActivities(a);
         setSyncStatus("");
-    } catch (e) { console.error("Sync error", e); setSyncStatus("Error Sync"); }
+    } catch (e) { 
+        console.error("Sync error", e); 
+        setSyncStatus("Error Sync"); 
+    }
   };
 
-  const loadProjectsLocal = useCallback(async () => { setProjects(await db.projects.toArray()); }, []);
-  const loadFrontsLocal = useCallback(async (pid: number) => { setFronts(await db.fronts.where("ID_Proyecto").equals(pid).toArray()); }, []);
-  const loadLocalitiesLocal = useCallback(async (fid: number) => { setLocalities(await db.localities.where("ID_Frente").equals(fid).toArray()); }, []);
-  const loadDetailsLocal = useCallback(async (lid: number) => { setDetails(await db.details.where("ID_Localidad").equals(lid).toArray()); }, []);
+  // --- 3. CARGA DE DEPENDENCIAS LOCALES ---
+  // Estas funciones ahora usan los nombres correctos de las tablas
+  const loadProjectsLocal = useCallback(async () => { 
+      setProjects(await db.catalog_projects.toArray()); 
+  }, []);
+  
+  const loadFrontsLocal = useCallback(async (pid: number) => { 
+      setFronts(await db.catalog_fronts.where("ID_Proyecto").equals(pid).toArray()); 
+  }, []);
+  
+  const loadLocalitiesLocal = useCallback(async (fid: number) => { 
+      setLocalities(await db.catalog_localities.where("ID_Frente").equals(fid).toArray()); 
+  }, []);
+  
+  const loadDetailsLocal = useCallback(async (lid: number) => { 
+      setDetails(await db.catalog_details.where("ID_Localidad").equals(lid).toArray()); 
+  }, []);
 
-  // Computed Data
+  // --- COMPUTED DATA ---
   const activityMap = useMemo(() => new Map((activities||[]).map((a) => [a.ID_Actividad, a])), [activities]);
-  const derivedDetails = useMemo(() => (details||[]).map((d) => ({ ...d, activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." })), [details, activityMap]);
+  
+  const derivedDetails = useMemo(() => (details||[]).map((d) => ({ 
+    ...d, 
+    activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." 
+  })), [details, activityMap]);
+
   const filteredDetails = useMemo(() => { 
       const query = detailSearch.trim().toLowerCase(); 
-      return query ? derivedDetails.filter((d) => `${d.Nombre_Detalle} ${d.activityName}`.toLowerCase().includes(query)) : derivedDetails; 
+      
+      let result = query 
+        ? derivedDetails.filter((d) => `${d.Nombre_Detalle} ${d.activityName}`.toLowerCase().includes(query)) 
+        : [...derivedDetails];
+
+      return result.sort((a, b) => a.activityName.localeCompare(b.activityName));
+
   }, [detailSearch, derivedDetails]);
 
   const resetSelection = () => {
@@ -1985,7 +2217,8 @@ export function useSessionFlow(
 
 <file path="src/hooks/useReportFlow.ts">
 import { useState, useEffect, useCallback } from "react";
-import { uploadEvidence, createCheckedActivity, createRegistro, supabase } from "../services/dataService";
+// Importamos la nueva función del servicio
+import { uploadEvidence, createCheckedActivity, createRegistro, supabase, fetchLastEvidenceForDetail } from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
 
@@ -2003,6 +2236,9 @@ export function useReportFlow() {
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Estado para guardar el registro previo on-demand
+  const [previousRecord, setPreviousRecord] = useState<any>(null);
+
   const showToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
       setToast({ msg, type }); setTimeout(() => setToast(null), 3500);
   };
@@ -2012,9 +2248,30 @@ export function useReportFlow() {
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
 
-  // Estado simple para la pantalla de autenticación.
-  // (Si luego implementas un motor de sync más detallado, aquí lo puedes enriquecer.)
   const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
+
+  // --- NUEVA LÓGICA: CONSULTA ON-DEMAND ---
+  useEffect(() => {
+    const checkPreviousRecord = async () => {
+      // Solo consultamos si hay un detalle seleccionado y tenemos internet
+      if (!catalog.selectedDetail || !session.isOnline) {
+        setPreviousRecord(null);
+        return;
+      }
+
+      try {
+        const record = await fetchLastEvidenceForDetail(catalog.selectedDetail.ID_DetallesActividad);
+        setPreviousRecord(record);
+      } catch (err) {
+        console.error("Error consultando registro previo:", err);
+        setPreviousRecord(null);
+      }
+    };
+
+    checkPreviousRecord();
+  }, [catalog.selectedDetail, session.isOnline]);
+
+  const isAlreadyRegistered = !!previousRecord;
 
   // --- SINCRONIZACIÓN ---
   const syncPendingUploads = useCallback(async () => { 
@@ -2083,7 +2340,6 @@ export function useReportFlow() {
     }
   }, [step, session.sessionUser]);
 
-  // --- DEFINICIÓN PREVIA PARA USAR EN SAVE ---
   const handleGoHome = () => { 
       catalog.resetSelection(); 
       evidence.resetEvidence(); 
@@ -2091,7 +2347,6 @@ export function useReportFlow() {
       setIsMenuOpen(false); 
   };
 
-  // --- GUARDADO DE REPORTE ---
   const saveReport = async () => {
     if (evidence.isAnalyzing) return showToast("Analizando imagen...", "info");
     if (!evidence.evidenceFile || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error"); 
@@ -2140,7 +2395,6 @@ export function useReportFlow() {
             showToast("Guardado localmente (Pendiente)", "info");
         }
         
-        // <--- CAMBIO AQUÍ: Volver al Inicio en lugar de quedarse en el mapa
         handleGoHome();
 
     } catch (err) { console.error(err); showToast("Error al guardar", "error"); } 
@@ -2173,8 +2427,6 @@ export function useReportFlow() {
     setIsMenuOpen(false);
   };
 
-  // Eliminación de cuenta (cliente): por seguridad, el borrado del usuario en Auth suele requerir Service Role.
-  // Aquí dejamos una acción segura: cierre de sesión + limpieza local, y un mensaje para soporte.
   const requestDeleteAccount = () => {
     setConfirmModal({
       open: true,
@@ -2217,7 +2469,10 @@ export function useReportFlow() {
     closeEditModal: () => records.setIsPhotoModalOpen(false),
     editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } }, 
     saveRecordEdits: records.saveRecordEdits,
-    handleGoHome, goBack
+    handleGoHome, goBack,
+    // EXPORTAMOS LAS NUEVAS VARIABLES ON-DEMAND
+    previousRecord,
+    isAlreadyRegistered
   };
 }
 </file>
@@ -2276,10 +2531,34 @@ export type ActivityPropertyDef = {
 };
 
 // Helpers
-const fetchCatalog = async <T>(table: string, columns: string, orderBy: string): Promise<T[]> => {
-  const { data, error } = await supabase.from(table).select(columns).order(orderBy, { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as T[];
+const fetchCatalog = async <T>(table: string, columns: string, orderBy: string) => {
+    let allData: T[] = [];
+    let from = 0;
+    const step = 1000;
+    let moreData = true;
+
+    while (moreData) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(columns)
+            .order(orderBy, { ascending: true })
+            .range(from, from + step - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allData = [...allData, ...data as T[]];
+            from += step;
+            if (data.length < step) {
+                moreData = false;
+            }
+        } else {
+            moreData = false;
+        }
+    }
+    
+    console.log(`Descarga completa de ${table}: ${allData.length} registros.`);
+    return allData;
 };
 
 // Read
@@ -2356,136 +2635,151 @@ export const createRegistro = async (payload: {
   if (error) throw error;
   return { data, error };
 };
+
+// --- NUEVA FUNCIÓN ON-DEMAND ---
+export const fetchLastEvidenceForDetail = async (detailId: number) => {
+    console.log("Buscando evidencia previa para el detalle ID:", detailId);
+    const { data, error } = await supabase
+      .from('Registros')
+      .select(`
+        *,
+        Actividad_Verificada!inner (
+          ID_DetallesActividad
+        )
+      `)
+      .eq('Actividad_Verificada.ID_DetallesActividad', detailId)
+      .order('Fecha_Subida', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  
+    if (error) {
+      console.warn("Error buscando evidencia previa:", error.message);
+      return null;
+    }
+  
+    return data;
+};
 </file>
 
 <file path="src/services/db_local.ts">
 import Dexie, { Table } from 'dexie';
+// Asegúrate de importar las interfaces correctas desde tu dataService
 import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
 
-// definición local de las propiedades
-export interface ActivityPropertyDef {
-  id?: number; 
-  ID_Actividad: number;
-  ID_Propiedad: number;
-  Nombre_Propiedad: string;
+// Interfaz para el caché de historial (la usaremos luego para "Evidencia Previa")
+export interface CachedRecord {
+  id_registro: number;
+  id_detalle: number;
+  fecha_subida: string;
+  url_archivo: string;
+  comentario: string;
 }
 
-// tipos para registros pendientes de subida:
-export interface PendingRecord {
-  id?: number;
-  timestamp: number;
-  evidenceBlob: Blob;
-  fileType: string;
-  meta: {
-    bucketName: string;
-    fullPath: string;
-    fileName: string;
-    userId: string;
-    detailId: number;
-    lat: number;
-    lng: number;
-    comment: string;
-    properties?: { id_propiedad: number; valor: string }[];
-  };
-}
-
-class OfflineDatabase extends Dexie {
-  projects!: Table<ProjectRecord>;
-  fronts!: Table<FrontRecord>;
-  localities!: Table<LocalityRecord>;
-  details!: Table<DetailRecord>;
-  activities!: Table<ActivityRecord>;
-  pendingUploads!: Table<PendingRecord>;
-  activityProperties!: Table<ActivityPropertyDef>;
+class MyDatabase extends Dexie {
+  // 1. Definimos las propiedades de la clase para que TypeScript las reconozca
+  pendingUploads!: Table<any>; 
+  catalog_projects!: Table<ProjectRecord>;
+  catalog_fronts!: Table<FrontRecord>;
+  catalog_localities!: Table<LocalityRecord>;
+  catalog_details!: Table<DetailRecord>;
+  catalog_activities!: Table<ActivityRecord>; // <--- Esta faltaba y es clave
+  history_cache!: Table<CachedRecord>;
 
   constructor() {
-    super('AppObraDB');
-    // estructura final
-    this.version(6).stores({
-      projects: 'ID_Proyectos',
-      fronts: 'ID_Frente, ID_Proyecto',
-      localities: 'ID_Localidad, ID_Frente',
-      details: 'ID_DetallesActividad, ID_Localidad', 
-      activities: 'ID_Actividad',
-      pendingUploads: '++id',
-      activityProperties: '++id, ID_Actividad'
+    super('ReportFlowDB');
+    
+    // 2. Definimos el esquema (Nombres de tablas y sus índices)
+    // NOTA: Si cambias esto, a veces es necesario borrar la BD en el navegador para que se regenere
+    this.version(2).stores({ // Subí la versión a 2 para forzar la actualización
+      pendingUploads: '++id, timestamp, meta.userId',
+      
+      // Catálogos (Nombres deben coincidir con las propiedades de arriba)
+      catalog_projects: 'ID_Proyectos, Proyecto_Nombre',
+      catalog_fronts: 'ID_Frente, ID_Proyecto',
+      catalog_localities: 'ID_Localidad, ID_Frente',
+      catalog_details: 'ID_DetallesActividad, ID_Localidad',
+      catalog_activities: 'ID_Actividad',
+      
+      // Caché
+      history_cache: 'id_registro, id_detalle, fecha_subida'
     });
   }
 }
 
-export const db = new OfflineDatabase();
+export const db = new MyDatabase();
 </file>
 
 <file path="src/services/GoogleAI.ts">
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// IMPORTANTE:
-//  - No hardcodear keys en el repo.
-//  - En Expo (web/móvil), las variables públicas suelen declararse como EXPO_PUBLIC_*.
-//  - Define EXPO_PUBLIC_GEMINI_API_KEY en tu .env (y NO lo subas al repo).
+// 1. CORRECCIÓN DE ENTORNO: Volvemos al estándar de Expo
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+// Inicializamos solo si hay clave
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-// interfaz de respuesta
 export interface IAValidationResult {
     aprobado: boolean;
     mensaje: string;
-    esErrorTecnico?: boolean; // bandera para identificar error de red
+    esErrorTecnico?: boolean;
 }
 
 export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
-  try {
-    if (!genAI) {
-      return {
-        aprobado: false,
-        esErrorTecnico: true,
-        mensaje: "Validación automática no configurada (falta API Key)"
-      };
+    try {
+        if (!genAI || !API_KEY) {
+            console.error("Falta API KEY de Google (Expo)");
+            return { aprobado: true, esErrorTecnico: true, mensaje: "IA no configurada (Pase técnico)" };
+        }
+
+        const base64Data = await fileToBase64(file);
+        
+        // 2. CORRECCIÓN DE MODELO:
+        // Usamos 'gemini-2.5-flash' que es el que vimos en tu lista de permisos.
+        // Quitamos { apiVersion: 'v1' } para que use la versión por defecto del modelo.
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-2.5-flash" 
+        });
+
+        const prompt = `Analiza esta imagen para la actividad de construcción: "${nombreActividad}". 
+        Responde EXCLUSIVAMENTE un JSON válido con este formato, sin markdown: 
+        { "aprobado": boolean, "mensaje": "razón breve de 10 palabras" }`;
+        
+        const result = await model.generateContent([
+            prompt,
+            { inlineData: { data: base64Data, mimeType: file.type } }
+        ]);
+        
+        const response = await result.response;
+        const text = response.text();  
+        
+        // Limpieza robusta por si el modelo devuelve markdown
+        const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        
+        return JSON.parse(cleanText);
+
+    } catch (error: any) {
+        console.error("⚠️ Error IA:", error);
+        
+        return { 
+            aprobado: true, 
+            esErrorTecnico: true, 
+            mensaje: "IA no disponible, validación manual requerida." 
+        };
     }
-
-    const base64Data = await fileToBase64(file);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    // prompt "analítico"
-    const prompt = `Analiza esta imagen para la actividad: "${nombreActividad}".
-                    Si la imagen coincide razonablemente (construcción, planos, herramientas, terreno), aprueba.
-                    Si es algo claramente incorrecto (selfie, mascota, pantalla negra, comida), reprueba y di qué es.
-                    Responde SOLO JSON: { "aprobado": boolean, "mensaje": "razón corta" }`;
-    
-    const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Data, mimeType: file.type } }
-    ]);
-    
-    const response = await result.response;
-    const text = response.text();  
-    const cleanText = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanText);
-
-  } catch (error: any) {
-    console.error("Error IA:", error);
-    
-    // detección de error técnico (conexión) u offline
-    // si falla el fetch o no hay internet, devolvemos un estado especial
-    return { 
-        aprobado: false, 
-        esErrorTecnico: true, // error técnico, no rechazo de imagen
-        mensaje: "Validación automática no disponible (Offline)" 
-    };
-  }
 };
 
 async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1]; 
-        resolve(base64);
-    };
-    reader.onerror = error => reject(error);
-  });
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const result = reader.result as string;
+            // Quitamos el prefijo "data:image/jpeg;base64,"
+            const base64 = result.split(',')[1]; 
+            resolve(base64);
+        };
+        reader.onerror = error => reject(error);
+    });
 }
 </file>
 
@@ -2663,9 +2957,7 @@ export const evidenceStyles: Record<string, React.CSSProperties> = {
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.tsx"
   ]
 }
 </file>
