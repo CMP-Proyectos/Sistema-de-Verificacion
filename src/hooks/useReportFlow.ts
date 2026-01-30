@@ -222,39 +222,6 @@ export function useReportFlow() {
   
   const getMapUrl = () => { const lat = evidence.gpsLocation?.latitude ?? catalog.selectedDetail?.Latitud; const lng = evidence.gpsLocation?.longitude ?? catalog.selectedDetail?.Longitud; return (lat && lng) ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}` : null; };
 
-  // ==========================================
-  // LÓGICA DE CSV SEGURA (SPLIT QUERIES)
-  // ==========================================
-  const handleSmartCSVExport = async () => {
-    if (!userRecords || userRecords.length === 0) {
-      alert("No hay registros para descargar.");
-      return;
-    }
-    const headers = [
-      "ID Registro", "Fecha", "Actividad", "Localidad", "Detalle", "Comentario", "Latitud", "Longitud"
-    ];
-    const rows = userRecords.map(rec => {
-      return [
-        rec.id_registro,
-        `"${rec.fecha_subida || ''}"`,
-        `"${rec.nombre_actividad || ''}"`,
-        `"${rec.nombre_localidad || ''}"`,
-        `"${rec.nombre_detalle || ''}"`,
-        `"${(rec.comentario || '').replace(/"/g, '""')}"`,
-        rec.latitud,
-        rec.longitud
-      ].join(";");
-    });
-    const csvContent = [headers.join(";"), ...rows].join("\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Registros_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return {
     step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
@@ -287,7 +254,7 @@ export function useReportFlow() {
     saveReport, getMapUrl,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
     requestDeleteRecord: records.requestDeleteRecord, 
-    handleDownloadCSV: handleSmartCSVExport,
+    handleDownloadCSV: records.handleCreateCSV,
     isPhotoModalOpen: records.isPhotoModalOpen,
     openEditModal: records.openEditModal,
     closeEditModal: () => records.setIsPhotoModalOpen(false),
