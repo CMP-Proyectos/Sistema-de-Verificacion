@@ -157,7 +157,9 @@ export const EvidenceFormScreen = ({
                 <div style={es.utmRow}>
                     <div style={{width: '60px'}}>
                         <label style={styles.label}>ZONA</label>
-                        <input type="number" value={utmZone} onChange={e => setUtmZone(e.target.value)} placeholder="18" style={es.inputCenter} />
+                        <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={styles.input}>
+                            <option value="17">Zona 17S</option><option value="18">Zona 18S</option><option value="19">Zona 19S</option>
+                        </select>
                     </div>
                     <div style={{flex: 1}}>
                         <label style={styles.label}>ESTE (X)</label>
