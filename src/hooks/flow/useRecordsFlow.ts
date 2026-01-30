@@ -83,15 +83,15 @@ export function useRecordsFlow(
   };
 
   // --- LÓGICA CSV ROBUSTA (SIN JOIN SQL) ---
-  const handleDownloadCSV = () => {
-    if (!userRecords || userRecords.length === 0) {
+  const handleCreateCSV = (records: UserRecord[]) => {
+    if (!records || records.length === 0) {
       alert("No hay registros para descargar.");
       return;
     }
     const headers = [
       "ID Registro", "Fecha", "Actividad", "Localidad", "Detalle", "Comentario", "Latitud", "Longitud"
     ];
-    const rows = userRecords.map(rec => {
+    const rows = records.map(rec => {
       return [
         rec.id_registro,
         `"${rec.fecha_subida || ''}"`,
@@ -118,7 +118,7 @@ export function useRecordsFlow(
       userRecords, isLoadingRecords, loadUserRecords, selectedRecordId, setSelectedRecordId,
       requestDeleteRecord, saveRecordEdits, isPhotoModalOpen, setIsPhotoModalOpen, openEditModal, 
       editComment, setEditComment, editPreviewUrl, setEditPreviewUrl, editEvidenceFile, setEditEvidenceFile, 
-      handleDownloadCSV,
+      handleCreateCSV,
       // Helper para input file
       handleEditFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => { 
           if(e.target.files?.[0]) { 
