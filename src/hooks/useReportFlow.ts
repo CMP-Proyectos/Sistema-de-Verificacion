@@ -226,140 +226,34 @@ export function useReportFlow() {
   // LÓGICA DE CSV SEGURA (SPLIT QUERIES)
   // ==========================================
   const handleSmartCSVExport = async () => {
-    if (!session.sessionUser) {
-        showToast("Sesión no válida", "error");
-        return;
+    if (!userRecords || userRecords.length === 0) {
+      alert("No hay registros para descargar.");
+      return;
     }
-
-    session.setIsLoading(true);
-
-    try {
-        // FASE 1: REGISTROS
-        const { data: registros, error: errReg } = await supabase
-            .from('Registros')
-            .select('ID_Registros, Fecha_Subida, Comentario, URL_Archivo, ID_Verificada')
-            .eq('user_id', session.sessionUser.id)
-            .order('Fecha_Subida', { ascending: true }); 
-
-        if (errReg || !registros || registros.length === 0) {
-            throw new Error("No hay registros para exportar.");
-        }
-
-        // FASE 2: VERIFICADAS
-        const idsVerificada = registros.map(r => r.ID_Verificada).filter(id => id !== null);
-        let verificadasMap: Record<number, any> = {};
-        
-        if (idsVerificada.length > 0) {
-            const { data: verificadas, error: errVerif } = await supabase
-                .from('Actividad_Verificada')
-                .select('ID_Verificada, Latitud, Longitud, ID_DetallesActividad')
-                .in('ID_Verificada', idsVerificada);
-            
-            if (!errVerif && verificadas) {
-                verificadas.forEach(v => { verificadasMap[v.ID_Verificada] = v; });
-            }
-        }
-
-        // FASE 3: DETALLES CATÁLOGO
-        const idsDetalle = Object.values(verificadasMap).map((v: any) => v.ID_DetallesActividad);
-        let detallesMap: Record<number, any> = {};
-        
-        if (idsDetalle.length > 0) {
-            const { data: detalles, error: errDet } = await supabase
-                .from('Detalles Actividad') 
-                .select(`
-                    ID_DetallesActividad, Nombre_Detalle, Latitud, Longitud,
-                    Actividad ( Nombre_Actividad ),
-                    Localidad ( 
-                        Nombre_Localidad, 
-                        Frente ( Nombre_Frente, Proyectos ( Proyecto_Nombre ) ) 
-                    )
-                `)
-                .in('ID_DetallesActividad', idsDetalle);
-
-            if (!errDet && detalles) {
-                detalles.forEach(d => { detallesMap[d.ID_DetallesActividad] = d; });
-            }
-        }
-
-        // FASE 4: PROCESAMIENTO
-        const lastKnownLocation = new Map<string, { lat: number, lng: number }>();
-        const escapeCsv = (text: any) => {
-            if (text === null || text === undefined) return "";
-            return `"${String(text).replace(/"/g, '""').replace(/\n/g, ' ')}"`;
-        };
-
-        const processedRows = registros.map((r: any) => {
-            const verif = verificadasMap[r.ID_Verificada];
-            const detalle = verif ? detallesMap[verif.ID_DetallesActividad] : null;
-
-            const proyecto = detalle?.Localidad?.Frente?.Proyectos?.Proyecto_Nombre || "---";
-            const frente = detalle?.Localidad?.Frente?.Nombre_Frente || "---";
-            const localidad = detalle?.Localidad?.Nombre_Localidad || "---";
-            const actividad = detalle?.Actividad?.Nombre_Actividad || "---";
-            const nombreDetalle = detalle?.Nombre_Detalle || "---";
-
-            // Coordenadas
-            const latPlan = parseFloat(detalle?.Latitud || 0);
-            const lngPlan = parseFloat(detalle?.Longitud || 0);
-            const latReal = parseFloat(verif?.Latitud || 0);
-            const lngReal = parseFloat(verif?.Longitud || 0);
-
-            // Memoria
-            const uniqueKey = `${proyecto}_${frente}_${localidad}_${nombreDetalle}`;
-            const isModifiedHere = latReal !== 0 && (Math.abs(latReal - latPlan) > 0.000001 || Math.abs(lngReal - lngPlan) > 0.000001);
-
-            if (isModifiedHere) {
-                lastKnownLocation.set(uniqueKey, { lat: latReal, lng: lngReal });
-            }
-
-            const effectiveLocation = lastKnownLocation.get(uniqueKey);
-            const csvLatMod = effectiveLocation ? String(effectiveLocation.lat).replace('.', ',') : "";
-            const csvLngMod = effectiveLocation ? String(effectiveLocation.lng).replace('.', ',') : "";
-
-            return [
-                escapeCsv(r.ID_Registros),
-                escapeCsv(new Date(r.Fecha_Subida).toLocaleString()),
-                escapeCsv(proyecto),
-                escapeCsv(frente),
-                escapeCsv(localidad),
-                escapeCsv(actividad),
-                escapeCsv(nombreDetalle),
-                // Solo Lat/Lng Modificada (Reporte)
-                csvLatMod, 
-                csvLngMod,
-                escapeCsv(r.Comentario),
-                escapeCsv(r.URL_Archivo)
-            ].join(";");
-        });
-
-        processedRows.reverse();
-
-        // FASE 5: DESCARGA
-        const headers = [
-            "ID", "Fecha", "Proyecto", "Frente", "Localidad", "Actividad", "Codigo_Elemento",
-            "Lat_Reporte", "Lng_Reporte", 
-            "Comentario", "Foto_URL"
-        ].join(";");
-
-        const csvContent = "\uFEFF" + [headers, ...processedRows].join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `Reporte_Obra_${new Date().toISOString().slice(0,10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        showToast("Excel generado correctamente", "success");
-
-    } catch (e: any) {
-        console.error("Error CSV Smart:", e);
-        showToast("Error al generar reporte", "error");
-    } finally {
-        session.setIsLoading(false);
-    }
+    const headers = [
+      "ID Registro", "Fecha", "Actividad", "Localidad", "Detalle", "Comentario", "Latitud", "Longitud"
+    ];
+    const rows = userRecords.map(rec => {
+      return [
+        rec.id_registro,
+        `"${rec.fecha_subida || ''}"`,
+        `"${rec.nombre_actividad || ''}"`,
+        `"${rec.nombre_localidad || ''}"`,
+        `"${rec.nombre_detalle || ''}"`,
+        `"${(rec.comentario || '').replace(/"/g, '""')}"`,
+        rec.latitud,
+        rec.longitud
+      ].join(";");
+    });
+    const csvContent = [headers.join(";"), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Registros_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return {
