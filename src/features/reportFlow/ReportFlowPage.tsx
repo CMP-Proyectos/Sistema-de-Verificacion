@@ -231,7 +231,7 @@ export default function ReportFlowPage() {
              <div style={styles.card}>
                  <div style={styles.flexBetween}>
                     <h2 style={{...styles.heading, borderBottom: 'none', margin: 0}}>Exportar Datos</h2>
-                    <button onClick={flow.handleDownloadCSV} style={styles.btnSecondary}>DESCARGAR CSV</button>
+                    <button onClick={() => flow.handleDownloadCSV(flow.userRecords)} style={styles.btnSecondary}>DESCARGAR CSV</button>
                  </div>
                  <div style={styles.scrollableY}>
                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '500px' }}>
