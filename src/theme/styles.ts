@@ -68,6 +68,7 @@ export const styles: Record<string, React.CSSProperties> = {
   
   // Usamos el baseInput corregido
   input: { ...baseInput, marginBottom: "16px" },
+  selects: {...baseInput, width: '100%', height: '45px', paddingTop: '0px', paddingBottom: '0px'},
 
   text: { fontSize: "14px", color: palette.slateDark, lineHeight: "1.5" },
   monoText: { fontFamily: "'Roboto Mono', monospace", fontSize: "12px", color: palette.slateDark, backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px", display: "inline-block", border: "1px solid #E2E8F0" },
