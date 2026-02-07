@@ -1,58 +1,71 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const API_KEY = "AIzaSyBLQUR7hW1sO_Iyf_g8EvKFXGogu0tbguA"; 
-const genAI = new GoogleGenerativeAI(API_KEY);
+// 1. CORRECCIÓN DE ENTORNO: Volvemos al estándar de Expo
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
-// interfaz de respuesta
+// Inicializamos solo si hay clave
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+
 export interface IAValidationResult {
     aprobado: boolean;
     mensaje: string;
-    esErrorTecnico?: boolean; // bandera para identificar error de red
+    esErrorTecnico?: boolean;
 }
 
 export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
-  try {
-    const base64Data = await fileToBase64(file);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    // prompt "analítico"
-    const prompt = `Analiza esta imagen para la actividad: "${nombreActividad}".
-                    Si la imagen coincide razonablemente (construcción, planos, herramientas, terreno), aprueba.
-                    Si es algo claramente incorrecto (selfie, mascota, pantalla negra, comida), reprueba y di qué es.
-                    Responde SOLO JSON: { "aprobado": boolean, "mensaje": "razón corta" }`;
-    
-    const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Data, mimeType: file.type } }
-    ]);
-    
-    const response = await result.response;
-    const text = response.text();  
-    const cleanText = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanText);
+    try {
+        if (!genAI || !API_KEY) {
+            console.error("Falta API KEY de Google (Expo)");
+            return { aprobado: true, esErrorTecnico: true, mensaje: "IA no configurada (Pase técnico)" };
+        }
 
-  } catch (error: any) {
-    console.error("Error IA:", error);
-    
-    // detección de error técnico (conexión) u offline
-    // si falla el fetch o no hay internet, devolvemos un estado especial
-    return { 
-        aprobado: false, 
-        esErrorTecnico: true, // error técnico, no rechazo de imagen
-        mensaje: "Validación automática no disponible (Offline)" 
-    };
-  }
+        const base64Data = await fileToBase64(file);
+        
+        // 2. CORRECCIÓN DE MODELO:
+        // Usamos 'gemini-2.5-flash' que es el que vimos en tu lista de permisos.
+        // Quitamos { apiVersion: 'v1' } para que use la versión por defecto del modelo.
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-2.5-flash" 
+        });
+
+        const prompt = `Analiza esta imagen para la actividad de construcción: "${nombreActividad}". 
+        Responde EXCLUSIVAMENTE un JSON válido con este formato, sin markdown: 
+        { "aprobado": boolean, "mensaje": "razón breve de 10 palabras" }`;
+        
+        const result = await model.generateContent([
+            prompt,
+            { inlineData: { data: base64Data, mimeType: file.type } }
+        ]);
+        
+        const response = await result.response;
+        const text = response.text();  
+        
+        // Limpieza robusta por si el modelo devuelve markdown
+        const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        
+        return JSON.parse(cleanText);
+
+    } catch (error: any) {
+        console.error("⚠️ Error IA:", error);
+        
+        return { 
+            aprobado: true, 
+            esErrorTecnico: true, 
+            mensaje: "IA no disponible, validación manual requerida." 
+        };
+    }
 };
 
 async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1]; 
-        resolve(base64);
-    };
-    reader.onerror = error => reject(error);
-  });
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const result = reader.result as string;
+            // Quitamos el prefijo "data:image/jpeg;base64,"
+            const base64 = result.split(',')[1]; 
+            resolve(base64);
+        };
+        reader.onerror = error => reject(error);
+    });
 }

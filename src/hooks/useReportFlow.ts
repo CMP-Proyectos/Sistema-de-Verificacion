@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { uploadEvidence, createCheckedActivity, createRegistro, supabase } from "../services/dataService";
+import { uploadEvidence, createCheckedActivity, createRegistro, supabase, fetchHistoryForDetail } from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
 
@@ -17,6 +17,8 @@ export function useReportFlow() {
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const [previousRecord, setPreviousRecord] = useState<any>(null);
+
   const showToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
       setToast({ msg, type }); setTimeout(() => setToast(null), 3500);
   };
@@ -25,7 +27,28 @@ export function useReportFlow() {
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
-  
+
+  const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
+
+  // --- CONSULTA ON-DEMAND ---
+  useEffect(() => {
+    const checkPreviousRecord = async () => {
+      if (!catalog.selectedDetail || !session.isOnline) {
+        setPreviousRecord(null);
+        return;
+      }
+      try {
+        const record = await fetchHistoryForDetail(catalog.selectedDetail.ID_DetallesActividad);
+        setPreviousRecord(record);
+      } catch (err) {
+        console.error("Error consultando registro previo:", err);
+        setPreviousRecord(null);
+      }
+    };
+    checkPreviousRecord();
+  }, [catalog.selectedDetail, session.isOnline]);
+
+  const isAlreadyRegistered = !!previousRecord;
 
   // --- SINCRONIZACIÓN ---
   const syncPendingUploads = useCallback(async () => { 
@@ -44,7 +67,8 @@ export function useReportFlow() {
                       const chk = await createCheckedActivity({ 
                           ID_DetallesActividad: r.meta.detailId, 
                           Latitud: r.meta.lat, 
-                          Longitud: r.meta.lng 
+                          Longitud: r.meta.lng,
+                          Cantidad: r.meta.quantity
                       }); 
                       
                       await createRegistro({ 
@@ -88,13 +112,12 @@ export function useReportFlow() {
   }, []);
 
   useEffect(() => {
-    if ((step === "profile" || step === "user_records") && session.sessionUser) {
+    if ((step === "profile" || step === "user_records" || step === "files") && session.sessionUser) {
         if(step === "profile") session.loadProfileData();
         else records.loadUserRecords();
     }
   }, [step, session.sessionUser]);
 
-  // --- DEFINICIÓN PREVIA PARA USAR EN SAVE ---
   const handleGoHome = () => { 
       catalog.resetSelection(); 
       evidence.resetEvidence(); 
@@ -102,7 +125,6 @@ export function useReportFlow() {
       setIsMenuOpen(false); 
   };
 
-  // --- GUARDADO DE REPORTE ---
   const saveReport = async () => {
     if (evidence.isAnalyzing) return showToast("Analizando imagen...", "info");
     if (!evidence.evidenceFile || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error"); 
@@ -126,11 +148,11 @@ export function useReportFlow() {
         if(navigator.onLine) {
             const pubUrl = await uploadEvidence(MASTER_BUCKET, path, evidence.evidenceFile, "image/jpeg");
             const checked = await createCheckedActivity({ 
-                ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad, 
-                Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud, 
-                Longitud: evidence.gpsLocation?.longitude || catalog.selectedDetail.Longitud 
+              ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad, 
+              Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud, 
+              Longitud: evidence.gpsLocation?.longitude || catalog.selectedDetail.Longitud,
+              Cantidad: Number(evidence.registerDetailQuantity) || 0
             });
-
             const { data: regData } = await createRegistro({ 
                 Nombre_Archivo: fileName, URL_Archivo: pubUrl, user_id: session.sessionUser.id, 
                 ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: path, Bucket: MASTER_BUCKET 
@@ -138,10 +160,14 @@ export function useReportFlow() {
 
             if (regData?.[0]?.ID_Registros && evidence.registerPropId && evidence.registerDetailText) {
                 await supabase.from('Detalle_Propiedad').insert([{ 
-                    ID_Registro: regData[0].ID_Registros, ID_Propiedad: Number(evidence.registerPropId), Detalle_Propiedad: evidence.registerDetailText 
+                    ID_Registro: regData[0].ID_Registros, ID_Propiedad: Number(evidence.registerPropId), Detalle_Propiedad: evidence.registerDetailText
                 }]);
             }
-            showToast("Reporte guardado exitosamente", "success");
+            if (checked.excedido) {
+              showToast(`Guardado: Se ha superado el metrado (Total: ${checked.acumulado})`, "info");
+            } else {
+              showToast("Reporte guardado exitosamente", "success");
+            }
         } else {
             const pend: PendingRecord = { 
                 timestamp, evidenceBlob: evidence.evidenceFile, fileType: "image/jpeg", 
@@ -150,10 +176,7 @@ export function useReportFlow() {
             await db.pendingUploads.add(pend);
             showToast("Guardado localmente (Pendiente)", "info");
         }
-        
-        // <--- CAMBIO AQUÍ: Volver al Inicio en lugar de quedarse en el mapa
         handleGoHome();
-
     } catch (err) { console.error(err); showToast("Error al guardar", "error"); } 
     finally { session.setIsLoading(false); }
   };
@@ -183,30 +206,67 @@ export function useReportFlow() {
     setStep("auth");
     setIsMenuOpen(false);
   };
+
+  const requestDeleteAccount = () => {
+    setConfirmModal({
+      open: true,
+      title: "Eliminar mi cuenta",
+      message: "La eliminación total de la cuenta requiere validación de administración.",
+      onConfirm: async () => {
+        try {
+          await handleLogoutBridge();
+          showToast("Sesión cerrada.", "info");
+        } catch {
+          showToast("No se pudo completar", "error");
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
+  };
   
   const getMapUrl = () => { const lat = evidence.gpsLocation?.latitude ?? catalog.selectedDetail?.Latitud; const lng = evidence.gpsLocation?.longitude ?? catalog.selectedDetail?.Longitud; return (lat && lng) ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}` : null; };
 
-  console.log("DEBUG CATALOG:", catalog); // <--- Agrega esto
-  console.log("Tiene setLocalitySearch?", typeof catalog.setLocalitySearch);
+
   return {
     step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
-    isOnline: session.isOnline, isLoading: session.isLoading, sessionUser: session.sessionUser,
+    isOnline: session.isOnline, syncStatus,
+    isLoading: session.isLoading, sessionUser: session.sessionUser,
     authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
-    handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount: session.saveProfile,
-    projects: catalog.projects, fronts: catalog.fronts, localities: catalog.localities, filteredDetails: catalog.filteredDetails, filteredLocalities: catalog.filteredLocalities, selectedDetail: catalog.selectedDetail, selectedActivity: catalog.selectedActivity, detailSearch: catalog.detailSearch, setDetailSearch: catalog.setDetailSearch, localitySearch: catalog.localitySearch, setLocalitySearch: catalog.setLocalitySearch, 
+    handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
+    
+    // CATALOGO EXPORTS (Aquí agregamos lo nuevo)
+    projects: catalog.projects, 
+    fronts: catalog.fronts, 
+    localities: catalog.localities,
+    filteredLocalities: catalog.filteredLocalities, // <--- NUEVO
+    localitySearch: catalog.localitySearch,         // <--- NUEVO
+    setLocalitySearch: catalog.setLocalitySearch,   // <--- NUEVO
+    
+    filteredDetails: catalog.filteredDetails, 
+    selectedDetail: catalog.selectedDetail, 
+    selectedActivity: catalog.selectedActivity, 
+    detailSearch: catalog.detailSearch, 
+    setDetailSearch: catalog.setDetailSearch,
+    
     selectedProjectId: catalog.selectedProjectId, selectedFrontId: catalog.selectedFrontId, selectedLocalityId: catalog.selectedLocalityId,
     selectProject, selectFront, selectLocality, selectDetail,
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
     utmZone: evidence.utmZone, setUtmZone: evidence.setUtmZone, utmEast: evidence.utmEast, setUtmEast: evidence.setUtmEast, utmNorth: evidence.utmNorth, setUtmNorth: evidence.setUtmNorth, handleUpdateFromUtm: evidence.handleUpdateFromUtm,
     evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
-    registerProperties: evidence.registerProperties, registerPropId: evidence.registerPropId, setRegisterPropId: evidence.setRegisterPropId, registerDetailText: evidence.registerDetailText, setRegisterDetailText: evidence.setRegisterDetailText,
+    registerProperties: evidence.registerProperties, registerPropId: evidence.registerPropId, setRegisterPropId: evidence.setRegisterPropId, registerDetailText: evidence.registerDetailText, setRegisterDetailText: evidence.setRegisterDetailText, registerDetailQuantity: evidence.registerDetailQuantity, setRegisterDetailQuantity: evidence.setRegisterDetailQuantity,
     saveReport, getMapUrl,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
-    requestDeleteRecord: records.requestDeleteRecord, handleDownloadCSV: records.handleDownloadCSV,
-    isPhotoModalOpen: records.isPhotoModalOpen, openEditModal: records.openEditModal, closeEditModal: records.setIsPhotoModalOpen, 
+    requestDeleteRecord: records.requestDeleteRecord, 
+    handleDownloadCSV: records.handleCreateCSV,
+    isPhotoModalOpen: records.isPhotoModalOpen,
+    openEditModal: records.openEditModal,
+    closeEditModal: () => records.setIsPhotoModalOpen(false),
     editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } }, 
     saveRecordEdits: records.saveRecordEdits,
-    handleGoHome, goBack
+    handleGoHome, goBack,
+    previousRecord,
+    isAlreadyRegistered
   };
 }

@@ -28,8 +28,10 @@ export function useEvidenceFlow(
 
   // Atributos Dinámicos
   const [registerProperties, setRegisterProperties] = useState<ActivitiesTypes[]>([]);
-  const [registerPropId, setRegisterPropId] = useState<number | "">("");
+  // Nota: <select> siempre entrega string; guardamos como string y casteamos a number al persistir.
+  const [registerPropId, setRegisterPropId] = useState<string>("");
   const [registerDetailText, setRegisterDetailText] = useState("");
+  const [registerDetailQuantity, setRegisterDetailQuantity] = useState("");
 
   // Cargar propiedades cuando cambia la actividad
   useEffect(() => {
@@ -80,7 +82,8 @@ export function useEvidenceFlow(
 
   const resetEvidence = () => {
       setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiFeedback(null);
-      setGpsLocation(null); setRegisterPropId(""); setRegisterDetailText("");
+      setGpsLocation(null); setRegisterPropId(""); setRegisterDetailText(""); setRegisterDetailQuantity("");
+      setUtmEast(""); setUtmNorth("");
   };
 
   return {
@@ -88,6 +91,6 @@ export function useEvidenceFlow(
       utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm,
       evidenceFile, evidencePreview, note, setNote, handleCaptureFile,
       isAnalyzing, aiFeedback, resetEvidence,
-      registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
+      registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText, registerDetailQuantity, setRegisterDetailQuantity
   };
 }

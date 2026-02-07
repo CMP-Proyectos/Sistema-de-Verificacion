@@ -18,6 +18,7 @@ export interface UserRecord {
     longitud: number | null;
     nombre_proyecto?: string;
     nombre_frente?: string;
+    cantidad: number;
 }
 
 // Estructura para las propiedades/atributos dinámicos

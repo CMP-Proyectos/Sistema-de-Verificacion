@@ -54,12 +54,22 @@ export function useSessionFlow(
   };
 
   const handleLogout = async () => {
-    await db.projects.clear(); await db.fronts.clear(); await db.localities.clear(); await db.details.clear();
-    await supabase.auth.signOut();
-    setSessionUser(null);
+    try {
+        // se usan los nombres definidos en db_local.ts
+        await db.catalog_projects.clear(); 
+        await db.catalog_fronts.clear(); 
+        await db.catalog_localities.clear(); 
+        await db.catalog_details.clear();
+        await db.catalog_activities.clear(); 
+      
+        await supabase.auth.signOut();
+        setSessionUser(null);
+    } catch (error) {
+        console.error("Error al cerrar sesión:", error);
+        setSessionUser(null);
+    }
   };
 
-  // Lógica de Perfil (Resumida)
   const loadProfileData = async () => {
       const {data} = await supabase.auth.getUser();
       if(data.user) {

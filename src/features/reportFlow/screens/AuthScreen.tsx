@@ -27,7 +27,7 @@ export const AuthScreen = ({
       <div style={{...styles.card, width: '100%', maxWidth: '400px', padding: '40px' }}>
         <div style={{ marginBottom: '30px', textAlign: 'center' }}>
           <h1 style={{ ...styles.heading, borderBottom: 'none', fontSize: '24px', marginBottom: '8px' }}>
-            Consorcio Cenepa
+            CMP Contratistas E.I.R.L.
           </h1>
           <p style={{ ...styles.text, color: '#64748B', fontSize: '14px', margin: 0 }}>
             Plataforma de Reportes de Campo

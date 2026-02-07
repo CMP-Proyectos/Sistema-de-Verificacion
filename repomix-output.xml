@@ -45,23 +45,34 @@ app.json
 app/_layout.tsx
 app/+html.tsx
 app/index.tsx
+assets/images/android-icon-background.png
+assets/images/android-icon-foreground.png
+assets/images/android-icon-monochrome.png
+assets/images/favicon.png
+assets/images/icon.png
+assets/images/splash-icon.png
 eslint.config.js
 package.json
-public/assests/images/android-icon-background.png
-public/assests/images/android-icon-foreground.png
-public/assests/images/android-icon-monochrome.png
-public/assests/images/favicon.png
-public/assests/images/icon.png
-public/assests/images/partial-react-logo.png
-public/assests/images/react-logo.png
-public/assests/images/react-logo@2x.png
-public/assests/images/react-logo@3x.png
-public/assests/images/splash-icon.png
-public/iconos/logo-consorcio-cenepa.png
-public/iconos/logo-principal.png
 public/manifest.json
 public/sw.js
 README.md
+scripts/reset-project.js
+src/features/reportFlow/components/BottomNav.tsx
+src/features/reportFlow/components/ConfirmModal.tsx
+src/features/reportFlow/components/PhotoEditModal.tsx
+src/features/reportFlow/components/Toast.tsx
+src/features/reportFlow/components/TopNav.tsx
+src/features/reportFlow/constants/geo.ts
+src/features/reportFlow/ReportFlowPage.tsx
+src/features/reportFlow/screens/AuthScreen.tsx
+src/features/reportFlow/screens/EvidenceFormScreen.tsx
+src/features/reportFlow/screens/SelectionScreen.tsx
+src/features/reportFlow/screens/UserGalleryScreen.tsx
+src/features/reportFlow/types.ts
+src/hooks/flow/useCatalogFlow.ts
+src/hooks/flow/useEvidenceFlow.ts
+src/hooks/flow/useRecordsFlow.ts
+src/hooks/flow/useSessionFlow.ts
 src/hooks/useReportFlow.ts
 src/services/dataService.ts
 src/services/db_local.ts
@@ -69,10 +80,266 @@ src/services/GoogleAI.ts
 src/services/supabaseClient.ts
 src/theme/styles.ts
 tsconfig.json
+vercel.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="vercel.json">
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}
+</file>
+
+<file path=".gitignore">
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env.*
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+</file>
+
+<file path="app.json">
+{
+  "expo": {
+    "name": "ReportFlow",
+    "slug": "report-flow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "meta": {
+        "apple": {
+          "mobileWebAppCapable": "yes",
+          "mobileWebAppStatusBarStyle": "black-translucent"
+        }
+      }
+    }
+  }
+}
+</file>
+
+<file path="app/_layout.tsx">
+import { Stack } from "expo-router";
+
+export default function Layout() {
+  return (
+    <Stack 
+      screenOptions={{ 
+        headerShown: false, // eliminar encabezado azul
+        animation: 'fade',  // transición suave
+        contentStyle: { backgroundColor: '#F5F7FB' } // fondo gris claro base
+      }} 
+    />
+  );
+}
+</file>
+
+<file path="app/+html.tsx">
+import { ScrollViewStyleReset } from 'expo-router/html';
+import { type PropsWithChildren } from 'react';
+
+export default function Root({ children }: PropsWithChildren) {
+  return (
+    <html lang="es">
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <link rel="manifest" href="/manifest.json" />
+        <ScrollViewStyleReset />  
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body>
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('Service Worker registrado con éxito:', registration.scope);
+                  }, function(err) {
+                    console.log('Fallo al registrar Service Worker:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />  
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/index.tsx">
+import React, { useEffect } from "react"; // 1. Importamos useEffect
+import ReportFlowPage from "../src/features/reportFlow/ReportFlowPage";
+
+export default function IndexPage() {
+
+  // --- EL INTERRUPTOR OFFLINE (Service Worker) ---
+  useEffect(() => {
+    // Verificamos si el navegador soporta Service Workers
+    // y evitamos activarlo en localhost para que no te moleste mientras programas
+    if ('serviceWorker' in navigator && !window.location.host.includes('localhost')) {
+      
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('✅ Modo Offline Activado (SW registrado):', registration.scope);
+        })
+        .catch((err) => {
+          console.error('❌ Error al activar Modo Offline:', err);
+        });
+        
+    }
+  }, []); // El array vacío [] hace que esto corra solo una vez al iniciar la app
+
+  return <ReportFlowPage />;
+}
+</file>
+
+<file path="eslint.config.js">
+// https://docs.expo.dev/guides/using-eslint/
+const { defineConfig } = require('eslint/config');
+const expoConfig = require('eslint-config-expo/flat');
+
+module.exports = defineConfig([
+  expoConfig,
+  {
+    ignores: ['dist/*'],
+  },
+]);
+</file>
+
+<file path="package.json">
+{
+  "name": "app-ejemplo",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@google/generative-ai": "^0.24.1",
+    "@react-navigation/bottom-tabs": "^7.4.0",
+    "@react-navigation/elements": "^2.6.3",
+    "@react-navigation/native": "^7.1.8",
+    "@supabase/supabase-js": "^2.89.0",
+    "dexie": "^4.2.1",
+    "expo": "~54.0.30",
+    "expo-constants": "~18.0.12",
+    "expo-font": "~14.0.10",
+    "expo-haptics": "~15.0.8",
+    "expo-image": "~3.0.11",
+    "expo-image-picker": "~17.0.10",
+    "expo-linking": "~8.0.11",
+    "expo-location": "~19.0.8",
+    "expo-router": "~6.0.21",
+    "expo-splash-screen": "~31.0.13",
+    "expo-status-bar": "~3.0.9",
+    "expo-symbols": "~1.0.8",
+    "expo-system-ui": "~6.0.9",
+    "expo-web-browser": "~15.0.10",
+    "lucide-react": "^0.562.0",
+    "proj4": "^2.20.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-maps": "1.20.1",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.5.1",
+    "react-webcam": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/proj4": "^2.5.6",
+    "@types/react": "~19.1.0",
+    "eslint": "^9.25.0",
+    "eslint-config-expo": "~10.0.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
+</file>
 
 <file path="public/manifest.json">
 {
@@ -100,17 +367,85 @@ This section contains the contents of the repository's files.
 </file>
 
 <file path="public/sw.js">
+// public/sw.js
+const CACHE_NAME = 'reportflow-v1-dynamic';
+
+// Archivos críticos que SIEMPRE deben estar (App Shell)
+// Nota: En Vite los nombres de JS cambian (hashing), así que confiamos 
+// en el caching dinámico (abajo) para guardarlos conforme se usan.
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.ico'
+];
+
+// 1. INSTALACIÓN: Pre-carga lo básico
 self.addEventListener('install', (event) => {
-  console.log('Service Worker instalado');
-  self.skipWaiting();
+  console.log('[SW] Instalando y cacheando app shell...');
+  self.skipWaiting(); // Fuerza la activación inmediata
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
+  );
 });
 
+// 2. ACTIVACIÓN: Limpia cachés viejos si cambias la versión
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activado');
+  console.log('[SW] Activado. Limpiando cachés antiguos...');
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('[SW] Borrando caché viejo:', key);
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  return self.clients.claim(); // Controla la página inmediatamente
 });
 
+// 3. INTERCEPTOR DE RED (El cerebro offline)
 self.addEventListener('fetch', (event) => {
-  
+  const url = new URL(event.request.url);
+
+  // A. IGNORAR SUPABASE Y APIS EXTERNAS
+  // Dejamos que tu código de React + Dexie maneje los datos.
+  // El SW solo se encarga de que la "cáscara" de la app cargue.
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('googleapis.com')) {
+    return; // Pasa directo a la red (o falla si no hay, y tu código React lo maneja)
+  }
+
+  // B. ESTRATEGIA: "Stale-While-Revalidate" para archivos estáticos (JS, CSS, Imágenes)
+  // 1. Intenta servir desde caché rápido.
+  // 2. En segundo plano, va a la red a buscar una versión nueva para la próxima vez.
+  // 3. Si no hay red, se queda con lo del caché.
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          // Si la respuesta es válida, actualizamos el caché
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Si falla la red, no hacemos nada extra aquí porque ya intentamos
+          // devolver el cachedResponse abajo.
+        });
+
+      // Devuelve lo que haya en caché, o espera a la red si no hay nada
+      return cachedResponse || fetchPromise;
+    })
+  );
 });
 </file>
 
@@ -168,392 +503,1173 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 </file>
 
-<file path="src/services/supabaseClient.ts">
-import { createClient } from "@supabase/supabase-js";
+<file path="scripts/reset-project.js">
+#!/usr/bin/env node
+/**
+ * Minimal reset helper.
+ *
+ * Este repo se distribuye sin la plantilla completa de "reset-project".
+ * Si necesitas un reset rápido:
+ *   1) borra node_modules/ y .expo/
+ *   2) reinstala dependencias (npm install / pnpm install)
+ */
 
-const SUPABASE_URL = "https://torwsfbxltzibydrlrqc.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log('reset-project: borra node_modules/ y .expo/ y reinstala dependencias.');
 </file>
 
-<file path=".gitignore">
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+<file path="src/features/reportFlow/components/BottomNav.tsx">
+import React from 'react';
+import { styles } from '../../../theme/styles';
+import { Step } from '../types';
+// 1. Importamos los iconos que necesitamos
+import { Home, Camera, FileSpreadsheet, User } from 'lucide-react';
 
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
-</file>
-
-<file path="app.json">
-{
-  "expo": {
-    "name": "app-ejemplo",
-    "slug": "app-ejemplo",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "appejemplo",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
-  }
-}
-</file>
-
-<file path="app/+html.tsx">
-import { ScrollViewStyleReset } from 'expo-router/html';
-import { type PropsWithChildren } from 'react';
-
-export default function Root({ children }: PropsWithChildren) {
-  return (
-    <html lang="es">
-      <head>
-        <meta charSet="utf-8" />
-        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <link rel="manifest" href="/manifest.json" />
-        <ScrollViewStyleReset />
-      </head>
-      <body>
-        {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('Service Worker registrado con éxito:', registration.scope);
-                  }, function(err) {
-                    console.log('Fallo al registrar Service Worker:', err);
-                  });
-                });
-              }
-            `,
-          }}
-        />  
-      </body>
-    </html>
-  );
-}
-</file>
-
-<file path="eslint.config.js">
-// https://docs.expo.dev/guides/using-eslint/
-const { defineConfig } = require('eslint/config');
-const expoConfig = require('eslint-config-expo/flat');
-
-module.exports = defineConfig([
-  expoConfig,
-  {
-    ignores: ['dist/*'],
-  },
-]);
-</file>
-
-<file path="tsconfig.json">
-{
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
-}
-</file>
-
-<file path="package.json">
-{
-  "name": "app-ejemplo",
-  "main": "expo-router/entry",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "expo lint"
-  },
-  "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
-    "@google/generative-ai": "^0.24.1",
-    "@react-navigation/bottom-tabs": "^7.4.0",
-    "@react-navigation/elements": "^2.6.3",
-    "@react-navigation/native": "^7.1.8",
-    "@supabase/supabase-js": "^2.89.0",
-    "dexie": "^4.2.1",
-    "expo": "~54.0.30",
-    "expo-constants": "~18.0.12",
-    "expo-font": "~14.0.10",
-    "expo-haptics": "~15.0.8",
-    "expo-image": "~3.0.11",
-    "expo-image-picker": "~17.0.10",
-    "expo-linking": "~8.0.11",
-    "expo-location": "~19.0.8",
-    "expo-router": "~6.0.21",
-    "expo-splash-screen": "~31.0.13",
-    "expo-status-bar": "~3.0.9",
-    "expo-symbols": "~1.0.8",
-    "expo-system-ui": "~6.0.9",
-    "expo-web-browser": "~15.0.10",
-    "proj4": "^2.20.2",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-gesture-handler": "~2.28.0",
-    "react-native-maps": "1.20.1",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
-    "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.5.1",
-    "react-webcam": "^7.2.0"
-  },
-  "devDependencies": {
-    "@types/proj4": "^2.5.6",
-    "@types/react": "~19.1.0",
-    "eslint": "^9.25.0",
-    "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
-  },
-  "private": true
-}
-</file>
-
-<file path="src/services/GoogleAI.ts">
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const API_KEY = "AIzaSyBLQUR7hW1sO_Iyf_g8EvKFXGogu0tbguA"; 
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-// interfaz de respuesta
-export interface IAValidationResult {
-    aprobado: boolean;
-    mensaje: string;
-    esErrorTecnico?: boolean; // bandera para identificar error de red
+interface Props {
+  step: Step;
+  onNavHome: () => void;
+  onNavRecords: () => void;
+  onNavFiles: () => void;
+  onNavProfile: () => void;
 }
 
-export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
-  try {
-    const base64Data = await fileToBase64(file);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    // prompt "analítico"
-    const prompt = `Analiza esta imagen para la actividad: "${nombreActividad}".
-                    Si la imagen coincide razonablemente (construcción, planos, herramientas, terreno), aprueba.
-                    Si es algo claramente incorrecto (selfie, mascota, pantalla negra, comida), reprueba y di qué es.
-                    Responde SOLO JSON: { "aprobado": boolean, "mensaje": "razón corta" }`;
-    
-    const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Data, mimeType: file.type } }
-    ]);
-    
-    const response = await result.response;
-    const text = response.text();  
-    const cleanText = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanText);
+export const BottomNav = ({ step, onNavHome, onNavRecords, onNavFiles, onNavProfile }: Props) => {
+  
+  // Lógica de activo
+  const isHomeActive = !['user_records', 'files', 'profile'].includes(step);
+  const isRecordsActive = step === 'user_records';
+  const isFilesActive = step === 'files';
+  const isProfileActive = step === 'profile';
 
-  } catch (error: any) {
-    console.error("Error IA:", error);
-    
-    // detección de error técnico (conexión) u offline
-    // si falla el fetch o no hay internet, devolvemos un estado especial
-    return { 
-        aprobado: false, 
-        esErrorTecnico: true, // error técnico, no rechazo de imagen
-        mensaje: "Validación automática no disponible (Offline)" 
-    };
-  }
-};
+  // Helper para color. Usamos los colores de tu paleta (definidos en styles.ts conceptualmente)
+  const getIconColor = (isActive: boolean) => isActive ? "#003366" : "#64748B"; // Navy vs SlateLight
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1]; 
-        resolve(base64);
-    };
-    reader.onerror = error => reject(error);
+  // Helper para estilo del contenedor
+  const getItemStyle = (isActive: boolean) => ({
+    ...styles.bottomNavItem,
+    ...(isActive ? styles.bottomNavItemActive : {})
   });
-}
+
+  return (
+    <div style={styles.bottomNav}>
+      
+      <button onClick={onNavHome} style={getItemStyle(isHomeActive)}>
+        {/* Usamos el componente Icono y le pasamos tamaño y color */}
+        <Home size={24} color={getIconColor(isHomeActive)} strokeWidth={isHomeActive ? 2.5 : 2} style={{ marginBottom: 4 }} />
+        <span style={styles.navLabel}>Inicio</span>
+      </button>
+
+      <button onClick={onNavRecords} style={getItemStyle(isRecordsActive)}>
+        <Camera size={24} color={getIconColor(isRecordsActive)} strokeWidth={isRecordsActive ? 2.5 : 2} style={{ marginBottom: 4 }} />
+        <span style={styles.navLabel}>Galería</span>
+      </button>
+
+      <button onClick={onNavFiles} style={getItemStyle(isFilesActive)}>
+        <FileSpreadsheet size={24} color={getIconColor(isFilesActive)} strokeWidth={isFilesActive ? 2.5 : 2} style={{ marginBottom: 4 }} />
+        <span style={styles.navLabel}>Archivos</span>
+      </button>
+
+      <button onClick={onNavProfile} style={getItemStyle(isProfileActive)}>
+        <User size={24} color={getIconColor(isProfileActive)} strokeWidth={isProfileActive ? 2.5 : 2} style={{ marginBottom: 4 }} />
+        <span style={styles.navLabel}>Cuenta</span>
+      </button>
+
+    </div>
+  );
+};
 </file>
 
-<file path="app/_layout.tsx">
-import { Stack } from "expo-router";
+<file path="src/features/reportFlow/components/ConfirmModal.tsx">
+import React from 'react';
+import { styles } from '../../../theme/styles';
+import { ConfirmModalState } from '../types';
 
-export default function Layout() {
+interface Props {
+  modal: ConfirmModalState | null;
+  onClose: () => void;
+}
+
+export const ConfirmModal = ({ modal, onClose }: Props) => {
+  if (!modal?.open) return null;
+
   return (
-    <Stack 
-      screenOptions={{ 
-        headerShown: false, // eliminar encabezado azul
-        animation: 'fade',  // transición suave
-        contentStyle: { backgroundColor: '#F5F7FB' } // fondo gris claro base
-      }} 
-    />
+    <div style={styles.modalOverlay}>
+        <div style={styles.modalCard}>
+            <h3 style={{...styles.heading, borderBottom:'none', marginBottom: '8px'}}>{modal.title}</h3>
+            <p style={{fontSize: '14px', color: '#475569', marginBottom: '20px'}}>{modal.message}</p>
+            <div style={{display: 'flex', gap: '10px'}}>
+                <button onClick={onClose} style={{...styles.btnSecondary, width: '100%'}}>Cancelar</button>
+                <button onClick={modal.onConfirm} style={styles.btnDanger}>Confirmar</button>
+            </div>
+        </div>
+    </div>
+  );
+};
+</file>
+
+<file path="src/features/reportFlow/components/PhotoEditModal.tsx">
+import React, { useRef } from 'react';
+import { styles } from '../../../theme/styles';
+
+interface Props {
+  open: boolean;
+  previewUrl: string;
+  comment: string;
+  onCommentChange: (val: string) => void;
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+export const PhotoEditModal = ({ open, previewUrl, comment, onCommentChange, onFileSelect, onClose, onSave }: Props) => {
+  if (!open) return null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div style={styles.modalOverlay}>
+        <div style={styles.modalCard}>
+            <h3 style={styles.heading}>Editar Registro</h3>
+            
+            {previewUrl && (
+                <img src={previewUrl} style={{width: '100%', borderRadius: '4px', marginBottom: '12px', border: '1px solid #CBD5E1'}} alt="Preview" />
+            )}
+            
+            <button onClick={() => fileInputRef.current?.click()} style={{...styles.btnSecondary, width: '100%', marginBottom: '16px'}}>
+                Cambiar Foto
+            </button>
+            <input ref={fileInputRef} type="file" onChange={onFileSelect} style={{display:'none'}} accept="image/*" />
+            
+            <label style={styles.label}>Comentario</label>
+            <input 
+                value={comment} 
+                onChange={(e) => onCommentChange(e.target.value)} 
+                style={styles.input} 
+            />
+            
+            <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
+                <button onClick={onClose} style={{...styles.btnSecondary, width: '50%'}}>Cancelar</button>
+                <button onClick={onSave} style={{...styles.btnPrimary, width: '50%', marginTop: 0}}>Guardar</button>
+            </div>
+        </div>
+    </div>
+  );
+};
+</file>
+
+<file path="src/features/reportFlow/components/Toast.tsx">
+import React from 'react';
+import { ToastState } from '../types';
+
+export const Toast = ({ toast }: { toast: ToastState | null }) => {
+  if (!toast) return null;
+  
+  const bg = toast.type === 'error' ? '#FEF2F2' : (toast.type === 'info' ? '#EFF6FF' : '#F0FDF4');
+  const border = toast.type === 'error' ? '#EF4444' : (toast.type === 'info' ? '#3B82F6' : '#10B981');
+  const color = toast.type === 'error' ? '#991B1B' : (toast.type === 'info' ? '#1E40AF' : '#166534');
+
+  return (
+    <div style={{
+        position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+        backgroundColor: bg, border: `1px solid ${border}`, color: color,
+        padding: '12px 24px', borderRadius: '4px', zIndex: 9999,
+        fontWeight: '600', fontSize: '14px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+    }}>
+        {toast.msg}
+    </div>
+  );
+};
+</file>
+
+<file path="src/features/reportFlow/components/TopNav.tsx">
+import React from 'react';
+import { styles } from '../../../theme/styles';
+import { Step } from '../types';
+// Importamos iconos técnicos
+import { ChevronLeft, Wifi, WifiOff } from 'lucide-react';
+// IMPORTA TU LOGO AQUÍ (Asegúrate de tener la imagen en esa ruta)
+// import logoImg from '../../../assets/logo_cenepa.png'; 
+
+interface Props {
+  step: Step;
+  isOnline: boolean;
+  onBack: () => void;
+  breadcrumbNames: { project?: string; front?: string; locality?: string; detail?: string; };
+}
+
+export const TopNav = ({ step, isOnline, onBack, breadcrumbNames }: Props) => {
+  if (step === "auth") return null;
+
+  const isRootScreen = step === 'project' || step === 'profile' || step === 'user_records' || step === 'files';
+
+  return (
+    <>
+        <div style={styles.navbar}>
+             {/* Opción A: Texto estilizado */}
+             <div style={styles.navbarBrand}>CMP CONTRASTIAS E.I.R.L.</div>
+                     
+             {/* Opción B: Logo Imagen (Descomentar si tienes la imagen) */}
+             {/* <img src={logoImg} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} /> */}
+        </div>
+
+        <div style={styles.statusBar}>
+            <div style={{
+                color: isOnline ? '#10B981' : '#64748B', // Verde o Gris
+                fontWeight: '600', display:'flex', alignItems:'center', gap:'6px'
+            }}>
+                {/* Icono de Wifi condicional */}
+                {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+                <span>{isOnline ? "CONECTADO" : "OFFLINE"}</span>
+            </div>
+
+            {!isRootScreen && (
+                <button onClick={onBack} style={{
+                    background: 'none', border: '1px solid #CBD5E1', borderRadius: '4px',
+                    padding: '4px 8px', fontSize: '11px', fontWeight: '600', color: '#334155', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '4px'
+                }}>
+                    <ChevronLeft size={14} /> ATRÁS
+                </button>
+            )}
+        </div>
+
+        {!isRootScreen && (
+             <div style={styles.breadcrumbs}>
+                {breadcrumbNames.project && <span style={styles.breadcrumbItem}>{breadcrumbNames.project}</span>}
+                {breadcrumbNames.front && <><span>/</span><span>{breadcrumbNames.front}</span></>}
+                {breadcrumbNames.locality && <><span>/</span><span>{breadcrumbNames.locality}</span></>}
+                {breadcrumbNames.detail && <><span>/</span><span>{breadcrumbNames.detail}</span></>}
+             </div>
+        )}
+    </>
+  );
+};
+</file>
+
+<file path="src/features/reportFlow/constants/geo.ts">
+// src/features/reportFlow/constants/geo.ts
+
+export const WGS84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+
+export const utmZones: Record<string, string> = { 
+    "17": "+proj=utm +zone=17 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", 
+    "18": "+proj=utm +zone=18 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", 
+    "19": "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs" 
+};
+</file>
+
+<file path="src/features/reportFlow/ReportFlowPage.tsx">
+import React, { useMemo } from "react";
+import { useReportFlow } from "../../hooks/useReportFlow";
+import { styles } from "../../theme/styles";
+
+// Componentes UI
+import { TopNav } from "./components/TopNav";
+import { BottomNav } from "./components/BottomNav";
+import { Toast } from "./components/Toast";
+import { ConfirmModal } from "./components/ConfirmModal";
+import { PhotoEditModal } from "./components/PhotoEditModal";
+
+// Screens
+import { AuthScreen } from "./screens/AuthScreen";
+import { SelectionScreen } from "./screens/SelectionScreen";
+import { EvidenceFormScreen } from "./screens/EvidenceFormScreen";
+import { UserGalleryScreen } from "./screens/UserGalleryScreen";
+
+export default function ReportFlowPage() {
+  const flow = useReportFlow();
+  
+  // Helpers
+  const mapUrl = flow.getMapUrl();
+  const displayLat = flow.gpsLocation?.latitude ?? flow.selectedDetail?.Latitud ?? 0;
+  const displayLng = flow.gpsLocation?.longitude ?? flow.selectedDetail?.Longitud ?? 0;
+
+  const selectedProjectName = useMemo(() => flow.projects?.find(p => p.ID_Proyectos === flow.selectedProjectId)?.Proyecto_Nombre, [flow.projects, flow.selectedProjectId]);
+  const selectedFrontName = useMemo(() => flow.fronts?.find(f => f.ID_Frente === flow.selectedFrontId)?.Nombre_Frente, [flow.fronts, flow.selectedFrontId]);
+  const selectedLocalityName = useMemo(() => flow.localities?.find(l => l.ID_Localidad === flow.selectedLocalityId)?.Nombre_Localidad, [flow.localities, flow.selectedLocalityId]);
+
+  return (
+    <div style={styles.page}>
+      
+      <TopNav 
+        step={flow.step}
+        isOnline={flow.isOnline}
+        onBack={flow.goBack}
+        breadcrumbNames={{
+            project: selectedProjectName,
+            front: selectedFrontName,
+            locality: selectedLocalityName,
+            detail: flow.selectedDetail?.Nombre_Detalle
+        }}
+      />
+
+      <div style={styles.container}>
+
+        {/* LOGIN */}
+        {flow.step === "auth" && (
+            <AuthScreen 
+                authEmail={flow.authEmail} setAuthEmail={flow.setAuthEmail}
+                authPassword={flow.authPassword} setAuthPassword={flow.setAuthPassword}
+                authMode={flow.authMode} setAuthMode={flow.setAuthMode}
+                isLoading={flow.isLoading} syncStatus={flow.syncStatus}
+                onLogin={flow.handleLogin}
+            />
+        )}
+
+        {/* SELECCIONES INICIALES */}
+        {flow.step === "project" && (
+            <SelectionScreen 
+                title="Seleccionar Proyecto"
+                items={flow.projects.map(p => ({ id: p.ID_Proyectos, label: p.Proyecto_Nombre }))}
+                onSelect={flow.selectProject}
+            />
+        )}
+        
+        {flow.step === "front" && (
+            <SelectionScreen 
+                title="Seleccionar Frente"
+                items={flow.fronts.map(f => ({ id: f.ID_Frente, label: f.Nombre_Frente }))}
+                onSelect={flow.selectFront}
+            />
+        )}
+
+        {flow.step === "locality" && (
+            <SelectionScreen 
+                title="Seleccionar Localidad"
+                items={flow.localities.map(l => ({ id: l.ID_Localidad, label: l.Nombre_Localidad }))}
+                onSelect={flow.selectLocality}
+            />
+        )}
+        
+        {/* BUSCAR SECTOR (CORREGIDO Y RESALTADO) */}
+        {flow.step === "detail" && (
+            <div style={styles.card}>
+                <h2 style={styles.heading}>BUSCAR SECTOR</h2>
+                <input 
+                    placeholder="Filtrar por nombre o código..." 
+                    value={flow.detailSearch} 
+                    onChange={e => flow.setDetailSearch(e.target.value)}
+                    style={styles.input}
+                    autoFocus 
+                />
+                <div style={styles.scrollableY}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {flow.filteredDetails && flow.filteredDetails.length > 0 ? (
+                            flow.filteredDetails.map(d => (
+                                <button 
+                                    key={d.ID_DetallesActividad} 
+                                    onClick={() => flow.selectDetail(d)}
+                                    style={{
+                                        ...styles.gridItem, 
+                                        flexDirection: 'row', 
+                                        justifyContent: 'space-between', 
+                                        textAlign: 'left', 
+                                        padding: '16px', 
+                                        minHeight: 'auto',
+                                        width: '100%',
+                                        borderLeft: '4px solid #003366',
+                                        boxSizing: 'border-box'
+                                    }}
+                                >
+                                    {/* IZQUIERDA: TIPO DE ARMADO (MÁS RESALTADO) */}
+                                    <div style={{ flex: 1, paddingRight: '10px' }}>
+                                        <div style={{ fontSize: '12px', fontWeight: '770', color: '#1E293B' }}>
+                                            {d.activityName}
+                                        </div>
+                                    </div>
+                                    {/* DERECHA: CÓDIGO (IDENTIFICADOR) */}
+                                    <div style={{ backgroundColor: '#F1F5F9', padding: '4px 8px', borderRadius: '4px' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: '700', color: '#003366', fontFamily: 'monospace' }}>
+                                            {d.Nombre_Detalle}
+                                        </span>
+                                    </div>
+                                </button>
+                            ))
+                        ) : (
+                            <div style={{ padding: '30px', textAlign: 'center', color: '#94A3B8' }}>Sin resultados</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* CONFIRMACIÓN DE ACTIVIDAD (REINSTAURADA) */}
+        {flow.step === "activity" && flow.selectedActivity && (
+             <div style={styles.card}>
+                <h2 style={styles.heading}>CONFIRMAR</h2>
+                <div style={{ padding: '24px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', marginBottom: '20px', borderRadius: '4px' }}>
+                    <label style={styles.label}>ACTIVIDAD</label>
+                    <p style={{ fontSize: '14px', fontWeight: '700', color: '#003366', margin: 0 }}>
+                        {flow.selectedActivity.Nombre_Actividad}
+                    </p>
+                </div>
+                <button onClick={() => flow.setStep("map")} style={{ ...styles.btnPrimary, height: '56px' }}>
+                    COMENZAR REPORTE
+                </button>
+             </div>
+        )}
+
+        {/* FORMULARIO DE EVIDENCIA */}
+        {(flow.step === "map" || flow.step === "form") && (
+            <EvidenceFormScreen 
+                isOnline={flow.isOnline}
+                mapUrl={mapUrl} displayLat={displayLat} displayLng={displayLng}
+                isFetchingGps={flow.isFetchingGps} onCaptureGps={flow.handleCaptureGps}
+                utmZone={flow.utmZone} setUtmZone={flow.setUtmZone} utmEast={flow.utmEast} setUtmEast={flow.setUtmEast} utmNorth={flow.utmNorth} setUtmNorth={flow.setUtmNorth} onUpdateUtm={flow.handleUpdateFromUtm}
+                evidencePreview={flow.evidencePreview} isAnalyzing={flow.isAnalyzing} aiFeedback={flow.aiFeedback} onCaptureFile={flow.handleCaptureFile}
+                note={flow.note} setNote={flow.setNote}
+                registerProperties={flow.registerProperties} registerPropId={flow.registerPropId} setRegisterPropId={flow.setRegisterPropId} registerDetailText={flow.registerDetailText} setRegisterDetailText={flow.setRegisterDetailText}
+                isLoading={flow.isLoading} onSave={() => { flow.saveReport(); }}
+            />
+        )}
+        
+        {/* PANTALLAS DE NAVEGACIÓN INFERIOR */}
+        {flow.step === "profile" && (
+             <div style={styles.card}>
+                <h2 style={styles.heading}>Mi Perfil</h2>
+                <div style={{marginBottom:'20px'}}>
+                    <label style={styles.label}>Usuario</label>
+                    <div style={{fontSize:'14px', color:'#1E293B'}}>{flow.sessionUser?.email}</div>
+                </div>
+                <input value={flow.profileName} onChange={(e) => flow.setProfileName(e.target.value)} style={styles.input} placeholder="Nombres" />
+                <input value={flow.profileLastName} onChange={(e) => flow.setProfileLastName(e.target.value)} style={styles.input} placeholder="Apellidos" />
+                <button onClick={flow.saveProfile} disabled={flow.isProfileSaving} style={styles.btnPrimary}>Actualizar Datos</button>
+                <button onClick={flow.handleLogout} style={{...styles.btnSecondary, width: '100%', marginTop: '20px'}}>Cerrar Sesión</button>
+             </div>
+        )}
+
+        {flow.step === "user_records" && (
+            <UserGalleryScreen 
+                records={flow.userRecords}
+                isLoading={flow.isLoadingRecords}
+                selectedRecordId={flow.selectedRecordId}
+                onSelectRecord={flow.setSelectedRecordId}
+                onDelete={(rec) => flow.requestDeleteRecord(rec)}
+                onEdit={flow.openEditModal}
+            />
+        )}
+
+        {flow.step === "files" && (
+             <div style={styles.card}>
+                 <div style={styles.flexBetween}>
+                    <h2 style={{...styles.heading, borderBottom: 'none', margin: 0}}>Exportar Datos</h2>
+                    <button onClick={flow.handleDownloadCSV} style={styles.btnSecondary}>DESCARGAR CSV</button>
+                 </div>
+                 <div style={styles.scrollableY}>
+                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '500px' }}>
+                       <thead>
+                           <tr style={{ backgroundColor: '#F1F5F9', color: '#64748B' }}>
+                               <th style={{ padding: '10px', textAlign: 'left' }}>ID</th>
+                               <th style={{ padding: '10px', textAlign: 'left' }}>Actividad</th>
+                               <th style={{ padding: '10px', textAlign: 'left' }}>Fecha</th>
+                           </tr>
+                       </thead>
+                       <tbody>
+                           {flow.userRecords?.map(r => (
+                              <tr key={r.id_registro} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                                 <td style={{ padding: '10px' }}>{r.id_registro}</td>
+                                 <td style={{ padding: '10px', fontWeight: '600' }}>{r.nombre_actividad}</td>
+                                 <td style={{ padding: '10px' }}>{new Date(r.fecha_subida).toLocaleDateString()}</td>
+                              </tr>
+                           ))}
+                       </tbody>
+                     </table>
+                 </div>
+             </div>
+        )}
+
+      </div>
+
+      {flow.step !== "auth" && (
+          <BottomNav 
+            step={flow.step}
+            onNavHome={flow.handleGoHome}
+            onNavRecords={() => flow.setStep("user_records")}
+            onNavFiles={() => flow.setStep("files")}
+            onNavProfile={() => flow.setStep("profile")}
+          />
+      )}
+
+      <PhotoEditModal 
+        open={flow.isPhotoModalOpen}
+        previewUrl={flow.editPreviewUrl}
+        comment={flow.editComment}
+        onCommentChange={flow.setEditComment}
+        onFileSelect={flow.handleEditFileSelect}
+        onClose={flow.closeEditModal}
+        onSave={flow.saveRecordEdits}
+      />
+      <Toast toast={flow.toast} />
+      <ConfirmModal modal={flow.confirmModal} onClose={() => flow.setConfirmModal(null)} />
+
+    </div>
   );
 }
 </file>
 
-<file path="src/services/db_local.ts">
-import Dexie, { Table } from 'dexie';
-import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
+<file path="src/features/reportFlow/screens/AuthScreen.tsx">
+import React from 'react';
+import { styles } from '../../../theme/styles';
 
-// definición local de las propiedades
-export interface ActivityPropertyDef {
-  id?: number; 
-  ID_Actividad: number;
-  ID_Propiedad: number;
-  Nombre_Propiedad: string;
+interface Props {
+  authEmail: string;
+  setAuthEmail: (val: string) => void;
+  authPassword: string;
+  setAuthPassword: (val: string) => void;
+  authMode: "login" | "signup";
+  setAuthMode: (mode: "login" | "signup") => void;
+  isLoading: boolean;
+  syncStatus: string;
+  onLogin: () => void;
 }
 
-// tipos para registros pendientes de subida:
-export interface PendingRecord {
-  id?: number;
-  timestamp: number;
-  evidenceBlob: Blob;
-  fileType: string;
-  meta: {
-    bucketName: string;
-    fullPath: string;
-    fileName: string;
-    userId: string;
-    detailId: number;
-    lat: number;
-    lng: number;
-    comment: string;
-    properties?: { id_propiedad: number; valor: string }[];
-  };
-}
+export const AuthScreen = ({ 
+    authEmail, setAuthEmail, authPassword, setAuthPassword, 
+    authMode, setAuthMode, isLoading, syncStatus, onLogin 
+}: Props) => {
 
-class OfflineDatabase extends Dexie {
-  projects!: Table<ProjectRecord>;
-  fronts!: Table<FrontRecord>;
-  localities!: Table<LocalityRecord>;
-  details!: Table<DetailRecord>;
-  activities!: Table<ActivityRecord>;
-  pendingUploads!: Table<PendingRecord>;
-  activityProperties!: Table<ActivityPropertyDef>;
+  const isLogin = authMode === "login";
 
-  constructor() {
-    super('AppObraDB');
-    // estructura final
-    this.version(6).stores({
-      projects: 'ID_Proyectos',
-      fronts: 'ID_Frente, ID_Proyecto',
-      localities: 'ID_Localidad, ID_Frente',
-      details: 'ID_DetallesActividad, ID_Localidad', 
-      activities: 'ID_Actividad',
-      pendingUploads: '++id',
-      activityProperties: '++id, ID_Actividad'
-    });
-  }
-}
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+      
+      {/* Tarjeta de Login */}
+      <div style={{...styles.card, width: '100%', maxWidth: '400px', padding: '40px' }}>
+        <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+          <h1 style={{ ...styles.heading, borderBottom: 'none', fontSize: '24px', marginBottom: '8px' }}>
+            CMP Contratistas E.I.R.L.
+          </h1>
+          <p style={{ ...styles.text, color: '#64748B', fontSize: '14px', margin: 0 }}>
+            Plataforma de Reportes de Campo
+          </p>
+        </div>
 
-export const db = new OfflineDatabase();
+        <form onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
+          <div>
+            <label style={styles.label}>Correo Corporativo</label>
+            <input 
+              type="email" 
+              placeholder="usuario@empresa.com" 
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              style={styles.input}
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label style={styles.label}>Contraseña</label>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              style={styles.input}
+              disabled={isLoading}
+            />
+          </div>
+
+          <button 
+            type="submit"
+            disabled={isLoading}
+            style={{
+              ...styles.btnPrimary,
+              opacity: isLoading ? 0.7 : 1,
+              cursor: isLoading ? 'wait' : 'pointer'
+            }}
+          >
+            {isLoading ? "AUTENTICANDO..." : (isLogin ? "INGRESAR AL SISTEMA" : "REGISTRAR CUENTA")}
+          </button>
+        </form>
+
+        <div style={{ marginTop: '24px', textAlign: 'center', borderTop: '1px solid #F1F5F9', paddingTop: '20px' }}>
+          <button 
+            onClick={() => setAuthMode(isLogin ? "signup" : "login")}
+            style={styles.btnLink}
+          >
+            {isLogin ? "¿No tienes acceso? Crear cuenta" : "Volver a Iniciar Sesión"}
+          </button>
+        </div>
+
+        {syncStatus && (
+          <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#F0FDF4', color: '#166534', fontSize: '12px', textAlign: 'center', borderRadius: '4px' }}>
+            STATUS: {syncStatus}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 </file>
 
-<file path="src/hooks/useReportFlow.ts">
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { 
-  supabase, 
-  getAllProjects, getAllFronts, getAllLocalities, getAllDetails, getAllActivities, 
-  uploadEvidence, createCheckedActivity, createRegistro, 
-  ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord 
-} from "../services/dataService";
-import { db, PendingRecord } from "../services/db_local";
-import { validarFotoConIA, IAValidationResult } from "../services/GoogleAI"; 
-import proj4 from 'proj4';
+<file path="src/features/reportFlow/screens/EvidenceFormScreen.tsx">
+import React, { useRef, useState } from 'react';
+import { styles, evidenceStyles as es } from '../../../theme/styles'; 
+import { ActivitiesTypes } from '../types';
+import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud, AlertCircle } from 'lucide-react';
 
-//Listado de steps de la pagina
+interface Props {
+  isOnline: boolean;
+  mapUrl: string | null;
+  displayLat: number;
+  displayLng: number;
+  isFetchingGps: boolean;
+  onCaptureGps: () => void;
+  utmZone: string; setUtmZone: (v: string) => void;
+  utmEast: string; setUtmEast: (v: string) => void;
+  utmNorth: string; setUtmNorth: (v: string) => void;
+  onUpdateUtm: () => void;
+  evidencePreview: string | null;
+  isAnalyzing: boolean;
+  aiFeedback: { type: 'warning' | 'info' | 'success', message: string } | null;
+  onCaptureFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  note: string; setNote: (v: string) => void;
+  registerProperties: ActivitiesTypes[];
+  registerPropId: string; setRegisterPropId: (v: string) => void;
+  registerDetailText: string; setRegisterDetailText: (v: string) => void;
+  isLoading: boolean;
+  onSave: () => void;
+  // NUEVA PROP PARA EVIDENCIA PREVIA
+  previousRecord?: any; 
+}
+
+export const EvidenceFormScreen = ({
+    isOnline, mapUrl, displayLat, displayLng,
+    isFetchingGps, onCaptureGps,
+    utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, onUpdateUtm,
+    evidencePreview, isAnalyzing, aiFeedback, onCaptureFile,
+    note, setNote,
+    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText,
+    isLoading, onSave,
+    previousRecord
+}: Props) => {
+
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const [geoMode, setGeoMode] = useState<'gps' | 'utm'>('gps');
+
+  const getToggleStyle = (mode: 'gps' | 'utm') => ({
+      ...es.toggleBtn,
+      ...(geoMode === mode ? es.toggleBtnActive : {})
+  });
+
+  const getBadgeStyle = () => ({
+      ...es.badgeBase,
+      ...(isOnline ? es.badgeOnline : es.badgeOffline)
+  });
+
+  const getCameraBtnStyle = () => ({
+      ...es.uploadBtnLarge,
+      ...es.uploadBtnLargeActive
+  });
+
+  return (
+    <div style={styles.scrollableY}>
+        
+        {/* --- BLOQUE NUEVO: EVIDENCIA PREVIA (SOLO SI EXISTE) --- */}
+        {previousRecord && (
+            <div style={{
+                ...styles.card,
+                backgroundColor: '#FFFFFF',
+                borderLeft: '5px solid #F59E0B',
+                padding: '16px',
+                marginBottom: '16px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <AlertCircle size={18} color="#92400E" />
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#92400E', textTransform: 'uppercase' }}>
+                        Registro previo encontrado en este sector
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {/* Miniatura de la foto anterior guardada localmente */}
+                    <img 
+                        src={previousRecord.URL_Archivo} 
+                        style={{ 
+                            width: '85px', 
+                            height: '85px', 
+                            borderRadius: '6px', 
+                            objectFit: 'cover', 
+                            border: '1px solid #E2E8F0',
+                            backgroundColor: '#F1F5F9'
+                        }} 
+                        alt="Evidencia anterior"
+                    />
+                    
+                    <div style={{ flex: 1 }}>
+                        <label style={{ ...styles.label, fontSize: '10px', color: '#64748B', marginBottom: '4px' }}>
+                            COMENTARIO ANTERIOR
+                        </label>
+                        <p style={{ fontSize: '13px', color: '#1E293B', fontWeight: '600', margin: 0, fontStyle: 'italic' }}>
+                            "{previousRecord.comentario || 'Sin comentario registrado'}"
+                        </p>
+                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+                            <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>
+                                Registrado el: {new Date(previousRecord.fecha_subida).toLocaleDateString()}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* --- BLOQUE 1: UBICACIÓN --- */}
+        <div style={styles.card}>
+            <div style={{...styles.flexBetween, ...styles.mb16}}>
+                <h3 style={es.headerClean}>1. Ubicación Geodésica</h3>
+                <span style={getBadgeStyle()}>
+                    {isOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
+            </div>
+
+            <div style={es.toggleContainer}>
+                <button onClick={() => setGeoMode('gps')} style={getToggleStyle('gps')}>GPS AUTO</button>
+                <button onClick={() => setGeoMode('utm')} style={getToggleStyle('utm')}>UTM MANUAL</button>
+            </div>
+            
+            <div style={es.mapContainer}>
+                {isOnline && mapUrl ? (
+                    <iframe title="Mapa" src={mapUrl} style={es.mapIframe} loading="lazy" />
+                ) : (
+                    <div style={es.mapPlaceholder}>
+                        <MapPin size={24} />
+                        <span style={{fontSize:'11px', fontWeight:'600', marginTop:'4px'}}>SIN REFERENCIA VISUAL</span>
+                    </div>
+                )}
+            </div>
+
+            {geoMode === 'gps' && (
+                <>
+                    <div style={es.grid2}>
+                        <div>
+                            <label style={styles.label}>Latitud</label>
+                            <div style={es.inputReadOnly}>{displayLat.toFixed(6)}</div>
+                        </div>
+                        <div>
+                            <label style={styles.label}>Longitud</label>
+                            <div style={es.inputReadOnly}>{displayLng.toFixed(6)}</div>
+                        </div>
+                    </div>
+                    <button onClick={onCaptureGps} disabled={isFetchingGps} style={styles.btnSecondary}>
+                        {isFetchingGps ? <RefreshCw className="spin" size={16}/> : <Navigation size={16}/>}
+                        <span style={{marginLeft: '8px'}}>{isFetchingGps ? "TRIANGULANDO..." : "ACTUALIZAR POSICIÓN"}</span>
+                    </button>
+                </>
+            )}
+
+            {geoMode === 'utm' && (
+                <div style={es.utmRow}>
+                    <div style={{width: '60px'}}>
+                        <label style={styles.label}>ZONA</label>
+                        <input type="number" value={utmZone} onChange={e => setUtmZone(e.target.value)} placeholder="18" style={es.inputCenter} />
+                    </div>
+                    <div style={{flex: 1}}>
+                        <label style={styles.label}>ESTE (X)</label>
+                        <input type="number" value={utmEast} onChange={e => setUtmEast(e.target.value)} placeholder="Ej: 280500" style={es.inputNoMargin} />
+                    </div>
+                    <div style={{flex: 1}}>
+                        <label style={styles.label}>NORTE (Y)</label>
+                        <input type="number" value={utmNorth} onChange={e => setUtmNorth(e.target.value)} placeholder="Ej: 8665000" style={es.inputNoMargin} />
+                    </div>
+                    <button onClick={onUpdateUtm} style={es.btnSquare}>
+                        <RefreshCw size={18} />
+                    </button>
+                </div>
+            )}
+        </div>
+
+        {/* --- BLOQUE 2: EVIDENCIA --- */}
+        <div style={styles.card}>
+            <h3 style={styles.heading}>2. Evidencia de Campo</h3>
+            
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
+            <input ref={galleryInputRef} type="file" accept="image/*" onChange={onCaptureFile} style={{ display: 'none' }} />
+
+            {!evidencePreview ? (
+                <div style={es.uploadRow}>
+                    <button onClick={() => cameraInputRef.current?.click()} style={getCameraBtnStyle()}>
+                        <Camera size={32} style={{ marginBottom: '8px' }} />
+                        <span style={{ fontSize: '12px', fontWeight: '700' }}>CÁMARA</span>
+                    </button>
+
+                    <button onClick={() => galleryInputRef.current?.click()} style={es.uploadBtnLarge}>
+                        <ImageIcon size={32} style={{ marginBottom: '8px' }} />
+                        <span style={{ fontSize: '12px', fontWeight: '700' }}>GALERÍA</span>
+                    </button>
+                </div>
+            ) : (
+                <div style={{marginBottom: '16px'}}>
+                    <div style={es.previewContainer}>
+                        <img src={evidencePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Evidencia" />
+                    </div>
+                    <div style={es.actionsRow}>
+                        <button onClick={() => cameraInputRef.current?.click()} style={es.btnSmall}>
+                            <Camera size={14} /> RE-TOMAR
+                        </button>
+                        <button onClick={() => galleryInputRef.current?.click()} style={es.btnSmall}>
+                            <UploadCloud size={14} /> SUBIR OTRA
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {(isAnalyzing || aiFeedback) && (
+                <div style={{ ...es.console, borderLeft: `4px solid ${aiFeedback?.type === 'warning' ? '#EF4444' : '#10B981'}` }}>
+                    {isAnalyzing && <div>&gt; SYSTEM: ANALYZING IMAGE DATA...</div>}
+                    {aiFeedback && (
+                        <>
+                            <div>&gt; STATUS: {aiFeedback.type === 'warning' ? 'REVIEW_REQUIRED' : 'APPROVED'}</div>
+                            <div style={{ color: '#E2E8F0' }}>&gt; MSG: {aiFeedback.message}</div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            <label style={styles.label}>Observaciones Técnicas</label>
+            <textarea 
+                value={note} onChange={e => setNote(e.target.value)} 
+                style={{...styles.input, height: '80px', fontFamily: 'sans-serif', resize: 'vertical'}} 
+                placeholder="Describa condiciones o detalles relevantes..." 
+            />
+        </div>
+
+        {isOnline && registerProperties.length > 0 && (
+            <div style={styles.card}>
+                <h3 style={styles.heading}>3. Datos Paramétricos</h3>
+                <div style={es.grid2}>
+                    <div>
+                        <label style={styles.label}>Propiedad</label>
+                        <select value={registerPropId} onChange={(e) => setRegisterPropId(e.target.value)} style={styles.input}>
+                            <option value="">-- SELECCIONAR --</option>
+                            {registerProperties.map(p => (
+                              <option key={p.ID_Propiedad} value={String(p.ID_Propiedad)}>
+                                {p.Propiedad}
+                              </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label style={styles.label}>Valor</label>
+                        <input value={registerDetailText} onChange={(e) => setRegisterDetailText(e.target.value)} style={styles.input} placeholder="Valor" />
+                    </div>
+                </div>
+            </div>
+        )}
+
+        <div style={{ marginBottom: '24px' }}>
+            <button 
+                onClick={onSave} 
+                disabled={isLoading || !evidencePreview || isAnalyzing} 
+                style={{
+                    ...styles.btnPrimary,
+                    opacity: (isLoading || !evidencePreview) ? 0.6 : 1,
+                    cursor: (isLoading || !evidencePreview) ? 'not-allowed' : 'pointer'
+                }}
+            >
+                {isLoading ? "GUARDANDO..." : "GUARDAR Y FINALIZAR"}
+            </button>
+        </div>
+    </div>
+  );
+};
+</file>
+
+<file path="src/features/reportFlow/screens/SelectionScreen.tsx">
+import React from 'react';
+import { styles } from '../../../theme/styles';
+
+export interface SelectableItem {
+    id: number;
+    label: string;
+    code?: string; 
+}
+
+interface Props {
+    title: string;
+    items: SelectableItem[];
+    onSelect: (id: number) => void;
+    isLoading?: boolean;
+}
+
+export const SelectionScreen = ({ title, items, onSelect, isLoading }: Props) => {
+    return (
+        <div style={styles.card}>
+            <div style={styles.flexBetween}>
+                <h2 style={styles.heading}>{title}</h2>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>{items?.length || 0} ITEMS</span>
+            </div>
+            
+            {isLoading ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', fontStyle: 'italic' }}>
+                    Cargando datos...
+                </div>
+            ) : (
+                <div style={styles.scrollableY}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {items && items.length > 0 ? (
+                            items.map(item => (
+                                <div 
+                                    key={item.id} 
+                                    onClick={() => onSelect(item.id)} 
+                                    style={{
+                                        ...styles.gridItem,
+                                        flexDirection: 'row',        // Alineación horizontal
+                                        justifyContent: 'space-between', 
+                                        textAlign: 'left',
+                                        padding: '16px',
+                                        minHeight: 'auto',
+                                        borderLeft: '4px solid #003366',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}
+                                >
+                                    {/* LADO IZQUIERDO: TIPO DE ARMADO (MÁS RESALTADO) */}
+                                    <div style={{ flex: 1, paddingRight: '12px' }}>
+                                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#1E293B', lineHeight: '1.4' }}>
+                                            {item.label}
+                                        </div>
+                                    </div>
+
+                                    {/* LADO DERECHO: CÓDIGO (ESTILO ETIQUETA) */}
+                                    {item.code && (
+                                        <div style={{ 
+                                            backgroundColor: '#F1F5F9', 
+                                            padding: '4px 10px', 
+                                            borderRadius: '4px',
+                                            border: '1px solid #CBD5E1',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            flexShrink: 0 // Evita que el código se encoja
+                                        }}>
+                                            <span style={{ 
+                                                fontSize: '11px', 
+                                                fontWeight: '700', 
+                                                color: '#003366', 
+                                                fontFamily: 'monospace' 
+                                            }}>
+                                                {item.code}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div style={{ padding: '30px', textAlign: 'center', border: '1px dashed #D1D5DB', borderRadius: '6px', color: '#64748B' }}>
+                                No hay registros disponibles.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+</file>
+
+<file path="src/features/reportFlow/screens/UserGalleryScreen.tsx">
+import React from 'react';
+import { styles } from '../../../theme/styles';
+import { UserRecord } from '../types';
+
+interface Props {
+  records: UserRecord[];
+  isLoading: boolean;
+  selectedRecordId: number | null;
+  onSelectRecord: (id: number | null) => void;
+  onDelete: (rec: UserRecord) => void;
+  onEdit: () => void;
+}
+
+export const UserGalleryScreen = ({ 
+    records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit 
+}: Props) => {
+
+  const renderDetail = () => {
+    const rec = records.find(r => r.id_registro === selectedRecordId);
+    if (!rec) return null;
+
+    const proyectoStr = rec.nombre_proyecto || (rec.bucket ? rec.bucket.replace(/_/g, ' ').toUpperCase() : "GENERAL");
+
+    return (
+        <div style={styles.detailOverlay}>
+            {/* Header */}
+            <div style={styles.detailHeader}>
+                <div style={{flex: 1}}>
+                    <span style={{fontSize:'11px', color:'#64748B', textTransform:'uppercase', display:'block', fontWeight:'700'}}>
+                        ACTIVIDAD REGISTRADA
+                    </span>
+                    <h3 style={{margin:0, fontSize:'16px', color:'#0F172A', fontWeight:'700', lineHeight:'1.2'}}>
+                        {rec.nombre_actividad}
+                    </h3>
+                </div>
+                <button onClick={() => onSelectRecord(null)} style={styles.backArrowBtn}>
+                    ←
+                </button>
+            </div>
+
+            {/* Contenido */}
+            <div style={styles.detailContent}>
+                
+                {/* Imagen */}
+                <div style={{
+                    backgroundColor:'#F1F5F9', border: '1px solid #E2E8F0', borderRadius:'8px', 
+                    marginBottom:'24px', display:'flex', justifyContent:'center', alignItems: 'center',
+                    minHeight:'250px', padding: '10px'
+                }}>
+                    {rec.url_foto ? (
+                        <img src={rec.url_foto} style={{maxWidth:'100%', maxHeight:'50vh', objectFit:'contain', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} alt="Evidencia" />
+                    ) : (
+                        <div style={{color:'#94A3B8', fontWeight:'600'}}>SIN IMAGEN DISPONIBLE</div>
+                    )}
+                </div>
+
+                {/* Datos */}
+                <div style={{...styles.card, padding: '20px', boxShadow: 'none', border: '1px solid #E2E8F0'}}>
+                    <h4 style={{...styles.heading, fontSize: '14px', borderBottom: '1px solid #F1F5F9'}}>
+                        DATOS DEL REPORTE
+                    </h4>
+                    
+                    <div style={{display:'grid', gap:'16px'}}>
+                        <div>
+                            <label style={styles.label}>PROYECTO</label>
+                            <div style={styles.text}>{proyectoStr}</div>
+                        </div>
+                        
+                        <div>
+                            <label style={styles.label}>LOCALIDAD</label>
+                            <div style={styles.text}>{rec.nombre_localidad || "---"}</div>
+                        </div>
+
+                        <div>
+                            <label style={styles.label}>SECTOR / DETALLE</label>
+                            <div style={styles.text}>{rec.nombre_detalle || "---"}</div>
+                        </div>
+
+                        <div>
+                            <label style={styles.label}>COORDENADAS</label>
+                            <div style={styles.monoText}>
+                                {rec.latitud ? `${rec.latitud.toFixed(6)}, ${rec.longitud?.toFixed(6)}` : "NO REGISTRADAS"}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={styles.label}>OBSERVACIONES</label>
+                            <div style={{
+                                ...styles.text, backgroundColor: '#F8FAFC', padding: '10px', 
+                                borderRadius: '4px', border: '1px solid #F1F5F9',
+                                color: rec.comentario ? '#334155' : '#94A3B8',
+                                fontStyle: rec.comentario ? 'normal' : 'italic'
+                            }}>
+                                {rec.comentario || "Sin observaciones."}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* BOTONES CORREGIDOS CON GRID (Alineación Perfecta) */}
+                <div style={{
+                    display: 'grid',               // Usamos Grid en vez de Flex
+                    gridTemplateColumns: '1fr 1fr', // Dos columnas exactamente iguales
+                    gap: '16px',
+                    paddingBottom: '40px',
+                    marginTop: '20px'
+                }}>
+                    <button 
+                        onClick={() => onDelete(rec)} 
+                        style={{
+                            ...styles.btnDanger, 
+                            margin: 0, 
+                            height: '48px', // Altura forzada
+                            width: '100%'
+                        }}
+                    >
+                        ELIMINAR
+                    </button>
+                    <button 
+                        onClick={onEdit} 
+                        style={{
+                            ...styles.btnSecondary, 
+                            margin: 0, 
+                            height: '48px', // Altura forzada
+                            width: '100%'
+                        }}
+                    >
+                        EDITAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
+  return (
+    <div style={styles.card}>
+        <div style={styles.flexBetween}>
+            <h2 style={styles.heading}>Mis Registros</h2>
+            <span style={{fontSize:'12px', color:'#64748B', fontWeight:'600'}}>{records?.length || 0} ITEMS</span>
+        </div>
+
+        {selectedRecordId && renderDetail()}
+
+        <div style={styles.scrollableY}>
+            {isLoading ? (
+                <div style={{padding:'40px', textAlign:'center', color:'#64748B'}}>Cargando galería...</div>
+            ) : records?.length === 0 ? (
+                <div style={{padding:'40px', textAlign:'center', color:'#64748B', fontStyle:'italic'}}>
+                    No se han encontrado registros.
+                </div>
+            ) : (
+                <div style={styles.grid}>
+                    {records.map(rec => (
+                        <div 
+                            key={rec.id_registro} 
+                            onClick={() => onSelectRecord(rec.id_registro)} 
+                            style={{
+                                ...styles.gridItem, padding: 0, overflow: 'hidden',
+                                border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column',
+                                height: 'auto', aspectRatio: '1/1.1'
+                            }}
+                        >
+                            <div style={{
+                                width:'100%', flex: 1, backgroundColor:'#F8FAFC', 
+                                display:'flex', alignItems:'center', justifyContent:'center',
+                                borderBottom: '1px solid #E2E8F0'
+                            }}>
+                                {rec.url_foto ? (
+                                    <img src={rec.url_foto} style={{width:'100%', height:'100%', objectFit:'cover'}} loading="lazy" alt="thumb" />
+                                ) : (
+                                    <span style={{fontSize:'24px', opacity:0.3}}>📷</span>
+                                )}
+                            </div>
+                            <div style={{
+                                padding:'8px 10px', width:'100%', boxSizing:'border-box', 
+                                backgroundColor: '#FFFFFF', minHeight: '40px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <span style={{
+                                    fontSize:'10px', fontWeight:'700', color:'#334155', lineHeight:'1.3',
+                                    textAlign: 'center', display: '-webkit-box',
+                                    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                                }}>
+                                    {rec.nombre_actividad}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    </div>
+  );
+};
+</file>
+
+<file path="src/features/reportFlow/types.ts">
+// src/features/reportFlow/types.ts
+
+// Estados de navegación
 export type Step = "auth" | "project" | "front" | "locality" | "detail" | "activity" | "map" | "form" | "profile" | "user_records" | "files";
 
-//Plantilla de registros de usuario que se extrae de la base de datos
+// Estructura de un registro de usuario (base de datos)
 export interface UserRecord { 
     id_registro: number; 
     fecha_subida: string; 
@@ -570,33 +1686,40 @@ export interface UserRecord {
     nombre_frente?: string;
 }
 
-export interface ActivitiesTypes { Tipo_Actividad: string; ID_Propiedad: number; Propiedad: string; }
+// Estructura para las propiedades/atributos dinámicos
+export interface ActivitiesTypes { 
+    Tipo_Actividad: string; 
+    ID_Propiedad: number; 
+    Propiedad: string; 
+}
+
+// Estados para componentes UI
+export interface ToastState {
+    msg: string;
+    type: 'success' | 'error' | 'info';
+}
+
+export interface ConfirmModalState {
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+}
+</file>
+
+<file path="src/hooks/flow/useCatalogFlow.ts">
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { db } from "../../services/db_local";
+import { 
+  getAllProjects, getAllFronts, getAllLocalities, getAllDetails, getAllActivities, 
+  ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord 
+} from "../../services/dataService";
+
 type DetailWithActivity = DetailRecord & { activityName: string };
-type GpsLocation = { latitude: number; longitude: number; };
 
-const WGS84 = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-const utmZones: Record<string, string> = { "17": "+proj=utm +zone=17 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", "18": "+proj=utm +zone=18 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs", "19": "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs" };
-
-export function useReportFlow() {
-  const [step, setStep] = useState<Step>("auth");
-  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
-  const [isLoading, setIsLoading] = useState(false);
+export function useCatalogFlow(isOnline: boolean) {
   const [syncStatus, setSyncStatus] = useState("");
-  const [sessionUser, setSessionUser] = useState<{ email: string; id: string } | null>(null);
   
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authMode, setAuthMode] = useState<"login"|"signup">("login");
-
-  const [profileName, setProfileName] = useState("");
-  const [profileLastName, setProfileLastName] = useState("");
-  const [profileEmail, setProfileEmail] = useState("");
-  const [profileCreatedAt, setProfileCreatedAt] = useState("");
-  const [profileLastSignInAt, setProfileLastSignInAt] = useState("");
-  const [profileMessage, setProfileMessage] = useState<string | null>(null);
-  const [isProfileSaving, setIsProfileSaving] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [fronts, setFronts] = useState<FrontRecord[]>([]);
   const [localities, setLocalities] = useState<LocalityRecord[]>([]);
@@ -607,396 +1730,759 @@ export function useReportFlow() {
   const [selectedFrontId, setSelectedFrontId] = useState<number | null>(null);
   const [selectedLocalityId, setSelectedLocalityId] = useState<number | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<DetailWithActivity | null>(null);
+  // Eliminamos selectedActivity si no se usa explícitamente en la UI, o lo mantenemos si lo necesitas
   const [selectedActivity, setSelectedActivity] = useState<ActivityRecord | null>(null);
+  
   const [detailSearch, setDetailSearch] = useState("");
 
+  // --- 1. CARGA INICIAL (HÍBRIDA) ---
+  // Al iniciar, cargamos lo que haya en local para que la app no arranque vacía
+  useEffect(() => {
+    const loadInitialData = async () => {
+        setProjects(await db.catalog_projects.toArray());
+        setActivities(await db.catalog_activities.toArray()); // Carga actividades offline
+    };
+    loadInitialData();
+  }, []);
+
+  // --- 2. SINCRONIZACIÓN (NUBE -> LOCAL) ---
+  const performFullSync = async () => {
+    if (!isOnline) return;
+    setSyncStatus("Sincronizando...");
+    try {
+        const [p, f, l, d, a] = await Promise.all([ 
+            getAllProjects(), 
+            getAllFronts(), 
+            getAllLocalities(), 
+            getAllDetails(), 
+            getAllActivities() 
+        ]);
+
+        // CORRECCIÓN: Usamos los nombres correctos 'catalog_...'
+        await db.transaction('rw', db.catalog_projects, db.catalog_fronts, db.catalog_localities, db.catalog_details, db.catalog_activities, async () => {
+            await db.catalog_projects.clear(); await db.catalog_projects.bulkPut(p);
+            await db.catalog_fronts.clear(); await db.catalog_fronts.bulkPut(f);
+            await db.catalog_localities.clear(); await db.catalog_localities.bulkPut(l);
+            await db.catalog_details.clear(); await db.catalog_details.bulkPut(d);
+            await db.catalog_activities.clear(); await db.catalog_activities.bulkPut(a);
+        });
+
+        // Actualizamos estado visual
+        setProjects(p);
+        setActivities(a);
+        setSyncStatus("");
+    } catch (e) { 
+        console.error("Sync error", e); 
+        setSyncStatus("Error Sync"); 
+    }
+  };
+
+  // --- 3. CARGA DE DEPENDENCIAS LOCALES ---
+  // Estas funciones ahora usan los nombres correctos de las tablas
+  const loadProjectsLocal = useCallback(async () => { 
+      setProjects(await db.catalog_projects.toArray()); 
+  }, []);
+  
+  const loadFrontsLocal = useCallback(async (pid: number) => { 
+      setFronts(await db.catalog_fronts.where("ID_Proyecto").equals(pid).toArray()); 
+  }, []);
+  
+  const loadLocalitiesLocal = useCallback(async (fid: number) => { 
+      setLocalities(await db.catalog_localities.where("ID_Frente").equals(fid).toArray()); 
+  }, []);
+  
+  const loadDetailsLocal = useCallback(async (lid: number) => { 
+      setDetails(await db.catalog_details.where("ID_Localidad").equals(lid).toArray()); 
+  }, []);
+
+  // --- COMPUTED DATA ---
+  const activityMap = useMemo(() => new Map((activities||[]).map((a) => [a.ID_Actividad, a])), [activities]);
+  
+  const derivedDetails = useMemo(() => (details||[]).map((d) => ({ 
+    ...d, 
+    activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." 
+  })), [details, activityMap]);
+
+  const filteredDetails = useMemo(() => { 
+      const query = detailSearch.trim().toLowerCase(); 
+      
+      let result = query 
+        ? derivedDetails.filter((d) => `${d.Nombre_Detalle} ${d.activityName}`.toLowerCase().includes(query)) 
+        : [...derivedDetails];
+
+      return result.sort((a, b) => a.activityName.localeCompare(b.activityName));
+
+  }, [detailSearch, derivedDetails]);
+
+  const resetSelection = () => {
+      setSelectedProjectId(null); setSelectedFrontId(null); setSelectedLocalityId(null); 
+      setSelectedDetail(null); setSelectedActivity(null);
+  };
+
+  return {
+    syncStatus, projects, fronts, localities, activities, derivedDetails, filteredDetails,
+    selectedProjectId, setSelectedProjectId,
+    selectedFrontId, setSelectedFrontId,
+    selectedLocalityId, setSelectedLocalityId,
+    selectedDetail, setSelectedDetail,
+    selectedActivity, setSelectedActivity,
+    detailSearch, setDetailSearch, activityMap,
+    performFullSync, loadProjectsLocal, loadFrontsLocal, loadLocalitiesLocal, loadDetailsLocal, resetSelection
+  };
+}
+</file>
+
+<file path="src/hooks/flow/useEvidenceFlow.ts">
+import { useState, useRef, useEffect } from "react";
+import { validarFotoConIA } from "../../services/GoogleAI";
+import { ActivityRecord } from "../../services/dataService";
+import { ActivitiesTypes } from "../../features/reportFlow/types";
+import { supabase } from "../../services/dataService";
+import proj4 from 'proj4';
+import { WGS84, utmZones } from "../../features/reportFlow/constants/geo";
+
+type GpsLocation = { latitude: number; longitude: number; };
+
+export function useEvidenceFlow(
+    showToast: (msg: string, type: 'success'|'error'|'info') => void,
+    selectedActivity: ActivityRecord | null,
+    isOnline: boolean
+) {
   const [gpsLocation, setGpsLocation] = useState<GpsLocation | null>(null);
   const [isFetchingGps, setIsFetchingGps] = useState(false);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  
   const [utmZone, setUtmZone] = useState("19");
   const [utmEast, setUtmEast] = useState("");
   const [utmNorth, setUtmNorth] = useState("");
 
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<{ type: 'warning' | 'info' | 'success', message: string } | null>(null);
+
+  // Atributos Dinámicos
+  const [registerProperties, setRegisterProperties] = useState<ActivitiesTypes[]>([]);
+  // Nota: <select> siempre entrega string; guardamos como string y casteamos a number al persistir.
+  const [registerPropId, setRegisterPropId] = useState<string>("");
+  const [registerDetailText, setRegisterDetailText] = useState("");
+
+  // Cargar propiedades cuando cambia la actividad
+  useEffect(() => {
+    const loadProps = async () => {
+      if (isOnline && selectedActivity) {
+        try {
+          const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { nombre_input: selectedActivity.Nombre_Actividad });
+          if (data) setRegisterProperties(data.map((x: any) => ({ Tipo_Actividad: x.nombre_tipo, ID_Propiedad: x.id_propiedad, Propiedad: x.nombre_propiedad })));
+        } catch (err) { console.error(err); }
+      } else { setRegisterProperties([]); }
+    };
+    loadProps();
+  }, [selectedActivity, isOnline]);
+
+  const handleCaptureGps = () => { 
+      if (!navigator.geolocation) return showToast("Sin soporte GPS", "error"); 
+      setIsFetchingGps(true); 
+      navigator.geolocation.getCurrentPosition(
+          (p) => { setGpsLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setIsFetchingGps(false); showToast("GPS OK", "success"); }, 
+          (e) => { showToast(`Error GPS: ${e.message}`, "error"); setIsFetchingGps(false); },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+      ); 
+  };
+  
+  const handleUpdateFromUtm = () => { 
+      if (!utmEast || !utmNorth) return showToast("Faltan datos UTM", "info"); 
+      try { 
+          const [lng, lat] = proj4(utmZones[utmZone as keyof typeof utmZones], WGS84, [Number(utmEast), Number(utmNorth)]); 
+          setGpsLocation({ latitude: lat, longitude: lng }); 
+          showToast("UTM OK", "success"); 
+      } catch { showToast("UTM inválida", "error"); } 
+  };
+
+  const handleCaptureFile = async (e: React.ChangeEvent<HTMLInputElement>) => { 
+    if (e.target.files?.[0]) { 
+        const file = e.target.files[0];
+        setEvidenceFile(file); setEvidencePreview(URL.createObjectURL(file)); 
+        setAiFeedback(null); setIsAnalyzing(true);
+        try {
+            const res = await validarFotoConIA(file, selectedActivity?.Nombre_Actividad || "Obra");
+            if (res.esErrorTecnico) setAiFeedback({ type: 'info', message: "Offline: Validar manual." });
+            else if (!res.aprobado) setAiFeedback({ type: 'warning', message: `IA: ${res.mensaje}` });
+            else setAiFeedback({ type: 'success', message: "Validado por IA." });
+        } catch { setAiFeedback({ type: 'info', message: "Error IA." }); } 
+        finally { setIsAnalyzing(false); }
+    } 
+  };
+
+  const resetEvidence = () => {
+      setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiFeedback(null);
+      setGpsLocation(null); setRegisterPropId(""); setRegisterDetailText("");
+  };
+
+  return {
+      gpsLocation, setGpsLocation, isFetchingGps, handleCaptureGps,
+      utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm,
+      evidenceFile, evidencePreview, note, setNote, handleCaptureFile,
+      isAnalyzing, aiFeedback, resetEvidence,
+      registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
+  };
+}
+</file>
+
+<file path="src/hooks/flow/useRecordsFlow.ts">
+import { useState } from "react";
+import { supabase } from "../../services/dataService";
+import { UserRecord, ConfirmModalState } from "../../features/reportFlow/types";
+
+export function useRecordsFlow(
+    sessionUserId: string | undefined,
+    showToast: (msg: string, type: 'success'|'error'|'info') => void,
+    setConfirmModal: (modal: ConfirmModalState | null) => void,
+    setIsLoading: (v: boolean) => void,
+    MASTER_BUCKET: string
+) {
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
   
-  // --- propiedad (pestaña archivos) ---
-  const [availableProperties, setAvailableProperties] = useState<ActivitiesTypes[]>([]);
-  const [selectedPropId, setSelectedPropId] = useState<number | "">("");
-  const [detailText, setDetailText] = useState("");
-
-  // --- propieidad (pestaña mapa / formulario) ---
-  const [registerProperties, setRegisterProperties] = useState<ActivitiesTypes[]>([]);
-  const [registerPropId, setRegisterPropId] = useState<number | "">("");
-  const [registerDetailText, setRegisterDetailText] = useState("");
-
+  // Estado Modal Edición
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [editEvidenceFile, setEditEvidenceFile] = useState<File | null>(null);
   const [editComment, setEditComment] = useState("");
   const [editPreviewUrl, setEditPreviewUrl] = useState("");
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<{ type: 'warning' | 'info' | 'success', message: string } | null>(null);
-
-  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
-      setToast({ msg, type });
-      setTimeout(() => setToast(null), 3500);
+  const loadUserRecords = async () => { 
+      if(!sessionUserId) return; 
+      setIsLoadingRecords(true); 
+      try { 
+          const {data, error} = await supabase.rpc('obtener_historial_usuario', { usuario_uid: sessionUserId }); 
+          if (error) throw error;
+          setUserRecords(data || []); 
+      } catch (err) {
+          console.error("Error historial:", err);
+      } finally { setIsLoadingRecords(false); } 
+  };
+  
+  const requestDeleteRecord = (i: UserRecord) => { 
+      setConfirmModal({
+          open: true, title: "Borrar registro", message: "¿Eliminar permanentemente?",
+          onConfirm: async () => {
+              setConfirmModal(null); setIsLoading(true); 
+              try { 
+                  if(i.bucket && i.ruta_archivo) await supabase.storage.from(i.bucket).remove([i.ruta_archivo]); 
+                  await supabase.rpc('eliminar_evidencia_completa', { p_id_registro: i.id_registro }); 
+                  await loadUserRecords(); setSelectedRecordId(null); showToast("Eliminado", "success");
+              } catch { showToast("Error al eliminar", "error"); } finally { setIsLoading(false); } 
+          }
+      });
   };
 
-  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const saveRecordEdits = async () => {
+      const item = userRecords.find(r => r.id_registro === selectedRecordId); 
+      if(!item) return; 
+      setIsLoading(true);
+      try {
+          let updates: any = { Comentario: editComment };
+          
+          if(editEvidenceFile && item.bucket) {
+              const bucketToUse = item.bucket || MASTER_BUCKET;
+              const folder = item.ruta_archivo?.includes('/') ? item.ruta_archivo.split('/').slice(0,-1).join('/') : "general";
+              const fn=`edit_${Date.now()}.jpg`; 
+              
+              const {data, error: upErr} = await supabase.storage.from(bucketToUse).upload(`${folder}/${fn}`, editEvidenceFile);
+              if (upErr) throw upErr;
+
+              if(data){ 
+                  const {data:p}=supabase.storage.from(bucketToUse).getPublicUrl(data.path); 
+                  updates.URL_Archivo = p.publicUrl;
+                  updates.Ruta_Archivo = data.path;
+                  updates.Nombre_Archivo = fn;
+                  
+                  if(item.ruta_archivo) await supabase.storage.from(bucketToUse).remove([item.ruta_archivo]); 
+              }
+          }
+          const { error } = await supabase.from('Registros').update(updates).eq('ID_Registros', item.id_registro);
+          if (error) throw error;
+
+          showToast("Actualizado", "success");
+          setIsPhotoModalOpen(false); setEditEvidenceFile(null); loadUserRecords();
+      } catch (e) { console.error(e); showToast("Error al actualizar", "error"); } finally { setIsLoading(false); }
+  };
+
+  const openEditModal = () => { 
+      const r = userRecords.find(i => i.id_registro === selectedRecordId); 
+      if(r){ setEditComment(r.comentario??""); setEditEvidenceFile(null); setEditPreviewUrl(r.url_foto??""); setIsPhotoModalOpen(true); } 
+  };
+
+  // --- LÓGICA CSV ROBUSTA (SIN JOIN SQL) ---
+  const handleDownloadCSV = async () => { 
+      if(!userRecords || userRecords.length === 0) return showToast("No hay datos", "info"); 
+      setIsLoading(true);
+      
+      try {
+          const recordIds = userRecords.map(r => r.id_registro);
+
+          // PASO 1: Obtener detalles crudos (ID_Propiedad)
+          const { data: detailsData, error: detailsError } = await supabase
+            .from('Detalle_Propiedad')
+            .select('ID_Registro, ID_Propiedad, Detalle_Propiedad')
+            .in('ID_Registro', recordIds);
+            
+          if(detailsError) throw detailsError;
+
+          // PASO 2: Obtener nombres de propiedades (Catálogo)
+          // Intentamos buscar en 'Propiedades', si falla, intentamos manejarlo
+          const { data: propsCatalog, error: catalogError } = await supabase
+            .from('Propiedades') // Asegúrate de que esta tabla exista con este nombre
+            .select('ID_Propiedad, Nombre_Propiedad');
+
+          // Mapa de ID -> Nombre (ej: 1 -> "Altura")
+          const propNameMap: Record<number, string> = {};
+          if (propsCatalog) {
+              propsCatalog.forEach((p: any) => {
+                  propNameMap[p.ID_Propiedad] = p.Nombre_Propiedad;
+              });
+          }
+
+          // PASO 3: Construir Pivot en memoria
+          const pivotMap: Record<number, Record<string, string>> = {};
+          const allHeaders = new Set<string>();
+
+          detailsData?.forEach((d: any) => {
+              const regId = d.ID_Registro;
+              // Si tenemos el nombre en el catálogo lo usamos, si no, usamos "Propiedad-{ID}"
+              const propName = propNameMap[d.ID_Propiedad] || `Propiedad-${d.ID_Propiedad}`;
+              const val = d.Detalle_Propiedad || "";
+
+              if (!pivotMap[regId]) pivotMap[regId] = {};
+              pivotMap[regId][propName] = val;
+              allHeaders.add(propName);
+          });
+
+          // PASO 4: Generar CSV
+          const dynamicHeaders = Array.from(allHeaders).sort();
+          const SEPARATOR = ";"; 
+          const fixedHeaders = ["ID", "Fecha", "Actividad", "Proyecto", "Frente", "Localidad", "Detalle", "Comentario", "Latitud", "Longitud", "Foto"];
+          const fullHeaders = [...fixedHeaders, ...dynamicHeaders];
+
+          const csvRows = userRecords.map(r => {
+              const clean = (t: any) => `"${String(t ?? '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+              
+              const fixedData = [
+                  r.id_registro,
+                  new Date(r.fecha_subida).toLocaleString('es-PE'),
+                  clean(r.nombre_actividad),
+                  clean(r.nombre_proyecto),
+                  clean(r.nombre_frente),
+                  clean(r.nombre_localidad),
+                  clean(r.nombre_detalle),
+                  clean(r.comentario),
+                  r.latitud,
+                  r.longitud,
+                  clean(r.url_foto)
+              ];
+
+              const props = pivotMap[r.id_registro] || {};
+              const dynamicData = dynamicHeaders.map(h => clean(props[h]));
+
+              return [...fixedData, ...dynamicData].join(SEPARATOR);
+          });
+
+          const csvContent = "\uFEFF" + [fullHeaders.join(SEPARATOR), ...csvRows].join("\n");
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `reporte_${new Date().toISOString().slice(0,10)}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          showToast("CSV Generado", "success");
+
+      } catch (err: any) {
+          console.error("CSV Error:", err);
+          showToast(`Error CSV: ${err.message}`, "error");
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
+  return {
+      userRecords, isLoadingRecords, loadUserRecords, selectedRecordId, setSelectedRecordId,
+      requestDeleteRecord, saveRecordEdits, isPhotoModalOpen, setIsPhotoModalOpen, openEditModal, 
+      editComment, setEditComment, editPreviewUrl, setEditPreviewUrl, editEvidenceFile, setEditEvidenceFile, 
+      handleDownloadCSV,
+      // Helper para input file
+      handleEditFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => { 
+          if(e.target.files?.[0]) { 
+              setEditEvidenceFile(e.target.files[0]); 
+              setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); 
+          } 
+      }
+  };
+}
+</file>
+
+<file path="src/hooks/flow/useSessionFlow.ts">
+import { useState, useEffect } from "react";
+import { supabase } from "../../services/dataService";
+import { db } from "../../services/db_local";
+import { ToastState, ConfirmModalState } from "../../features/reportFlow/types";
+
+export function useSessionFlow(
+  showToast: (msg: string, type: 'success'|'error'|'info') => void,
+  setConfirmModal: (modal: ConfirmModalState | null) => void
+) {
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [sessionUser, setSessionUser] = useState<{ email: string; id: string } | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"login"|"signup">("login");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Perfil
+  const [profileName, setProfileName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
 
   useEffect(() => {
-    const handleStatus = () => { setIsOnline(navigator.onLine); if(navigator.onLine) syncPendingUploads(); };
+    const handleStatus = () => setIsOnline(navigator.onLine);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
     checkSession();
     return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
   }, []);
 
-  useEffect(() => {
-    if ((step === "profile" || step === "user_records" || step === "files") && sessionUser) { 
-        loadProfileData(); 
-        if (step !== "profile") loadUserRecords(); 
-    }
-  }, [step, sessionUser]);
-
-  // --- carga automática de propiedades para registro (solo online) ---
-  useEffect(() => {
-    const loadRegisterProperties = async () => {
-      if ((step === "map" || step === "form") && isOnline && selectedActivity) {
-        try {
-          const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { 
-            nombre_input: selectedActivity.Nombre_Actividad 
-          });
-          if (data) {
-            setRegisterProperties(data.map((x: any) => ({
-              Tipo_Actividad: x.nombre_tipo,
-              ID_Propiedad: x.id_propiedad,
-              Propiedad: x.nombre_propiedad
-            })));
-          }
-        } catch (err) {
-          console.error("Error cargando propiedades registro:", err);
-        }
-      } else {
-        setRegisterProperties([]);
-      }
-    };
-    loadRegisterProperties();
-  }, [step, selectedActivity, isOnline]);
-
-  const performFullSync = async () => {
-    if (!navigator.onLine) return;
-    setSyncStatus("Sincronizando...");
-    try {
-        const [p, f, l, d, a] = await Promise.all([ getAllProjects(), getAllFronts(), getAllLocalities(), getAllDetails(), getAllActivities() ]);
-        await db.transaction('rw', db.projects, db.fronts, db.localities, db.details, async () => {
-            await db.projects.bulkPut(p); await db.fronts.bulkPut(f); await db.localities.bulkPut(l); await db.details.bulkPut(d);
-        });
-        setActivities(a);
-        setSyncStatus("");
-    } catch (e) { console.error("Sync error", e); setSyncStatus("Error Sync"); }
-  };
-
-  const loadProjectsLocal = useCallback(async () => { setProjects(await db.projects.toArray()); }, []);
-  const loadFrontsLocal = useCallback(async (pid: number) => { setFronts(await db.fronts.where("ID_Proyecto").equals(pid).toArray()); }, []);
-  const loadLocalitiesLocal = useCallback(async (fid: number) => { setLocalities(await db.localities.where("ID_Frente").equals(fid).toArray()); }, []);
-  const loadDetailsLocal = useCallback(async (lid: number) => { setDetails(await db.details.where("ID_Localidad").equals(lid).toArray()); }, []);
-
   const checkSession = async () => {
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
       setSessionUser({ email: data.session.user.email!, id: data.session.user.id });
-      const count = await db.projects.count();
-      if(count === 0 && navigator.onLine) await performFullSync();
-      else if(navigator.onLine) performFullSync().then(loadProjectsLocal);
-      await loadProjectsLocal();
-      setStep("project");
+      return true;
     }
+    return false;
   };
 
-  const handleLogin = async () => {
+  const handleLogin = async (onSuccess: () => void) => {
     setIsLoading(true);
     try {
       if (authMode === "signup") {
          const { data, error } = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword.trim() });
-         if (error) throw error; if (!data.user) return showToast("Verifica tu correo para continuar", "info");
+         if (error) throw error; if (!data.user) return showToast("Verifica tu correo", "info");
          setSessionUser({ email: data.user.email!, id: data.user.id });
       } else {
          const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword.trim() });
          if (error) throw error; if (data.user) setSessionUser({ email: data.user.email!, id: data.user.id });
       }
-      await performFullSync();
-      await loadProjectsLocal();
-      setStep("project");
-    } catch (e: any) { showToast(e.message || "Error al ingresar", "error"); } finally { setIsLoading(false); }
+      onSuccess();
+    } catch (e: any) { showToast(e.message || "Error al ingresar", "error"); } 
+    finally { setIsLoading(false); }
   };
 
   const handleLogout = async () => {
     await db.projects.clear(); await db.fronts.clear(); await db.localities.clear(); await db.details.clear();
     await supabase.auth.signOut();
-    setSessionUser(null); setStep("auth"); setProjects([]); setIsMenuOpen(false);
+    setSessionUser(null);
   };
 
+  // Lógica de Perfil (Resumida)
   const loadProfileData = async () => {
       const {data} = await supabase.auth.getUser();
       if(data.user) {
           setProfileEmail(data.user.email||"");
           setProfileName(data.user.user_metadata?.full_name||"");
           setProfileLastName(data.user.user_metadata?.last_name||"");
-          setProfileCreatedAt(data.user.created_at||"");
-          setProfileLastSignInAt(data.user.last_sign_in_at||"");
       }
   };
+
   const saveProfile = async () => { 
       if(!sessionUser) return; 
       setIsProfileSaving(true); 
-      try { await supabase.from('Detalle_Perfil').update({Nombre: profileName, Apellido: profileLastName}).eq('id', sessionUser.id); showToast("Perfil actualizado", "success"); loadProfileData(); } 
-      catch { showToast("No se pudo actualizar el perfil", "error"); } 
+      try { 
+          await supabase.from('Detalle_Perfil').update({Nombre: profileName, Apellido: profileLastName}).eq('id', sessionUser.id); 
+          showToast("Perfil actualizado", "success"); 
+      } catch { showToast("Error al actualizar", "error"); } 
       finally { setIsProfileSaving(false); } 
   };
-  
-  const requestDeleteAccount = () => {
-      setConfirmModal({
-          open: true,
-          title: "Eliminar cuenta",
-          message: "¿Estás seguro de que quieres eliminar tu cuenta y todos tus datos? Esta acción no se puede deshacer.",
-          onConfirm: async () => {
-              setConfirmModal(null);
-              setIsDeletingAccount(true);
-              try { await supabase.rpc("delete_user"); handleLogout(); showToast("Cuenta eliminada", "info"); } 
-              catch { showToast("Error al eliminar cuenta", "error"); setIsDeletingAccount(false); }
-          }
-      });
+
+  return {
+    isOnline, sessionUser, isLoading, setIsLoading,
+    authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
+    profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, isProfileSaving,
+    checkSession, handleLogin, handleLogout, loadProfileData, saveProfile
   };
-  
-  const loadUserRecords = async () => { if(!sessionUser) return; setIsLoadingRecords(true); try { const {data} = await supabase.rpc('obtener_historial_usuario', { usuario_uid: sessionUser.id }); setUserRecords(data || []); } catch {} finally { setIsLoadingRecords(false); } };
-  
-  const requestDeleteRecord = (i: UserRecord) => { 
-      setConfirmModal({
-          open: true,
-          title: "Borrar registro",
-          message: "¿Deseas eliminar este registro y su foto permanentemente?",
-          onConfirm: async () => {
-              setConfirmModal(null);
-              setIsLoading(true); 
-              try { 
-                  if(i.bucket && i.ruta_archivo) await supabase.storage.from(i.bucket).remove([i.ruta_archivo]); 
-                  await supabase.rpc('eliminar_evidencia_completa', { p_id_registro: i.id_registro }); 
-                  await loadUserRecords(); 
-                  setSelectedRecordId(null);
-                  showToast("Registro eliminado", "success");
-              } catch { showToast("Error al eliminar", "error"); } 
-              finally { setIsLoading(false); } 
-          }
-      });
+}
+</file>
+
+<file path="src/hooks/useReportFlow.ts">
+import { useState, useEffect, useCallback } from "react";
+// Importamos la nueva función del servicio
+import { uploadEvidence, createCheckedActivity, createRegistro, supabase, fetchLastEvidenceForDetail } from "../services/dataService";
+import { db, PendingRecord } from "../services/db_local";
+import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
+
+import { useSessionFlow } from "./flow/useSessionFlow";
+import { useCatalogFlow } from "./flow/useCatalogFlow";
+import { useEvidenceFlow } from "./flow/useEvidenceFlow";
+import { useRecordsFlow } from "./flow/useRecordsFlow";
+
+const MASTER_BUCKET = "Remodelacion_Tacna"; 
+const sanitizeName = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase();
+
+export function useReportFlow() {
+  const [step, setStep] = useState<Step>("auth");
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Estado para guardar el registro previo on-demand
+  const [previousRecord, setPreviousRecord] = useState<any>(null);
+
+  const showToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
+      setToast({ msg, type }); setTimeout(() => setToast(null), 3500);
   };
 
-  const handleDownloadCSV = () => { 
-      if(!userRecords.length) return showToast("No hay datos para descargar", "info"); 
-      const h=["ID","Fecha","Actividad","Localidad","Detalle","Comentario","Latitud","Longitud"]; 
-      const r=userRecords.map(i=>[i.id_registro, i.fecha_subida, `"${i.nombre_actividad}"`, `"${i.nombre_localidad}"`, `"${i.nombre_detalle}"`, `"${(i.comentario||'').replace(/"/g, '""')}"`, i.latitud, i.longitud].join(";")); 
-      const csvContent = "\uFEFF" + [h.join(";"), ...r].join("\n");
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `data_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showToast("Descarga iniciada", "success");
-  };
+  const session = useSessionFlow(showToast, setConfirmModal);
+  const catalog = useCatalogFlow(session.isOnline);
+  const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
+  const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
 
-  const saveRecordEdits = async () => {
-      const item = userRecords.find(r => r.id_registro === selectedRecordId); if(!item) return; setIsLoading(true);
+  const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
+
+  // --- NUEVA LÓGICA: CONSULTA ON-DEMAND ---
+  useEffect(() => {
+    const checkPreviousRecord = async () => {
+      // Solo consultamos si hay un detalle seleccionado y tenemos internet
+      if (!catalog.selectedDetail || !session.isOnline) {
+        setPreviousRecord(null);
+        return;
+      }
+
       try {
-          let u=item.url_foto, r=item.ruta_archivo, n=null;
-          if(editEvidenceFile && item.bucket) {
-              const fn=`ev-${Date.now()}.jpg`; const {data}=await supabase.storage.from(item.bucket).upload(`${item.ruta_archivo?.split('/').slice(0,-1).join('/')}/${fn}`, editEvidenceFile);
-              if(data){ const {data:p}=supabase.storage.from(item.bucket).getPublicUrl(data.path); u=p.publicUrl; r=data.path; n=fn; if(item.ruta_archivo) await supabase.storage.from(item.bucket).remove([item.ruta_archivo]); }
-          }
-          await supabase.from('Registros').update({ Comentario: editComment, ...(editEvidenceFile && { URL_Archivo: u, Ruta_Archivo: r, Nombre_Archivo: n }) }).eq('ID_Registros', item.id_registro);
-          showToast("Registro actualizado correctamente", "success");
-          setIsPhotoModalOpen(false); setEditEvidenceFile(null); loadUserRecords();
-      } catch { showToast("No se pudo actualizar", "error"); } finally { setIsLoading(false); }
-  };
-  
-  const handleGoHome = () => {
-      setSelectedProjectId(null); setSelectedFrontId(null); setSelectedLocalityId(null); setSelectedDetail(null); setSelectedActivity(null);
-      setGpsLocation(null); setNote(""); setStep("project"); setIsMenuOpen(false);
-      // Limpiar datos del formulario de registro
-      setRegisterPropId("");
-      setRegisterDetailText("");
-  };
+        const record = await fetchLastEvidenceForDetail(catalog.selectedDetail.ID_DetallesActividad);
+        setPreviousRecord(record);
+      } catch (err) {
+        console.error("Error consultando registro previo:", err);
+        setPreviousRecord(null);
+      }
+    };
 
-  const selectProject = (id: number) => { setSelectedProjectId(id); loadFrontsLocal(id); setStep("front"); };
-  const selectFront = (id: number) => { setSelectedFrontId(id); loadLocalitiesLocal(id); setStep("locality"); };
-  const selectLocality = (id: number) => { setSelectedLocalityId(id); loadDetailsLocal(id); setStep("detail"); };
-  const selectDetail = (d: DetailWithActivity) => { setSelectedDetail(d); setSelectedActivity(activityMap.get(d.ID_Actividad) || null); setStep("activity"); };
-  
-  const goBack = () => { 
-      if(step==="front")setStep("project");
-      else if(step==="locality")setStep("front");
-      else if(step==="detail")setStep("locality");
-      else if(step==="activity")setStep("detail");
-      else if(step==="map")setStep("activity");
-      else if(step==="form")setStep("map");
-      else if(step==="profile")setStep("project");
-      else if(step==="user_records"||step==="files")setStep("profile");
-      else setStep("project");
-  };
-  
-  const handleCaptureGps = () => { 
-      if (!navigator.geolocation) return showToast("Tu navegador no soporta GPS", "error"); 
-      setIsFetchingGps(true); 
-      navigator.geolocation.getCurrentPosition(
-          (p) => { setGpsLocation({ latitude: p.coords.latitude, longitude: p.coords.longitude }); setIsFetchingGps(false); showToast("GPS Actualizado", "success"); }, 
-          (e) => { showToast(`Error GPS: ${e.message}`, "error"); setIsFetchingGps(false); },
-          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-      ); 
-  };
-  
-  const handleUpdateFromUtm = () => { if (!utmEast || !utmNorth) return showToast("Faltan coordenadas UTM", "info"); try { const [lng, lat] = proj4(utmZones[utmZone], WGS84, [Number(utmEast), Number(utmNorth)]); setGpsLocation({ latitude: lat, longitude: lng }); showToast("Ubicación actualizada desde UTM", "success"); } catch { showToast("Coordenadas UTM inválidas", "error"); } };
-  const getMapUrl = () => { const lat = gpsLocation?.latitude ?? selectedDetail?.Latitud; const lng = gpsLocation?.longitude ?? selectedDetail?.Longitud; if (!lat || !lng) return null; return `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}`; };
-  
-  const handleCaptureFile = async (e: React.ChangeEvent<HTMLInputElement>) => { 
-    if (e.target.files?.[0]) { 
-        const file = e.target.files[0];
-        setEvidenceFile(file); 
-        setEvidencePreview(URL.createObjectURL(file)); 
-        
-        setAiFeedback(null); 
-        setIsAnalyzing(true);
-        try {
-            const nombreActividad = selectedActivity?.Nombre_Actividad || "Actividad de obra";
-            const resultado = await validarFotoConIA(file, nombreActividad);
-            
-            if (resultado.esErrorTecnico) {
-                setAiFeedback({ type: 'info', message: "No se pudo validar imagen (Sin conexión). Puedes guardar." });
-            } else if (!resultado.aprobado) {
-                setAiFeedback({ type: 'warning', message: `La IA detectó: "${resultado.mensaje}". ¿Deseas guardar de todos modos?` });
-            } else {
-                setAiFeedback({ type: 'success', message: "Imagen verificada correctamente." });
-            }
-        } catch (err) {
-            console.error(err);
-            setAiFeedback({ type: 'info', message: "Verificación IA omitida (Error interno)." });
-        } finally {
-            setIsAnalyzing(false);
+    checkPreviousRecord();
+  }, [catalog.selectedDetail, session.isOnline]);
+
+  const isAlreadyRegistered = !!previousRecord;
+
+  // --- SINCRONIZACIÓN ---
+  const syncPendingUploads = useCallback(async () => { 
+      try {
+          const count = await db.pendingUploads.count(); 
+          if(count > 0) { 
+              showToast(`Subiendo ${count} pendientes...`, "info");
+              const recs = await db.pendingUploads.toArray(); 
+              
+              for(const r of recs) { 
+                  try { 
+                      console.log("[SYNC] Procesando:", r.meta.fileName);
+                      const targetBucket = MASTER_BUCKET; 
+                      const pub = await uploadEvidence(targetBucket, r.meta.fullPath, r.evidenceBlob, "image/jpeg"); 
+                      
+                      const chk = await createCheckedActivity({ 
+                          ID_DetallesActividad: r.meta.detailId, 
+                          Latitud: r.meta.lat, 
+                          Longitud: r.meta.lng 
+                      }); 
+                      
+                      await createRegistro({ 
+                          Nombre_Archivo: r.meta.fileName, 
+                          URL_Archivo: pub, 
+                          user_id: r.meta.userId, 
+                          ID_Verificada: chk.ID_Verificada, 
+                          Comentario: r.meta.comment, 
+                          Ruta_Archivo: r.meta.fullPath, 
+                          Bucket: targetBucket
+                      }); 
+                      
+                      if(r.id) await db.pendingUploads.delete(r.id); 
+                  } catch (err: any) { console.error(`[SYNC ERROR]`, err); } 
+              }
+              showToast("Sincronización finalizada", "success");
+              if(step === "user_records" && session.sessionUser) records.loadUserRecords();
+          } 
+      } catch (e) { console.error("[SYNC FATAL]", e); }
+  }, [step, session.sessionUser]);
+
+  useEffect(() => {
+      if (session.isOnline) syncPendingUploads();
+  }, [session.isOnline, syncPendingUploads]);
+
+  // --- COORDINACIÓN INICIAL ---
+  useEffect(() => {
+    session.checkSession().then(isAuth => {
+      if(isAuth) {
+        if(session.isOnline) {
+            session.setIsLoading(true);
+            syncPendingUploads();
         }
-    } 
+        catalog.performFullSync().then(() => {
+          catalog.loadProjectsLocal();
+          session.setIsLoading(false);
+          setStep("project");
+        });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if ((step === "profile" || step === "user_records") && session.sessionUser) {
+        if(step === "profile") session.loadProfileData();
+        else records.loadUserRecords();
+    }
+  }, [step, session.sessionUser]);
+
+  const handleGoHome = () => { 
+      catalog.resetSelection(); 
+      evidence.resetEvidence(); 
+      setStep("project"); 
+      setIsMenuOpen(false); 
   };
 
   const saveReport = async () => {
-    if (isAnalyzing) return showToast("Espera un momento, analizando imagen...", "info");
-    if (!evidenceFile || !sessionUser || !selectedDetail) return showToast("Faltan datos (foto o sector)", "error"); setIsLoading(true);
-    const timestamp = Date.now(); const fileName = `evidencia-${timestamp}.jpg`;
-    const pName = projects.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre || "default";
-    const bucket = pName.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_"); const path = `uploads/${fileName}`;
+    if (evidence.isAnalyzing) return showToast("Analizando imagen...", "info");
+    if (!evidence.evidenceFile || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error"); 
     
+    session.setIsLoading(true);
+    const timestamp = Date.now();
+    
+    const currentProject = catalog.projects.find(p => p.ID_Proyectos === catalog.selectedProjectId);
+    const currentFront = catalog.fronts.find(f => f.ID_Frente === catalog.selectedFrontId);
+    const currentLocality = catalog.localities.find(l => l.ID_Localidad === catalog.selectedLocalityId);
+    
+    const folderProject = sanitizeName(currentProject?.Proyecto_Nombre || "General");
+    const folderFront = sanitizeName(currentFront?.Nombre_Frente || "Sin_Frente");
+    const folderLocality = sanitizeName(currentLocality?.Nombre_Localidad || "Sin_Localidad");
+    const activityTag = sanitizeName(catalog.selectedActivity?.Nombre_Actividad || "Evidencia").substring(0, 30);
+    
+    const fileName = `${activityTag}_${timestamp}.jpg`;
+    const path = `${folderProject}/${folderFront}/${folderLocality}/${fileName}`;
+
     try {
         if(navigator.onLine) {
-            const pubUrl = await uploadEvidence(bucket, path, evidenceFile, "image/jpeg");
+            const pubUrl = await uploadEvidence(MASTER_BUCKET, path, evidence.evidenceFile, "image/jpeg");
             const checked = await createCheckedActivity({ 
-                ID_DetallesActividad: selectedDetail.ID_DetallesActividad, 
-                Latitud: gpsLocation?.latitude || selectedDetail.Latitud, 
-                Longitud: gpsLocation?.longitude || selectedDetail.Longitud 
+                ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad, 
+                Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud, 
+                Longitud: evidence.gpsLocation?.longitude || catalog.selectedDetail.Longitud 
             });
 
-            // guardar registro
-            const { data: regData, error: regError } = await createRegistro({ 
-                Nombre_Archivo: fileName, 
-                URL_Archivo: pubUrl, 
-                user_id: sessionUser.id, 
-                ID_Verificada: checked.ID_Verificada, 
-                Comentario: note, 
-                Ruta_Archivo: path, 
-                Bucket: bucket 
+            const { data: regData } = await createRegistro({ 
+                Nombre_Archivo: fileName, URL_Archivo: pubUrl, user_id: session.sessionUser.id, 
+                ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: path, Bucket: MASTER_BUCKET 
             });
 
-            if (regError) throw regError;
-
-            // guardar atributos si aplica
-            const newRecordId = regData && regData[0] ? regData[0].ID_Registros : null;
-            if (newRecordId && registerPropId && registerDetailText.trim() !== "") {
-                const { error: propError } = await supabase.from('Detalle_Propiedad').insert([{ 
-                    ID_Registro: newRecordId, 
-                    ID_Propiedad: Number(registerPropId), 
-                    Detalle_Propiedad: registerDetailText 
+            if (regData?.[0]?.ID_Registros && evidence.registerPropId && evidence.registerDetailText) {
+                await supabase.from('Detalle_Propiedad').insert([{ 
+                    ID_Registro: regData[0].ID_Registros, ID_Propiedad: Number(evidence.registerPropId), Detalle_Propiedad: evidence.registerDetailText 
                 }]);
-                if (propError) console.error("Error guardando propiedad:", propError);
-                else showToast("Reporte y atributos guardados", "success");
-            } else {
-                showToast("Reporte guardado exitosamente", "success");
             }
-
+            showToast("Reporte guardado exitosamente", "success");
         } else {
-            // offline case (se ignoran atributos)
             const pend: PendingRecord = { 
-                timestamp, evidenceBlob: evidenceFile, fileType: "image/jpeg", 
-                meta: { bucketName: bucket, fullPath: path, fileName, userId: sessionUser.id, detailId: selectedDetail.ID_DetallesActividad, lat: gpsLocation?.latitude || selectedDetail.Latitud, lng: gpsLocation?.longitude || selectedDetail.Longitud, comment: note } 
+                timestamp, evidenceBlob: evidence.evidenceFile, fileType: "image/jpeg", 
+                meta: { bucketName: MASTER_BUCKET, fullPath: path, fileName, userId: session.sessionUser.id, detailId: catalog.selectedDetail.ID_DetallesActividad, lat: evidence.gpsLocation?.latitude || 0, lng: evidence.gpsLocation?.longitude || 0, comment: evidence.note } 
             };
             await db.pendingUploads.add(pend);
-            showToast("Guardado localmente (Atributos no disponibles offline)", "info");
+            showToast("Guardado localmente (Pendiente)", "info");
         }
         
-        setStep("map"); setEvidenceFile(null); setEvidencePreview(null); setNote(""); setAiFeedback(null);
-        setRegisterPropId(""); setRegisterDetailText(""); // Limpieza de campos
+        handleGoHome();
 
-    } catch (err: any) { 
-        console.error(err);
-        showToast("Ocurrió un error al guardar", "error"); 
-    } finally { 
-        setIsLoading(false); 
-    }
+    } catch (err) { console.error(err); showToast("Error al guardar", "error"); } 
+    finally { session.setIsLoading(false); }
+  };
+
+  const selectProject = (id: number) => { catalog.setSelectedProjectId(id); catalog.loadFrontsLocal(id); setStep("front"); };
+  const selectFront = (id: number) => { catalog.setSelectedFrontId(id); catalog.loadLocalitiesLocal(id); setStep("locality"); };
+  const selectLocality = (id: number) => { catalog.setSelectedLocalityId(id); catalog.loadDetailsLocal(id); setStep("detail"); };
+  const selectDetail = (d: any) => { catalog.setSelectedDetail(d); catalog.setSelectedActivity(catalog.activityMap.get(d.ID_Actividad) || null); setStep("activity"); };
+
+  const goBack = () => { 
+      const stepMap: Record<string, Step> = { "front": "project", "locality": "front", "detail": "locality", "activity": "detail", "map": "activity", "form": "map", "profile": "project", "user_records": "profile", "files": "profile" };
+      setStep(stepMap[step] || "project");
+  };
+
+  const handleLoginBridge = () => {
+    session.handleLogin(async () => {
+      await catalog.performFullSync();
+      await catalog.loadProjectsLocal();
+      setStep("project");
+      syncPendingUploads();
+    });
+  };
+
+  const handleLogoutBridge = async () => {
+    await session.handleLogout();
+    catalog.resetSelection();
+    setStep("auth");
+    setIsMenuOpen(false);
+  };
+
+  const requestDeleteAccount = () => {
+    setConfirmModal({
+      open: true,
+      title: "Eliminar mi cuenta",
+      message: "La eliminación total de la cuenta requiere validación de administración. ¿Deseas cerrar sesión y solicitar la eliminación?",
+      onConfirm: async () => {
+        try {
+          await handleLogoutBridge();
+          showToast("Sesión cerrada. Solicita la eliminación al administrador.", "info");
+        } catch {
+          showToast("No se pudo completar la solicitud", "error");
+        } finally {
+          setConfirmModal(null);
+        }
+      },
+    });
   };
   
-  const syncPendingUploads = async () => { const count = await db.pendingUploads.count(); if(count > 0) { const recs = await db.pendingUploads.toArray(); for(const r of recs) { try { const pub = await uploadEvidence(r.meta.bucketName, r.meta.fullPath, r.evidenceBlob, "image/jpeg"); const chk = await createCheckedActivity({ ID_DetallesActividad: r.meta.detailId, Latitud: r.meta.lat, Longitud: r.meta.lng }); await createRegistro({ Nombre_Archivo: r.meta.fileName, URL_Archivo: pub, user_id: r.meta.userId, ID_Verificada: chk.ID_Verificada, Comentario: r.meta.comment, Ruta_Archivo: r.meta.fullPath, Bucket: r.meta.bucketName }); if(r.id) await db.pendingUploads.delete(r.id); } catch {} } } };
-  const handleRowClick = async (r: UserRecord) => { setSelectedRecordId(r.id_registro); try { const { data } = await supabase.rpc('obtener_propiedades_por_actividad', { nombre_input: r.nombre_actividad }); if(data) setAvailableProperties(data.map((x:any)=>({Tipo_Actividad:x.nombre_tipo, ID_Propiedad:x.id_propiedad, Propiedad:x.nombre_propiedad}))); } catch {} };
-  const handleSaveProperty = async () => { if(!selectedRecordId || !selectedPropId) return; try { await supabase.from('Detalle_Propiedad').insert([{ ID_Registro: selectedRecordId, ID_Propiedad: Number(selectedPropId), Detalle_Propiedad: detailText }]); showToast("Propiedad guardada", "success"); setDetailText(""); } catch { showToast("Error al guardar propiedad", "error"); } };
-  const openEditModal = () => { const r = userRecords.find(i => i.id_registro === selectedRecordId); if(r){ setEditComment(r.comentario??""); setEditEvidenceFile(null); setEditPreviewUrl(r.url_foto??""); setIsPhotoModalOpen(true); } };
-  const closeEditModal = () => { setIsPhotoModalOpen(false); setEditEvidenceFile(null); };
-  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if(e.target.files?.[0]) { setEditEvidenceFile(e.target.files[0]); setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } };
-
-  const activityMap = useMemo(() => new Map((activities||[]).map((a) => [a.ID_Actividad, a])), [activities]);
-  const derivedDetails = useMemo(() => (details||[]).map((d) => ({ ...d, activityName: activityMap.get(d.ID_Actividad)?.Nombre_Actividad ?? "Cargando..." })), [details, activityMap]);
-  const filteredDetails = useMemo(() => { const query = detailSearch.trim().toLowerCase(); return query ? derivedDetails.filter((d) => `${d.Nombre_Detalle} ${d.activityName}`.toLowerCase().includes(query)) : derivedDetails; }, [detailSearch, derivedDetails]);
-  const selectedActivities = useMemo(() => { if (!selectedDetail) return []; const activity = activityMap.get(selectedDetail.ID_Actividad); return activity ? [activity] : []; }, [activityMap, selectedDetail]);
+  const getMapUrl = () => { const lat = evidence.gpsLocation?.latitude ?? catalog.selectedDetail?.Latitud; const lng = evidence.gpsLocation?.longitude ?? catalog.selectedDetail?.Longitud; return (lat && lng) ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}` : null; };
 
   return {
-    step, setStep, isOnline, isLoading, syncStatus, sessionUser, authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
-    projects, fronts, localities, derivedDetails, filteredDetails, selectedActivities, selectedDetail, selectedActivity,
-    selectProject, selectFront, selectLocality, selectDetail, detailSearch, setDetailSearch,
-    gpsLocation, setGpsLocation, evidencePreview, setEvidencePreview, note, setNote, isFetchingGps,
-    utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm, getMapUrl, handleCaptureGps, handleCaptureFile,
-    saveReport, profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, setProfileEmail, profileCreatedAt, profileLastSignInAt, profileMessage, isProfileSaving, isDeletingAccount, saveProfile, 
-    requestDeleteAccount, 
-    userRecords, isLoadingRecords, selectedRecordId, setSelectedRecordId, availableProperties, selectedPropId, setSelectedPropId, detailText, setDetailText, 
-    handleDownloadCSV, 
-    requestDeleteRecord, 
-    handleUpdateRecord: saveRecordEdits, 
-    handleRowClick, handleSaveProperty,
-    isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
-    handleLogin, handleLogout, goBack, handleGoHome,
-    isAnalyzing, aiFeedback, toast, confirmModal, setConfirmModal, isMenuOpen, setIsMenuOpen,
-    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
+    step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
+    isOnline: session.isOnline, syncStatus,
+    isLoading: session.isLoading, sessionUser: session.sessionUser,
+    authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
+    profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
+    handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
+    projects: catalog.projects, fronts: catalog.fronts, localities: catalog.localities, filteredDetails: catalog.filteredDetails, selectedDetail: catalog.selectedDetail, selectedActivity: catalog.selectedActivity, detailSearch: catalog.detailSearch, setDetailSearch: catalog.setDetailSearch,
+    selectedProjectId: catalog.selectedProjectId, selectedFrontId: catalog.selectedFrontId, selectedLocalityId: catalog.selectedLocalityId,
+    selectProject, selectFront, selectLocality, selectDetail,
+    gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
+    utmZone: evidence.utmZone, setUtmZone: evidence.setUtmZone, utmEast: evidence.utmEast, setUtmEast: evidence.setUtmEast, utmNorth: evidence.utmNorth, setUtmNorth: evidence.setUtmNorth, handleUpdateFromUtm: evidence.handleUpdateFromUtm,
+    evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
+    registerProperties: evidence.registerProperties, registerPropId: evidence.registerPropId, setRegisterPropId: evidence.setRegisterPropId, registerDetailText: evidence.registerDetailText, setRegisterDetailText: evidence.setRegisterDetailText,
+    saveReport, getMapUrl,
+    userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
+    requestDeleteRecord: records.requestDeleteRecord, handleDownloadCSV: records.handleDownloadCSV,
+    isPhotoModalOpen: records.isPhotoModalOpen,
+    openEditModal: records.openEditModal,
+    closeEditModal: () => records.setIsPhotoModalOpen(false),
+    editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } }, 
+    saveRecordEdits: records.saveRecordEdits,
+    handleGoHome, goBack,
+    // EXPORTAMOS LAS NUEVAS VARIABLES ON-DEMAND
+    previousRecord,
+    isAlreadyRegistered
   };
 }
 </file>
 
 <file path="src/services/dataService.ts">
-import { createClient } from "@supabase/supabase-js";
+// Importamos la instancia compartida
+import { supabase } from "./supabaseClient";
 
-const SUPABASE_URL = "https://torwsfbxltzibydrlrqc.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ¡IMPORTANTE! Re-exportamos la instancia para que otros archivos puedan usarla
+export { supabase };
 
 // Types
 export type ProjectRecord = {
@@ -1045,10 +2531,34 @@ export type ActivityPropertyDef = {
 };
 
 // Helpers
-const fetchCatalog = async <T>(table: string, columns: string, orderBy: string): Promise<T[]> => {
-  const { data, error } = await supabase.from(table).select(columns).order(orderBy, { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as T[];
+const fetchCatalog = async <T>(table: string, columns: string, orderBy: string) => {
+    let allData: T[] = [];
+    let from = 0;
+    const step = 1000;
+    let moreData = true;
+
+    while (moreData) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(columns)
+            .order(orderBy, { ascending: true })
+            .range(from, from + step - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allData = [...allData, ...data as T[]];
+            from += step;
+            if (data.length < step) {
+                moreData = false;
+            }
+        } else {
+            moreData = false;
+        }
+    }
+    
+    console.log(`Descarga completa de ${table}: ${allData.length} registros.`);
+    return allData;
 };
 
 // Read
@@ -1125,619 +2635,330 @@ export const createRegistro = async (payload: {
   if (error) throw error;
   return { data, error };
 };
+
+// --- NUEVA FUNCIÓN ON-DEMAND ---
+export const fetchLastEvidenceForDetail = async (detailId: number) => {
+    console.log("Buscando evidencia previa para el detalle ID:", detailId);
+    const { data, error } = await supabase
+      .from('Registros')
+      .select(`
+        *,
+        Actividad_Verificada!inner (
+          ID_DetallesActividad
+        )
+      `)
+      .eq('Actividad_Verificada.ID_DetallesActividad', detailId)
+      .order('Fecha_Subida', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  
+    if (error) {
+      console.warn("Error buscando evidencia previa:", error.message);
+      return null;
+    }
+  
+    return data;
+};
+</file>
+
+<file path="src/services/db_local.ts">
+import Dexie, { Table } from 'dexie';
+// Asegúrate de importar las interfaces correctas desde tu dataService
+import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
+
+// Interfaz para el caché de historial (la usaremos luego para "Evidencia Previa")
+export interface CachedRecord {
+  id_registro: number;
+  id_detalle: number;
+  fecha_subida: string;
+  url_archivo: string;
+  comentario: string;
+}
+
+class MyDatabase extends Dexie {
+  // 1. Definimos las propiedades de la clase para que TypeScript las reconozca
+  pendingUploads!: Table<any>; 
+  catalog_projects!: Table<ProjectRecord>;
+  catalog_fronts!: Table<FrontRecord>;
+  catalog_localities!: Table<LocalityRecord>;
+  catalog_details!: Table<DetailRecord>;
+  catalog_activities!: Table<ActivityRecord>; // <--- Esta faltaba y es clave
+  history_cache!: Table<CachedRecord>;
+
+  constructor() {
+    super('ReportFlowDB');
+    
+    // 2. Definimos el esquema (Nombres de tablas y sus índices)
+    // NOTA: Si cambias esto, a veces es necesario borrar la BD en el navegador para que se regenere
+    this.version(2).stores({ // Subí la versión a 2 para forzar la actualización
+      pendingUploads: '++id, timestamp, meta.userId',
+      
+      // Catálogos (Nombres deben coincidir con las propiedades de arriba)
+      catalog_projects: 'ID_Proyectos, Proyecto_Nombre',
+      catalog_fronts: 'ID_Frente, ID_Proyecto',
+      catalog_localities: 'ID_Localidad, ID_Frente',
+      catalog_details: 'ID_DetallesActividad, ID_Localidad',
+      catalog_activities: 'ID_Actividad',
+      
+      // Caché
+      history_cache: 'id_registro, id_detalle, fecha_subida'
+    });
+  }
+}
+
+export const db = new MyDatabase();
+</file>
+
+<file path="src/services/GoogleAI.ts">
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// 1. CORRECCIÓN DE ENTORNO: Volvemos al estándar de Expo
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+// Inicializamos solo si hay clave
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+
+export interface IAValidationResult {
+    aprobado: boolean;
+    mensaje: string;
+    esErrorTecnico?: boolean;
+}
+
+export const validarFotoConIA = async (file: File, nombreActividad: string): Promise<IAValidationResult> => {
+    try {
+        if (!genAI || !API_KEY) {
+            console.error("Falta API KEY de Google (Expo)");
+            return { aprobado: true, esErrorTecnico: true, mensaje: "IA no configurada (Pase técnico)" };
+        }
+
+        const base64Data = await fileToBase64(file);
+        
+        // 2. CORRECCIÓN DE MODELO:
+        // Usamos 'gemini-2.5-flash' que es el que vimos en tu lista de permisos.
+        // Quitamos { apiVersion: 'v1' } para que use la versión por defecto del modelo.
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-2.5-flash" 
+        });
+
+        const prompt = `Analiza esta imagen para la actividad de construcción: "${nombreActividad}". 
+        Responde EXCLUSIVAMENTE un JSON válido con este formato, sin markdown: 
+        { "aprobado": boolean, "mensaje": "razón breve de 10 palabras" }`;
+        
+        const result = await model.generateContent([
+            prompt,
+            { inlineData: { data: base64Data, mimeType: file.type } }
+        ]);
+        
+        const response = await result.response;
+        const text = response.text();  
+        
+        // Limpieza robusta por si el modelo devuelve markdown
+        const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        
+        return JSON.parse(cleanText);
+
+    } catch (error: any) {
+        console.error("⚠️ Error IA:", error);
+        
+        return { 
+            aprobado: true, 
+            esErrorTecnico: true, 
+            mensaje: "IA no disponible, validación manual requerida." 
+        };
+    }
+};
+
+async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const result = reader.result as string;
+            // Quitamos el prefijo "data:image/jpeg;base64,"
+            const base64 = result.split(',')[1]; 
+            resolve(base64);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+</file>
+
+<file path="src/services/supabaseClient.ts">
+import { createClient } from "@supabase/supabase-js";
+
+// Recomendado: mover a variables de entorno (se mantienen defaults para no romper el proyecto).
+const SUPABASE_URL =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ??
+  "https://torwsfbxltzibydrlrqc.supabase.co";
+const SUPABASE_ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+  "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 </file>
 
 <file path="src/theme/styles.ts">
 import React from "react";
 
+// --- 1. PALETA DE COLORES ---
+const palette = {
+  navy: "#003366",       // Azul Corporativo
+  activeNavy: "#004080", // Azul Activo
+  background: "#F4F7F9", // Fondo Gris Claro
+  orange: "#FF6600",     // Naranja Seguridad
+  white: "#FFFFFF",
+  slateDark: "#1E293B",  // Texto Principal (Oscuro)
+  slateLight: "#64748B", // Texto Secundario
+  border: "#CBD5E1",     // Bordes
+  success: "#10B981",    
+  error: "#EF4444",      
+  warning: "#F59E0B",    
+  consoleBg: "#1E293B",
+  consoleText: "#38BDF8"
+};
+
+// --- 2. MIXINS (Estilos Base) ---
+const actionBtnBase: React.CSSProperties = {
+    display: "flex", justifyContent: "center", alignItems: "center",
+    height: "48px", padding: "0 16px", borderRadius: "4px",
+    fontSize: "13px", fontWeight: "700", textTransform: "uppercase",
+    cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box",
+    width: "100%", marginTop: 0, marginBottom: 0, lineHeight: "1",
+    transition: "background 0.2s, opacity 0.2s"
+};
+
+// [CORRECCIÓN AQUÍ] - Forzamos colores explícitos
+const baseInput: React.CSSProperties = {
+    width: "100%", padding: "12px", fontSize: "14px",
+    border: `1px solid ${palette.border}`, borderRadius: "4px",
+    boxSizing: "border-box", fontFamily: "inherit", outline: "none",
+    transition: "border-color 0.2s",
+    
+    // Agregados para evitar texto blanco fantasma:
+    color: palette.slateDark,       // Texto siempre oscuro (#1E293B)
+    backgroundColor: palette.white, // Fondo siempre blanco (#FFFFFF)
+};
+
+// =============================================================================
+// BLOQUE A: ESTILOS GLOBALES
+// =============================================================================
 export const styles: Record<string, React.CSSProperties> = {
-  page: { 
-    minHeight: "100vh", 
-    backgroundColor: "#F1F5F9", 
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    color: "#0F172A" 
-  },
-  
-  navbar: {
-    backgroundColor: "#1E293B", 
-    padding: "16px 24px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    color: "#FFFFFF", 
-    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    position: "sticky",
-    top: 0,
-    zIndex: 1000
-  },
-  navbarBrand: {
-    fontSize: "18px",
-    fontWeight: "700",
-    letterSpacing: "0.5px",
-    color: "#F8FAFC" // blanco humo
-  },
-  hamburgerBtn: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.2)",
-    borderRadius: "6px",
-    color: "white",
-    fontSize: "20px",
-    cursor: "pointer",
-    padding: "4px 10px",
-    transition: "background 0.2s"
-  },
-  
-  dropdownMenu: {
-    backgroundColor: "#1E293B", 
-    borderTop: "1px solid #334155",
-    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-    position: "absolute",
-    top: "60px", 
-    left: 0,
-    right: 0,
-    zIndex: 999,
-    display: "flex",
-    flexDirection: "column",
-    padding: "8px 0"
-  },
-  menuItem: {
-    padding: "12px 24px",
-    borderBottom: "1px solid #334155", // separadores 
-    color: "#E2E8F0", 
-    fontSize: "14px",
-    fontWeight: "500",
-    cursor: "pointer",
-    textAlign: "left",
-    background: "none",
-    border: "none",
-    width: "100%"
-  },
+  // --- LAYOUT ---
+  page: { minHeight: "100vh", backgroundColor: palette.background, fontFamily: "'Inter', sans-serif", color: palette.slateDark, display: "flex", flexDirection: "column", overflow: "hidden" },
+  container: { maxWidth: "900px", width: "100%", margin: "0 auto", padding: "20px 20px 90px 20px", flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
+  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "65vh", paddingRight: "6px", scrollbarWidth: "thin", paddingBottom: "100px" },
 
-  statusBar: {
-    backgroundColor: "#FFFFFF",
-    padding: "8px 24px",
-    borderBottom: "1px solid #E2E8F0",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "11px",
-    fontWeight: "600",
-    color: "#64748B",
-    letterSpacing: "0.5px"
-  },
-  navControls: {
-    padding: "16px 24px 0",
-    display: "flex",
-    gap: "12px"
-  },
+  // --- COMPONENTES BASE ---
+  card: { backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "6px", padding: "24px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "20px", display: "flex", flexDirection: "column", maxHeight: "85vh" },
 
-  navButtonPrimary: {
-    padding: "10px 16px",
-    borderRadius: "6px",
-    backgroundColor: "#334155", // gris acero (Slate-700)
-    color: "#FFFFFF",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    border: "none",
-    flex: 1,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-  },
+  // --- NAV ---
+  navbar: { backgroundColor: palette.navy, color: palette.white, height: "50px", padding: "0 20px", display: "flex", justifyContent: "center", alignItems: "center", flexShrink: 0, boxShadow: "0 2px 4px rgba(0,0,0,0.1)", zIndex: 1000, position: 'relative' },
+  navbarBrand: { fontSize: "14px", fontWeight: "700", letterSpacing: "1px", textTransform: "uppercase" },
+  
+  statusBar: { backgroundColor: "#F8FAFC", padding: "4px 20px", borderBottom: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px", color: palette.slateLight, flexShrink: 0, height: "36px" },
 
-  navButton: {
-    padding: "10px 16px",
-    borderRadius: "6px",
-    border: "1px solid #CBD5F5",
-    backgroundColor: "#FFFFFF",
-    color: "#334155", // texto oscuro
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    flex: 1, 
-    textAlign: "center"
-  },
+  bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, height: "64px", backgroundColor: palette.white, borderTop: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-around", alignItems: "center", zIndex: 2000, boxShadow: "0 -4px 20px rgba(0,0,0,0.03)", paddingBottom: "env(safe-area-inset-bottom)" },
+  bottomNavItem: { flex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", background: "none", border: "none", cursor: "pointer", color: palette.slateLight, transition: "color 0.2s", padding: "8px 0" },
+  bottomNavItemActive: { color: palette.navy, fontWeight: "700" },
+  navLabel: { fontSize: "10px", marginTop: "4px", textTransform: "uppercase", fontWeight: "inherit", letterSpacing: "0.5px" },
 
-  breadcrumbs: { 
-    display: "flex", 
-    flexWrap: "wrap", 
-    alignItems: "center", 
-    gap: "6px", 
-    padding: "12px 24px", 
-    fontSize: "12px",
-    color: "#475569" 
-  },
-  breadcrumbItem: { color: "#1E293B", fontWeight: 700 }, // slate oscuro
-  breadcrumbSeparator: { color: "#94A3B8", fontSize: "14px" }, // slate claro
+  // --- INPUTS & TYPO ---
+  heading: { fontSize: "15px", fontWeight: "700", color: palette.navy, textTransform: "uppercase", marginBottom: "16px", paddingBottom: "8px", borderBottom: `2px solid ${palette.background}`, flexShrink: 0 },
+  label: { display: "block", fontSize: "11px", fontWeight: "700", color: palette.slateLight, textTransform: "uppercase", marginBottom: "6px" },
   
-  card: { 
-    backgroundColor: "#FFFFFF", 
-    margin: "0 24px 24px", 
-    padding: "24px", 
-    borderRadius: "8px",
-    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-    border: "1px solid #E2E8F0"
-  },
-  sectionTitle: { 
-    fontSize: "16px", 
-    fontWeight: 700, 
-    color: "#1E293B", // slate oscuro
-    marginBottom: "12px",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px"
-  },
-  
-  // --- forms ---
-  label: { fontSize: "12px", fontWeight: 700, color: "#475569", marginBottom: "6px", display: "block", textTransform: "uppercase" },
-  input: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", marginBottom: "16px", backgroundColor: "#FFFFFF" },
-  inputCompact: { border: "1px solid #CBD5F5", borderRadius: "6px", padding: "8px", fontSize: "13px", backgroundColor: "#FFFFFF", color: "#0F172A" },
-  textArea: { width: "100%", boxSizing: "border-box", minHeight: "100px", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "16px", fontFamily: "inherit" },
-  
-  // guardar 
-  primaryButton: { 
-    width: "100%", boxSizing: "border-box", 
-    backgroundColor: "#0B5FFF",
-    color: "#FFFFFF", 
-    border: "none", borderRadius: "6px", 
-    padding: "14px", fontSize: "15px", fontWeight: 700, 
-    cursor: "pointer", marginTop: "12px",
-    boxShadow: "0 4px 6px -1px rgba(11, 95, 255, 0.2)"
-  },
-  primaryButtonDisabled: { width: "100%", boxSizing: "border-box", backgroundColor: "#94A3B8", color: "#F1F5F9", border: "none", borderRadius: "6px", padding: "14px", fontSize: "15px", fontWeight: 700, cursor: "not-allowed", marginTop: "12px" },
-  
-  secondaryButton: { 
-    width: "100%", boxSizing: "border-box", marginTop: "12px", 
-    border: "1px solid #475569", // Borde gris pizarra
-    borderRadius: "6px", padding: "12px", 
-    backgroundColor: "transparent", 
-    color: "#475569", // Texto gris pizarra
-    fontSize: "14px", fontWeight: 600, cursor: "pointer",
-    transition: "all 0.2s"
-  },
-  secondaryButtonSmall: { 
-    border: "1px solid #475569", borderRadius: "6px", padding: "6px 12px", 
-    backgroundColor: "transparent", color: "#475569", 
-    fontSize: "12px", fontWeight: 600, cursor: "pointer" 
-  },
-  dangerButton: { width: "100%", boxSizing: "border-box", marginTop: "12px", border: "1px solid #EF4444", borderRadius: "6px", padding: "12px", backgroundColor: "#FEF2F2", color: "#B91C1C", fontSize: "14px", fontWeight: 600, cursor: "pointer" },
-  
-  // --- GRID & OPCIONES ---
-  optionGrid: { display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" },
-  optionButton: { 
-    border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px 16px", 
-    backgroundColor: "#FFFFFF", 
-    fontSize: "13px", fontWeight: 600, color: "#334155", 
-    cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.05)" 
-  },
-  
-  mapPlaceholder: { borderRadius: "8px", overflow: "hidden", border: "1px solid #CBD5F5", backgroundColor: "#E2E8F0" },
-  mapFrame: { width: "100%", border: "0" },
-  emptyState: { padding: "30px", fontSize: "14px", color: "#64748B", textAlign: "center", fontStyle: "italic" },
-  
-  detailInfoBox: { borderRadius: "6px", backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0", padding: "16px", marginBottom: "16px" },
-  
-  evidenceBox: { 
-    border: "2px dashed #CBD5F5", // Borde discontinuo más técnico
-    borderRadius: "8px", padding: "10px", 
-    display: "flex", alignItems: "center", justifyContent: "center", 
-    backgroundColor: "#F8FAFC", marginBottom: "16px", 
-    flexDirection: "column", minHeight: "200px"
-  },
-  evidenceImage: { width: "100%", height: "auto", objectFit: "contain", borderRadius: "4px" },
-  
-  searchInput: { width: "100%", boxSizing: "border-box", border: "1px solid #CBD5F5", borderRadius: "6px", padding: "12px", fontSize: "14px", color: "#0F172A", backgroundColor: "#FFFFFF", marginBottom: "10px" },
-  searchResults: { display: "flex", flexDirection: "column", gap: "8px", maxHeight: "260px", overflowY: "auto", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "8px", backgroundColor: "#F8FAFC" },
-  searchOption: { border: "1px solid #E2E8F0", borderRadius: "6px", padding: "12px", backgroundColor: "#FFFFFF", textAlign: "left", cursor: "pointer" },
-  searchOptionTitle: { display: "block", fontSize: "13px", fontWeight: 700, color: "#1E293B" },
-  searchOptionMeta: { display: "block", fontSize: "11px", color: "#64748B", marginTop: "4px", textTransform: "uppercase" },
+  // Usamos el baseInput corregido
+  input: { ...baseInput, marginBottom: "16px" },
 
-  readOnlyBlock: { display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginBottom: "16px", padding: "16px", borderRadius: "8px", backgroundColor: "#F1F5F9", border: "1px solid #E2E8F0" },
-  profileMessage: { marginTop: "8px", padding: "10px 12px", borderRadius: "6px", backgroundColor: "#EFF6FF", fontSize: "13px", color: "#1E293B", borderLeft: "4px solid #3B82F6" },
-  
-  authFooter: { marginTop: "24px", textAlign: "center", fontSize: "13px", color: "#64748B" },
-  linkText: { color: "#0F172A", fontWeight: 700, cursor: "pointer", textDecoration: "underline" },
+  text: { fontSize: "14px", color: palette.slateDark, lineHeight: "1.5" },
+  monoText: { fontFamily: "'Roboto Mono', monospace", fontSize: "12px", color: palette.slateDark, backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px", display: "inline-block", border: "1px solid #E2E8F0" },
 
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px", backdropFilter: "blur(2px)" },
-  modalCard: { backgroundColor: "#FFFFFF", width: "100%", maxWidth: "420px", borderRadius: "8px", padding: "24px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column" },
-  modalButtons: { display: "flex", gap: "12px", marginTop: "24px", width: "100%" },
+  // --- BOTONES ---
+  btnPrimary: { ...actionBtnBase, backgroundColor: palette.orange, color: palette.white, border: "none", marginTop: "10px", boxShadow: "0 2px 4px rgba(255, 102, 0, 0.2)" },
+  btnSecondary: { ...actionBtnBase, backgroundColor: palette.white, border: `1px solid ${palette.slateLight}`, color: palette.slateDark },
+  btnDanger: { ...actionBtnBase, backgroundColor: "#FEF2F2", border: "1px solid #EF4444", color: "#DC2626" },
+  btnLink: { background: "none", border: "none", color: palette.navy, textDecoration: "underline", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "inherit", padding: "8px" },
 
-  gridContainer: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "16px", padding: "10px 0", marginBottom: "20px" },
-  cardItem: { backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", overflow: "hidden", display: "flex", flexDirection: "column", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", transition: "transform 0.1s ease", height: "100%" },
-  cardImagePlaceholder: { width: "100%", height: "120px", backgroundColor: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: "24px" },
-  cardImage: { width: "100%", height: "120px", objectFit: "cover", borderBottom: "1px solid #E2E8F0" },
-  cardFooter: { padding: "10px", display: "flex", flexDirection: "column", gap: "4px", flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF" },
-  cardTitle: { fontSize: "11px", fontWeight: "700", color: "#1E293B", lineHeight: "1.3", textAlign: "center", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" },
+  // --- UTILS ---
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" },
+  gridItem: { padding: "20px", backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "4px", textAlign: "center", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
+  flexBetween: { display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 },
+  breadcrumbs: { padding: "12px 20px", fontSize: "12px", color: palette.slateLight, display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", flexShrink: 0 },
+  breadcrumbItem: { fontWeight: "700", color: palette.navy },
+
+  // --- MODALES ---
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, backdropFilter: "blur(2px)" },
+  modalCard: { backgroundColor: palette.white, width: "90%", maxWidth: "400px", padding: "24px", borderRadius: "6px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" },
+  detailOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#F4F7F9", zIndex: 3000, display: "flex", flexDirection: "column", overflow: "hidden" },
+  detailHeader: { padding: "16px 20px", backgroundColor: "#FFFFFF", borderBottom: "1px solid #CBD5E1", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", zIndex: 10 },
+  detailContent: { flex: 1, overflowY: "auto", padding: "20px 20px 100px 20px", maxWidth: "800px", width: "100%", margin: "0 auto", boxSizing: "border-box" },
+  backArrowBtn: { background: "transparent", border: "1px solid #CBD5E1", borderRadius: "4px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "#334155", cursor: "pointer", transition: "background 0.2s" }
+};
+
+// =============================================================================
+// BLOQUE B: ESTILOS ESPECÍFICOS PARA EVIDENCIA
+// =============================================================================
+export const evidenceStyles: Record<string, React.CSSProperties> = {
+  // 1. Cabecera
+  headerClean: { fontSize: "15px", fontWeight: "700", color: palette.navy, textTransform: "uppercase", margin: 0, padding: 0, border: 'none' },
   
-  detailOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#FFFFFF", zIndex: 2000, display: "flex", flexDirection: "column", overflowY: "auto" },
-  detailHeader: { padding: "16px 24px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", position: "sticky", top: 0, zIndex: 10, gap: "16px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" },
-  backArrowBtn: { background: "none", border: "none", fontSize: "24px", color: "#334155", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" },
-  detailContent: { padding: "24px", maxWidth: "640px", margin: "0 auto", width: "100%", boxSizing: "border-box", flex: 1 },
-  detailImageLarge: { width: "100%", height: "auto", maxHeight: "none", objectFit: "contain", borderRadius: "8px", backgroundColor: "#0F172A", marginBottom: "24px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" },
-  attributeList: { display: "flex", flexDirection: "column", gap: "16px" },
-  attributeItem: { display: "flex", flexDirection: "column", borderBottom: "1px solid #F1F5F9", paddingBottom: "12px" },
-  attributeLabel: { fontSize: "11px", fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginBottom: "4px", letterSpacing: "0.5px" },
-  attributeValue: { fontSize: "15px", color: "#0F172A", lineHeight: "1.5" }
+  // 2. Badge
+  badgeBase: { display: "inline-block", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "700", textTransform: "uppercase" },
+  badgeOnline: { backgroundColor: '#D1FAE5', color: '#065F46' },
+  badgeOffline: { backgroundColor: '#F1F5F9', color: '#64748B' },
+
+  // 3. Toggles
+  toggleContainer: { display: 'flex', width: '100%', backgroundColor: '#F1F5F9', borderRadius: '6px', padding: '4px', marginBottom: '16px', boxSizing: 'border-box' },
+  toggleBtn: { flex: 1, padding: '6px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: 'transparent', color: '#94A3B8' },
+  toggleBtnActive: { backgroundColor: palette.white, color: palette.navy, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' },
+
+  // 4. Mapa
+  mapContainer: { width: '100%', height: '160px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${palette.border}`, backgroundColor: '#E2E8F0', marginBottom: '16px', position: 'relative' },
+  mapIframe: { width: '100%', height: '100%', border: 0, pointerEvents: 'none', display: 'block' },
+  mapPlaceholder: { display:'flex', alignItems:'center', justifyContent:'center', height:'100%', flexDirection:'column', color:'#94A3B8' },
+
+  // 5. Grillas e Inputs
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' },
+  utmRow: { display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%' },
+  
+  // Input de solo lectura
+  inputReadOnly: { ...baseInput, marginBottom: 0, backgroundColor: '#F8FAFC', color: palette.slateDark, fontFamily: 'monospace' },
+  
+  // Inputs de UTM (Heredan color oscuro de baseInput)
+  inputCenter: { ...baseInput, marginBottom: 0, textAlign: 'center' },
+  inputNoMargin: { ...baseInput, marginBottom: 0 },
+  
+  // 6. Botones Específicos
+  btnSquare: { ...actionBtnBase, backgroundColor: palette.orange, color: palette.white, border: "none", width: '42px', height: '42px', padding: 0, marginTop: 0, flexShrink: 0 },
+  btnSmall: { ...actionBtnBase, backgroundColor: palette.white, border: `1px solid ${palette.slateLight}`, color: palette.slateDark, fontSize: '11px', gap: '6px', height: '32px' },
+
+  // 7. Carga
+  uploadRow: { display: 'flex', gap: '12px', height: '120px', marginBottom: '16px', width: '100%' },
+  uploadBtnLarge: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: `2px dashed ${palette.border}`, borderRadius: '8px', backgroundColor: '#F8FAFC', cursor: 'pointer', color: palette.slateLight, transition: 'background 0.2s', padding: '10px' },
+  uploadBtnLargeActive: { color: palette.navy, borderColor: palette.navy, backgroundColor: "#F0F9FF" },
+
+  previewContainer: { borderRadius: '6px', border: `1px solid ${palette.border}`, overflow: 'hidden', height: '240px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', marginBottom: '16px' },
+  actionsRow: { display: 'flex', gap: '10px', marginTop: '12px' },
+
+  // 8. Consola
+  console: { backgroundColor: palette.consoleBg, color: palette.consoleText, padding: '12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', marginBottom: '16px', borderLeft: `4px solid ${palette.success}` }
 };
 </file>
 
-<file path="app/index.tsx">
-import React, { useRef, useState, useMemo } from "react";
-import { useReportFlow } from "../src/hooks/useReportFlow";
-import { styles } from "../src/theme/styles";
-import proj4 from 'proj4';
-
-const LOGO_SRC = "https://i.imgur.com/Ej1MRpv.png";
-
-export default function IndexPage() {
-  const {
-    step, setStep, isOnline, isLoading, sessionUser,
-    authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
-    projects, fronts, localities, filteredDetails, selectedActivities, selectedDetail, selectedActivity,
-    selectedProjectId, selectedFrontId, selectedLocalityId, detailSearch, setDetailSearch,
-    gpsLocation, setGpsLocation, evidencePreview, note, setNote, isFetchingGps, syncStatus,
-    utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, handleUpdateFromUtm, getMapUrl,
-    handleLogin, handleLogout, selectProject, selectFront, selectLocality, selectDetail, 
-    goBack,
-    handleGoHome, 
-    handleCaptureGps, handleCaptureFile, saveReport,
-    profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, setProfileEmail, profileCreatedAt, profileLastSignInAt, profileMessage, isProfileSaving, saveProfile, 
-    requestDeleteAccount,
-    userRecords, isLoadingRecords, selectedRecordId, setSelectedRecordId, 
-    requestDeleteRecord,
-    handleDownloadCSV, 
-    availableProperties, selectedPropId, setSelectedPropId, detailText, setDetailText, handleRowClick, handleSaveProperty,
-    isPhotoModalOpen, openEditModal, closeEditModal, editComment, setEditComment, editPreviewUrl, handleEditFileSelect, saveRecordEdits,
-    isAnalyzing, 
-    aiFeedback,
-    toast, confirmModal, setConfirmModal,
-    isMenuOpen, setIsMenuOpen,
-    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText
-  } = useReportFlow();
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const editFileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const mapUrl = getMapUrl();
-  const displayLat = gpsLocation?.latitude ?? selectedDetail?.Latitud ?? 0;
-  const displayLng = gpsLocation?.longitude ?? selectedDetail?.Longitud ?? 0;
-
-  const selectedProjectName = useMemo(() => projects?.find(p => p.ID_Proyectos === selectedProjectId)?.Proyecto_Nombre, [projects, selectedProjectId]);
-  const selectedFrontName = useMemo(() => fronts?.find(f => f.ID_Frente === selectedFrontId)?.Nombre_Frente, [fronts, selectedFrontId]);
-  const selectedLocalityName = useMemo(() => localities?.find(l => l.ID_Localidad === selectedLocalityId)?.Nombre_Localidad, [localities, selectedLocalityId]);
-
-  return (
-    <div style={{
-        ...styles.page, 
-        height: '100dvh', 
-        minHeight: 'unset', 
-        overflowY: 'auto', 
-        display: 'flex', 
-        flexDirection: 'column',
-        paddingBottom: '40px'
-    }}>
-      
-      {step !== "auth" && (
-        <>
-          <div style={styles.navbar}>
-            <div style={styles.navbarBrand}>CMP Contratistas E.I.R.L.</div>
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.hamburgerBtn}>☰</button>
-          </div>
-
-          {isMenuOpen && (
-            <div style={styles.dropdownMenu}>
-              <button onClick={() => { setStep("profile"); setIsMenuOpen(false); }} style={styles.menuItem}>Perfil</button>
-              <button onClick={() => { setStep("user_records"); setIsMenuOpen(false); }} style={styles.menuItem}>Mis Registros</button>
-              <button onClick={() => { setStep("files"); setIsMenuOpen(false); }} style={styles.menuItem}>Archivos</button>
-            </div>
-          )}
-
-          {/* --- state bar (con botón Cerrar Sesión) --- */}
-          <div style={styles.statusBar}>
-             <div style={{color: isOnline ? 'green' : 'red', fontWeight: 'bold'}}>
-                {isOnline ? "● Online" : "● Offline"}
-             </div>
-             
-             {sessionUser && (
-                <div style={{display: 'flex', alignItems: 'center'}}>
-                    <div style={{color: '#64748B'}}>{sessionUser.email}</div>
-                    <button 
-                        onClick={handleLogout} 
-                        style={{...styles.secondaryButtonSmall, width:'auto', marginLeft: '15px'}}
-                    >
-                        Cerrar Sesión
-                    </button>
-                </div>
-             )}
-          </div>
-
-          <div style={styles.navControls}>
-             <button onClick={handleGoHome} style={styles.navButtonPrimary}>Inicio</button>
-             {(step !== "project" && step !== "profile") && (
-                <button onClick={goBack} style={styles.navButton}>Atrás</button>
-             )}
-          </div>
-
-          {selectedProjectId && step !== "profile" && step !== "user_records" && step !== "files" && (
-             <div style={styles.breadcrumbs}>
-                <span style={styles.breadcrumbItem}>{selectedProjectName || "Proyecto"}</span>
-                {selectedFrontId && <><span style={styles.breadcrumbSeparator}>›</span><span style={styles.breadcrumbItem}>{selectedFrontName || "Frente"}</span></>}
-                {selectedLocalityId && <><span style={styles.breadcrumbSeparator}>›</span><span style={styles.breadcrumbItem}>{selectedLocalityName || "Loc"}</span></>}
-                {selectedDetail && <><span style={styles.breadcrumbSeparator}>›</span><span style={styles.breadcrumbItem}>{selectedDetail.Nombre_Detalle}</span></>}
-             </div>
-          )}
-        </>
-      )}
-
-      <div style={{flex: 1, padding: '0 24px', marginTop: '20px'}}>
-
-      {step === "auth" && (
-        <div style={{...styles.card, margin: '0 0 24px'}}>
-          <div style={styles.logoRow}>
-            <img src={LOGO_SRC} alt="Logo" style={styles.logo} />
-            <span style={styles.logoText}>Consorcio Cenepa Asociados</span>
-          </div>
-          
-          <h2 style={styles.sectionTitle}>{authMode === "login" ? "Inicia sesión" : "Crear cuenta"}</h2>
-          
-          {/* formulario con tecla Enter */}
-          <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
-              <label style={styles.label}>Email</label>
-              <input 
-                  placeholder="tu@email.com" 
-                  value={authEmail} 
-                  onChange={(e) => setAuthEmail(e.target.value)} 
-                  style={styles.input} 
-              />
-              <label style={styles.label}>Contraseña</label>
-              <input 
-                  placeholder="Contraseña" 
-                  type="password" 
-                  value={authPassword} 
-                  onChange={(e) => setAuthPassword(e.target.value)} 
-                  style={styles.input} 
-              />
-              <button 
-                  onClick={handleLogin} 
-                  disabled={isLoading || !authEmail || !authPassword} 
-                  style={(!authEmail || !authPassword) ? styles.primaryButtonDisabled : styles.primaryButton}
-              >
-                  {isLoading ? "Cargando..." : (authMode === "login" ? "Ingresar" : "Crear")}
-              </button>
-          </form>
-
-          <div style={styles.authFooter}>
-              {authMode === "login" ? (<span onClick={() => setAuthMode("signup")} style={styles.linkText}>Crear cuenta</span>) : (<>¿Ya tienes una cuenta? <span onClick={() => setAuthMode("login")} style={styles.linkText}>Iniciar sesión</span></>)}
-          </div>
-          {syncStatus && <p style={{textAlign:'center', fontSize:12, color:'blue', marginTop:10}}>{syncStatus}</p>}
-        </div>
-      )}
-
-      {/* navigation blocks */}
-      {step === "project" && (
-        <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un proyecto</h2><div style={styles.optionGrid}>{projects?.map(p => <button key={p.ID_Proyectos} onClick={() => selectProject(p.ID_Proyectos)} style={styles.optionButton}>{p.Proyecto_Nombre}</button>)}</div></div>
-      )}
-      {step === "front" && (<div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona un frente</h2><div style={styles.optionGrid}>{fronts?.map(f => <button key={f.ID_Frente} onClick={() => selectFront(f.ID_Frente)} style={styles.optionButton}>{f.Nombre_Frente}</button>)}</div></div>)}
-      {step === "locality" && (<div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Selecciona una localidad</h2><div style={styles.optionGrid}>{localities?.map(l => <button key={l.ID_Localidad} onClick={() => selectLocality(l.ID_Localidad)} style={styles.optionButton}>{l.Nombre_Localidad}</button>)}</div></div>)}
-      {step === "detail" && (
-        <div style={{...styles.card, margin: '0 0 24px'}}>
-            <h2 style={styles.sectionTitle}>Selecciona un sector</h2>
-            <input placeholder="Buscar..." value={detailSearch} onChange={e => setDetailSearch(e.target.value)} style={styles.searchInput} />
-            <div style={styles.searchResults}>
-                {filteredDetails && filteredDetails.length > 0 ? (
-                    filteredDetails.map(d => (
-                        <button key={d.ID_DetallesActividad} onClick={() => selectDetail(d)} style={styles.searchOption}>
-                            <span style={styles.searchOptionTitle}>{d.Nombre_Detalle}</span>
-                            <span style={styles.searchOptionMeta}>{d.activityName}</span>
-                        </button>
-                    ))
-                ) : (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '13px'}}>No se encontraron actividades</div>
-                )}
-            </div>
-        </div>
-      )}
-      {step === "activity" && selectedActivity && (
-         <div style={{...styles.card, margin: '0 0 24px'}}><h2 style={styles.sectionTitle}>Confirmar Actividad</h2><div style={styles.detailInfoBox}><p style={{fontWeight:'bold'}}>{selectedActivity.Nombre_Actividad}</p></div><button onClick={() => setStep("map")} style={styles.primaryButton}>Ir al Mapa / Formulario</button></div>
-      )}
-
-      {/* --- form de registro --- */}
-      {(step === "map" || step === "form") && (
-        <div style={{...styles.card, margin: '0 0 24px'}}>
-           <h2 style={styles.sectionTitle}>Registrar Evidencia</h2>
-           
-           <div style={{backgroundColor:'#F8FAFC', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20}}>
-               <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Ubicación</h3>
-               <div style={{...styles.mapPlaceholder, height: '150px', marginBottom:10}}>
-                   {isOnline && mapUrl ? <iframe title="Mapa" src={mapUrl} style={{...styles.mapFrame, height:'150px'}} /> : <div style={styles.emptyState}>Mapa Offline<br/>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div>}
-               </div>
-               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, paddingBottom:12, borderBottom:'1px dashed #CBD5F5'}}>
-                   <div><span style={{fontSize:11, color:'#64748B'}}>Automática (GPS)</span><div style={{fontSize:14, color:'#0F172A'}}>{displayLat.toFixed(5)}, {displayLng.toFixed(5)}</div></div>
-                   <button onClick={handleCaptureGps} disabled={isFetchingGps} style={styles.secondaryButtonSmall}>{isFetchingGps ? "..." : "Actualizar"}</button>
-               </div>
-               <div>
-                   <span style={{fontSize:11, color:'#64748B', display:'block', marginBottom:5}}>Manual (UTM)</span>
-                   <div style={{display:'flex', gap:5}}>
-                        <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={{...styles.inputCompact, width:'25%'}}><option value="17">17S</option><option value="18">18S</option><option value="19">19S</option></select>
-                        <input placeholder="Este (E)" value={utmEast} onChange={(e) => setUtmEast(e.target.value)} style={{...styles.inputCompact, width:'30%'}} />
-                        <input placeholder="Norte (N)" value={utmNorth} onChange={(e) => setUtmNorth(e.target.value)} style={{...styles.inputCompact, width:'30%'}} />
-                        <button onClick={handleUpdateFromUtm} style={{...styles.secondaryButtonSmall, width:'auto', padding:'0 8px'}}>Aplicar</button>
-                   </div>
-               </div>
-           </div>
-           
-           <div style={{backgroundColor:'#FFFFFF', padding:15, borderRadius:12, border:'1px solid #E2E8F0', marginBottom:20, boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
-               <h3 style={{fontSize:14, fontWeight:'normal', color:'#475569', marginTop:0, marginBottom:10}}>Evidencia y datos</h3>
-               <div style={{marginBottom:15}}>
-                    <div style={{...styles.evidenceBox, backgroundColor:'#F1F5F9', borderStyle:'dashed', minHeight:'180px'}}>
-                        {evidencePreview ? <img src={evidencePreview} style={{...styles.evidenceImage, height:'auto', maxHeight:'250px'}} /> : <span style={{color:'#94A3B8', fontSize:13}}>Sin foto seleccionada</span>}
-                    </div>
-
-                    {isAnalyzing && <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:10, backgroundColor:'#EFF6FF', borderRadius:8, color:'#1E40AF', fontSize:13}}><b>Analizando imagen con IA...</b></div>}
-                    
-                    {aiFeedback && <div style={{padding:10, borderRadius:8, fontSize:13, marginTop:5, backgroundColor: aiFeedback.type === 'warning' ? '#FEF2F2' : (aiFeedback.type === 'info' ? '#EFF6FF' : '#F0FDF4'), border: aiFeedback.type === 'warning' ? '1px solid #FCA5A5' : (aiFeedback.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'), color: aiFeedback.type === 'warning' ? '#991B1B' : (aiFeedback.type === 'info' ? '#1E40AF' : '#166534')}}>{aiFeedback.type === 'warning' ? '⚠️' : (aiFeedback.type === 'info' ? 'ℹ️' : '✅')} <b>{aiFeedback.message}</b></div>}
-
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleCaptureFile} style={{display:'none'}} />
-                    <button onClick={() => fileInputRef.current?.click()} style={{...styles.secondaryButton, marginTop:10}}>Tomar / Seleccionar foto</button>
-               </div>
-               <label style={styles.label}>Observaciones</label>
-               <textarea value={note} onChange={e => setNote(e.target.value)} style={{...styles.textArea, minHeight:'70px'}} placeholder="Escribe aquí..." />
-           </div>
-
-           {/* --- atributos (solo online) --- */}
-           <div style={{backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, border: '1px solid #E2E8F0', marginBottom: 20, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
-               <h3 style={{fontSize: 14, fontWeight: 'normal', color: '#475569', marginTop: 0, marginBottom: 10}}>Atributos de Actividad</h3>
-               {isOnline ? (
-                   <>
-                       {registerProperties.length > 0 ? (
-                           <>
-                               <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Tipo de Propiedad</label>
-                               <select value={registerPropId} onChange={(e) => setRegisterPropId(Number(e.target.value))} style={{...styles.input, padding: '8px', fontSize: '13px', marginBottom: '10px', height: 'auto'}}>
-                                   <option value="">-- Seleccionar --</option>
-                                   {registerProperties.map(p => (<option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>))}
-                               </select>
-                               <label style={{...styles.label, fontSize: '11px', color:'#64748B'}}>Valor / Detalle</label>
-                               <input value={registerDetailText} onChange={(e) => setRegisterDetailText(e.target.value)} style={{...styles.input, padding: '8px', fontSize: '13px', marginBottom: '0'}} placeholder="Ej: 50 metros, Color Rojo..." />
-                           </>
-                       ) : (
-                           <div style={{fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', padding: '10px'}}>No hay propiedades configuradas para esta actividad.</div>
-                       )}
-                   </>
-               ) : (
-                   <div style={{backgroundColor: '#FFF1F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#991B1B', display: 'flex', alignItems: 'center', gap: '8px'}}><span>⚠️</span> Propiedades no disponibles offline. Por favor, añada detalles importantes en las Observaciones.</div>
-               )}
-           </div>
-
-           <button onClick={() => {setStep("profile"); saveReport();}} disabled={isLoading || !evidencePreview || isAnalyzing} style={{...(isLoading || isAnalyzing ? styles.primaryButtonDisabled : styles.primaryButton), height: '50px', fontSize: '16px', marginBottom: '20px'}}>{isLoading ? "Guardando..." : (isAnalyzing ? "Analizando..." : "Guardar reporte")}</button>
-        </div>
-      )}
-      
-      {step === "profile" && (
-         <div style={{...styles.card, margin: '0 0 24px'}}>
-            <h2 style={styles.sectionTitle}>Mi Perfil</h2>
-            <input placeholder="Nombre" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={styles.input} />
-            <input placeholder="Apellido" value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} style={styles.input} />
-            <input placeholder="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} style={styles.input} />
-            <div style={styles.readOnlyBlock}><span>Creado: {new Date(profileCreatedAt).toLocaleDateString()}</span></div>
-            {profileMessage && <div style={styles.profileMessage}>{profileMessage}</div>}
-            <div style={{marginTop: '20px'}}>
-                <button onClick={saveProfile} disabled={isProfileSaving} style={styles.primaryButton}>Actualizar Datos</button>
-                <button onClick={handleLogout} style={styles.secondaryButton}>Cerrar Sesión</button>
-                <button onClick={requestDeleteAccount} style={styles.dangerButton}>Eliminar Cuenta</button>
-            </div>
-         </div>
-      )}
-
-      {step === "user_records" && (
-         <div style={{...styles.card, margin: '0 0 24px', minHeight: '80vh'}}>
-             <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20}}>
-                <div><h2 style={styles.sectionTitle}>Mis Registros</h2><p style={{fontSize: '13px', color: '#64748B', margin: 0}}>{userRecords?.length || 0} evidencias registradas</p></div>
-             </div>
-             {isLoadingRecords ? (<div style={styles.emptyState}>Cargando galería...</div>) : userRecords?.length === 0 ? (<div style={styles.emptyState}>No tienes registros aún.</div>) : (
-                 <>
-                    <div style={styles.gridContainer}>
-                        {userRecords?.map(rec => (
-                            <div key={rec.id_registro} style={styles.cardItem} onClick={() => setSelectedRecordId(rec.id_registro)}>
-                                {rec.url_foto ? (<img src={rec.url_foto} alt="Evidencia" style={styles.cardImage} loading="lazy" />) : (<div style={styles.cardImagePlaceholder}>📷</div>)}
-                                <div style={styles.cardFooter}><span style={styles.cardTitle}>{rec.nombre_actividad}</span></div>
-                            </div>
-                        ))}
-                    </div>
-                    {selectedRecordId && (() => {
-                        const rec = userRecords.find(r => r.id_registro === selectedRecordId);
-                        if (!rec) return null;
-                        const proyectoStr = rec.nombre_proyecto || (rec.bucket ? rec.bucket.replace(/_/g, ' ').toUpperCase() : "PROYECTO GENERAL");
-                        let frenteStr = rec.nombre_frente || "No identificado";
-                        if ((!rec.nombre_frente || rec.nombre_frente === "No identificado") && rec.ruta_archivo) {
-                            const parts = rec.ruta_archivo.split('/');
-                            if (parts.length > 0) {
-                                if (parts[0].toLowerCase() === 'uploads' && parts.length > 1) { frenteStr = parts[1].replace(/_/g, ' '); } 
-                                else if (parts[0].toLowerCase() !== 'uploads') { frenteStr = parts[0].replace(/_/g, ' '); }
-                            }
-                        }
-                        return (
-                            <div style={styles.detailOverlay}>
-                                <div style={styles.detailHeader}>
-                                    <button onClick={() => setSelectedRecordId(null)} style={styles.backArrowBtn}>←</button>
-                                    <h3 style={{margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: 'bold', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{rec.nombre_actividad}</h3>
-                                </div>
-                                <div style={styles.detailContent}>
-                                    <div style={{textAlign:'center'}}>{rec.url_foto ? (<img src={rec.url_foto} style={styles.detailImageLarge} alt="Evidencia Grande" />) : (<div style={{...styles.detailImageLarge, backgroundColor:'#F1F5F9', display:'flex', alignItems:'center', justifyContent:'center', color:'#94A3B8'}}>Sin Foto</div>)}</div>
-                                    <div style={styles.attributeList}>
-                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Proyecto</span><span style={styles.attributeValue}>{proyectoStr}</span></div>
-                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Frente</span><span style={styles.attributeValue}>{frenteStr.toUpperCase()}</span></div>
-                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Localidad</span><span style={styles.attributeValue}>{rec.nombre_localidad}</span></div>
-                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Sector</span><span style={styles.attributeValue}>{rec.nombre_detalle}</span></div>
-                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Actividad</span><span style={styles.attributeValue}>{rec.nombre_actividad}</span></div>
-                                        <div style={styles.attributeItem}><span style={styles.attributeLabel}>Comentario</span><span style={{...styles.attributeValue, fontStyle: rec.comentario ? 'normal' : 'italic', color: rec.comentario ? '#0F172A' : '#94A3B8'}}>{rec.comentario || "Sin comentarios"}</span></div>
-                                        <div style={{...styles.attributeItem, borderBottom: 'none'}}><span style={styles.attributeLabel}>Ubicación</span><span style={{...styles.attributeValue, fontFamily: 'monospace', fontSize: '12px', backgroundColor:'#F1F5F9', padding:'4px 8px', borderRadius:'4px', display:'inline-block'}}>{rec.latitud ? `${rec.latitud.toFixed(6)}, ${rec.longitud?.toFixed(6)}` : "Sin coordenadas"}</span></div>
-                                    </div>
-                                    <div style={{marginTop: '40px', display: 'flex', gap: '10px', paddingBottom: '40px'}}>
-                                        <button onClick={() => requestDeleteRecord(rec)} style={{...styles.dangerButton, flex: 1, marginTop: 0}}>Eliminar</button>
-                                        <button onClick={openEditModal} style={{...styles.secondaryButton, flex: 1, marginTop: 0}}>Editar</button>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
-                 </>
-             )}
-         </div>
-      )}
-
-      {step === "files" && (
-         <div style={{...styles.card, margin: '0 0 24px'}}>
-             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10}}>
-                <h2 style={{...styles.sectionTitle, marginBottom:0}}>Archivos</h2>
-                <button onClick={handleDownloadCSV} style={{...styles.secondaryButtonSmall, width:'auto'}}>Descargar CSV</button>
-             </div>
-             <div style={styles.tableContainer}>
-                 <table style={styles.table}>
-                   <thead><tr style={styles.tableHeaderRow}><th style={styles.tableTh}>ID</th><th style={styles.tableTh}>Localidad</th><th style={styles.tableTh}>Sector</th><th style={styles.tableTh}>Actividad</th><th style={styles.tableTh}>Fecha</th></tr></thead>
-                   <tbody>
-                       {userRecords?.map(r => (
-                          <tr key={r.id_registro} onClick={() => handleRowClick(r)} style={selectedRecordId === r.id_registro ? styles.tableRowActive : styles.tableRow}>
-                             <td style={{padding:8}}>{r.id_registro}</td><td style={{padding:8}}>{r.nombre_localidad}</td><td style={{padding:8}}>{r.nombre_detalle}</td><td style={{padding:8}}>{r.nombre_actividad}</td><td style={{padding:8}}>{new Date(r.fecha_subida).toLocaleDateString()}</td>
-                          </tr>
-                       ))}
-                   </tbody>
-                 </table>
-             </div>
-             {selectedRecordId ? (
-                 <div style={{marginTop:20, borderTop:'1px solid #eee', paddingTop:15, backgroundColor:'#FAFAFA', padding:15, borderRadius:8}}>
-                     <h4 style={{marginTop:0, fontSize:14, color:'#0B5FFF'}}>Propiedades del Registro #{selectedRecordId}</h4>
-                     <label style={styles.label}>Tipo de Propiedad</label>
-                     <select value={selectedPropId} onChange={e=>setSelectedPropId(Number(e.target.value))} style={styles.input}><option value="">-- Seleccionar --</option>{availableProperties?.map(p=><option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Propiedad}</option>)}</select>
-                     <label style={styles.label}>Valor / Detalle</label>
-                     <input value={detailText} onChange={e=>setDetailText(e.target.value)} style={styles.input} placeholder="Ej: 50 metros..." />
-                     <button onClick={handleSaveProperty} style={styles.secondaryButtonSmall}>Guardar Propiedad</button>
-                 </div>
-             ) : (<div style={{marginTop:20, padding:15, textAlign:'center', color:'#94A3B8', border:'1px dashed #CBD5F5', borderRadius:8}}>Selecciona una fila para anadir propiedades.</div>)}
-         </div>
-      )}
-
-      {isPhotoModalOpen && (
-         <div style={styles.modalOverlay}><div style={styles.modalCard}><h3>Editar</h3>{editPreviewUrl && <img src={editPreviewUrl} style={styles.evidenceImage} />}<button onClick={() => editFileInputRef.current?.click()} style={styles.secondaryButton}>Cambiar Foto</button><input ref={editFileInputRef} type="file" onChange={handleEditFileSelect} style={{display:'none'}} /><input value={editComment} onChange={e => setEditComment(e.target.value)} style={styles.input} /><div style={styles.modalButtons}><button onClick={closeEditModal} style={styles.secondaryButton}>Cancelar</button><button onClick={saveRecordEdits} style={styles.primaryButton}>Guardar</button></div></div></div>
-      )}
-
-      {toast && (
-        <div style={{position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', backgroundColor: toast.type === 'error' ? '#FEF2F2' : (toast.type === 'info' ? '#EFF6FF' : '#F0FDF4'), border: toast.type === 'error' ? '1px solid #FCA5A5' : (toast.type === 'info' ? '1px solid #BFDBFE' : '1px solid #86EFAC'), color: toast.type === 'error' ? '#991B1B' : (toast.type === 'info' ? '1E40AF' : '#166534'), padding: '12px 24px', borderRadius: '50px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap'}}>
-            <span>{toast.type === 'error' ? '⚠️' : (toast.type === 'info' ? 'ℹ️' : '✅')}</span>{toast.msg}
-        </div>
-      )}
-
-      {confirmModal?.open && (
-        <div style={styles.modalOverlay}>
-            <div style={styles.modalCard}>
-                <h3 style={{marginTop:0, color:'#0F172A'}}>{confirmModal.title}</h3>
-                <p style={{color:'#64748B', marginBottom:20}}>{confirmModal.message}</p>
-                <div style={styles.modalButtons}><button onClick={() => setConfirmModal(null)} style={styles.secondaryButton}>Cancelar</button><button onClick={confirmModal.onConfirm} style={styles.dangerButton}>Confirmar</button></div>
-            </div>
-        </div>
-      )}
-
-      </div>
-    </div>
-  );
+<file path="tsconfig.json">
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ]
 }
 </file>
 

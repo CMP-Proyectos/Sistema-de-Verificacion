@@ -46,7 +46,7 @@ export const styles: Record<string, React.CSSProperties> = {
   // --- LAYOUT ---
   page: { minHeight: "100vh", backgroundColor: palette.background, fontFamily: "'Inter', sans-serif", color: palette.slateDark, display: "flex", flexDirection: "column", overflow: "hidden" },
   container: { maxWidth: "900px", width: "100%", margin: "0 auto", padding: "20px 20px 90px 20px", flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
-  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "65vh", paddingRight: "6px", scrollbarWidth: "thin" },
+  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "65vh", paddingRight: "6px", scrollbarWidth: "thin", paddingBottom: "100px" },
 
   // --- COMPONENTES BASE ---
   card: { backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "6px", padding: "24px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "20px", display: "flex", flexDirection: "column", maxHeight: "85vh" },
@@ -68,6 +68,7 @@ export const styles: Record<string, React.CSSProperties> = {
   
   // Usamos el baseInput corregido
   input: { ...baseInput, marginBottom: "16px" },
+  selects: {...baseInput, width: '100%', height: '45px', paddingTop: '0px', paddingBottom: '0px'},
 
   text: { fontSize: "14px", color: palette.slateDark, lineHeight: "1.5" },
   monoText: { fontFamily: "'Roboto Mono', monospace", fontSize: "12px", color: palette.slateDark, backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px", display: "inline-block", border: "1px solid #E2E8F0" },

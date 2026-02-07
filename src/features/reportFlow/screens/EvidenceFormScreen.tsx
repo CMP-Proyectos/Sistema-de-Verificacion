@@ -1,7 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { styles, evidenceStyles as es } from '../../../theme/styles'; 
 import { ActivitiesTypes } from '../types';
-import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud, AlertCircle } from 'lucide-react';
+
+interface ParametricData {
+  propId: string;
+  value: string;
+  quantity: string;
+}
 
 interface Props {
   isOnline: boolean;
@@ -22,8 +28,13 @@ interface Props {
   registerProperties: ActivitiesTypes[];
   registerPropId: string; setRegisterPropId: (v: string) => void;
   registerDetailText: string; setRegisterDetailText: (v: string) => void;
+  registerDetailQuantity: string; setRegisterDetailQuantity: (v: string) => void;
   isLoading: boolean;
   onSave: () => void;
+  // NUEVA PROP PARA EVIDENCIA PREVIA
+  previousRecord?: any;
+  parametricList: ParametricData[]; 
+  setParametricList: React.Dispatch<React.SetStateAction<ParametricData[]>>;
 }
 
 export const EvidenceFormScreen = ({
@@ -32,9 +43,29 @@ export const EvidenceFormScreen = ({
     utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, onUpdateUtm,
     evidencePreview, isAnalyzing, aiFeedback, onCaptureFile,
     note, setNote,
-    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText,
-    isLoading, onSave
+    registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText, registerDetailQuantity, setRegisterDetailQuantity,
+    isLoading, onSave,
+    previousRecord,
+    parametricList, setParametricList
 }: Props) => {
+
+  const addParametricRow = () => {
+    setParametricList([...parametricList, { propId: '', value: '', quantity: '' }]);
+  };
+
+  const removeParametricRow = (index: number) => {
+    const newList = parametricList.filter((_, i) => i !== index);
+    setParametricList(newList);
+  };
+
+  const updateParametricRow = (index: number, field: keyof ParametricData, value: string) => {
+    const newList = [...parametricList];
+    newList[index] = {
+        ...newList[index],
+        [field]: value
+    };
+    setParametricList(newList);
+  };
 
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
@@ -56,9 +87,56 @@ export const EvidenceFormScreen = ({
   });
 
   return (
-    // IMPORTANTE: Aquí se usa styles.scrollableY (con Y)
     <div style={styles.scrollableY}>
         
+        {/* --- BLOQUE NUEVO: EVIDENCIA PREVIA (SOLO SI EXISTE) --- */}
+        {previousRecord && (
+            <div style={{
+                ...styles.card,
+                backgroundColor: '#FFFFFF',
+                borderLeft: '5px solid #F59E0B',
+                padding: '16px',
+                marginBottom: '16px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <AlertCircle size={18} color="#92400E" />
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#92400E', textTransform: 'uppercase' }}>
+                        Registro previo encontrado en este sector
+                    </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {/* Miniatura de la foto anterior guardada localmente */}
+                    <img 
+                        src={previousRecord.URL_Archivo} 
+                        style={{ 
+                            width: '85px', 
+                            height: '85px', 
+                            borderRadius: '6px', 
+                            objectFit: 'cover', 
+                            border: '1px solid #E2E8F0',
+                            backgroundColor: '#F1F5F9'
+                        }} 
+                        alt="Evidencia anterior"
+                    />
+                    
+                    <div style={{ flex: 1 }}>
+                        <label style={{ ...styles.label, fontSize: '10px', color: '#64748B', marginBottom: '4px' }}>
+                            COMENTARIO ANTERIOR
+                        </label>
+                        <p style={{ fontSize: '13px', color: '#1E293B', fontWeight: '600', margin: 0, fontStyle: 'italic' }}>
+                            "{previousRecord.comentario || 'Sin comentario registrado'}"
+                        </p>
+                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+                            <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>
+                                Registrado el: {new Date(previousRecord.fecha_subida).toLocaleDateString()}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* --- BLOQUE 1: UBICACIÓN --- */}
         <div style={styles.card}>
             <div style={{...styles.flexBetween, ...styles.mb16}}>
@@ -105,9 +183,11 @@ export const EvidenceFormScreen = ({
 
             {geoMode === 'utm' && (
                 <div style={es.utmRow}>
-                    <div style={{width: '60px'}}>
+                    <div style={{width: 'auto', minWidth: '100px', marginRight: '10px'}}>
                         <label style={styles.label}>ZONA</label>
-                        <input type="number" value={utmZone} onChange={e => setUtmZone(e.target.value)} placeholder="18" style={es.inputCenter} />
+                        <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={styles.selects}>
+                            <option value="17">Zona 17S</option><option value="18">Zona 18S</option><option value="19">Zona 19S</option>
+                        </select>
                     </div>
                     <div style={{flex: 1}}>
                         <label style={styles.label}>ESTE (X)</label>
@@ -179,21 +259,40 @@ export const EvidenceFormScreen = ({
             />
         </div>
 
-        {/* --- BLOQUE 3: ATRIBUTOS (Aquí es donde se arregla el texto blanco) --- */}
-        {isOnline && registerProperties.length > 0 && (
+        {/* --- BLOQUE 2:  --- */}
+        {isOnline && (
             <div style={styles.card}>
                 <h3 style={styles.heading}>3. Datos Paramétricos</h3>
                 <div style={es.grid2}>
                     <div>
                         <label style={styles.label}>Propiedad</label>
-                        <select value={registerPropId} onChange={(e) => setRegisterPropId(e.target.value)} style={styles.input}>
+                        <select 
+                        value={registerPropId} 
+                        onChange={(e) => setRegisterPropId(e.target.value)} 
+                        style={styles.input}
+                        disabled={registerProperties.length === 0}
+                        >
+                        {registerProperties.length > 0 ? (
+                            <>
                             <option value="">-- SELECCIONAR --</option>
-                            {registerProperties.map(p => (<option key={p.ID_Propiedad} value={p.ID_Propiedad}>{p.Nombre_Propiedad}</option>))}
+                            {registerProperties.map(p => (
+                                <option key={p.ID_Propiedad} value={String(p.ID_Propiedad)}>
+                                {p.Propiedad}
+                                </option>
+                            ))}
+                            </>
+                        ) : (
+                            <option value="">NO HAY PROPIEDADES DISPONIBLES</option>
+                        )}
                         </select>
                     </div>
                     <div>
                         <label style={styles.label}>Valor</label>
-                        <input value={registerDetailText} onChange={(e) => setRegisterDetailText(e.target.value)} style={styles.input} placeholder="Valor" />
+                        <input value={registerDetailText} onChange={(e) => setRegisterDetailText(e.target.value)} style={styles.input} placeholder={registerProperties.length === 0 ? "No Hay Propiedades Disponibles" : "Valor"} disabled={registerProperties.length === 0} />
+                    </div>
+                    <div>
+                        <label style={styles.label}>Cantidad</label>
+                        <input type="number" step="any" min="0" value={registerDetailQuantity} onChange={(e) => setRegisterDetailQuantity(e.target.value)} style={styles.input} placeholder="Cantidad" />
                     </div>
                 </div>
             </div>

@@ -1,55 +1,46 @@
 import Dexie, { Table } from 'dexie';
+// Asegúrate de importar las interfaces correctas desde tu dataService
 import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
 
-// definición local de las propiedades
-export interface ActivityPropertyDef {
-  id?: number; 
-  ID_Actividad: number;
-  ID_Propiedad: number;
-  Nombre_Propiedad: string;
+// Interfaz para el caché de historial (la usaremos luego para "Evidencia Previa")
+export interface CachedRecord {
+  id_registro: number;
+  id_detalle: number;
+  fecha_subida: string;
+  url_archivo: string;
+  comentario: string;
+  cantidad: number;
 }
 
-// tipos para registros pendientes de subida:
-export interface PendingRecord {
-  id?: number;
-  timestamp: number;
-  evidenceBlob: Blob;
-  fileType: string;
-  meta: {
-    bucketName: string;
-    fullPath: string;
-    fileName: string;
-    userId: string;
-    detailId: number;
-    lat: number;
-    lng: number;
-    comment: string;
-    properties?: { id_propiedad: number; valor: string }[];
-  };
-}
-
-class OfflineDatabase extends Dexie {
-  projects!: Table<ProjectRecord>;
-  fronts!: Table<FrontRecord>;
-  localities!: Table<LocalityRecord>;
-  details!: Table<DetailRecord>;
-  activities!: Table<ActivityRecord>;
-  pendingUploads!: Table<PendingRecord>;
-  activityProperties!: Table<ActivityPropertyDef>;
+class MyDatabase extends Dexie {
+  // 1. Definimos las propiedades de la clase para que TypeScript las reconozca
+  pendingUploads!: Table<any>; 
+  catalog_projects!: Table<ProjectRecord>;
+  catalog_fronts!: Table<FrontRecord>;
+  catalog_localities!: Table<LocalityRecord>;
+  catalog_details!: Table<DetailRecord>;
+  catalog_activities!: Table<ActivityRecord>; // <--- Esta faltaba y es clave
+  history_cache!: Table<CachedRecord>;
 
   constructor() {
-    super('AppObraDB');
-    // estructura final
-    this.version(6).stores({
-      projects: 'ID_Proyectos',
-      fronts: 'ID_Frente, ID_Proyecto',
-      localities: 'ID_Localidad, ID_Frente',
-      details: 'ID_DetallesActividad, ID_Localidad', 
-      activities: 'ID_Actividad',
-      pendingUploads: '++id',
-      activityProperties: '++id, ID_Actividad'
+    super('ReportFlowDB');
+    
+    // 2. Definimos el esquema (Nombres de tablas y sus índices)
+    // NOTA: Si cambias esto, a veces es necesario borrar la BD en el navegador para que se regenere
+    this.version(2).stores({ // Subí la versión a 2 para forzar la actualización
+      pendingUploads: '++id, timestamp, meta.userId',
+      
+      // Catálogos (Nombres deben coincidir con las propiedades de arriba)
+      catalog_projects: 'ID_Proyectos, Proyecto_Nombre',
+      catalog_fronts: 'ID_Frente, ID_Proyecto',
+      catalog_localities: 'ID_Localidad, ID_Frente',
+      catalog_details: 'ID_DetallesActividad, ID_Localidad',
+      catalog_activities: 'ID_Actividad',
+      
+      // Caché
+      history_cache: 'id_registro, id_detalle, fecha_subida'
     });
   }
 }
 
-export const db = new OfflineDatabase();
+export const db = new MyDatabase();
