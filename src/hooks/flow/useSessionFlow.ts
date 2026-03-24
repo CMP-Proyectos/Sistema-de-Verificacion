@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../services/dataService";
 import { db } from "../../services/db_local";
-import { ToastState, ConfirmModalState } from "../../features/reportFlow/types";
+import { ConfirmModalState } from "../../features/reportFlow/types";
 
 export function useSessionFlow(
   showToast: (msg: string, type: 'success'|'error'|'info') => void,
@@ -71,21 +71,69 @@ export function useSessionFlow(
   };
 
   const loadProfileData = async () => {
-      const {data} = await supabase.auth.getUser();
-      if(data.user) {
-          setProfileEmail(data.user.email||"");
-          setProfileName(data.user.user_metadata?.full_name||"");
-          setProfileLastName(data.user.user_metadata?.last_name||"");
+      if (!sessionUser) return;
+
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+          console.error("Error al obtener usuario autenticado:", authError);
       }
+
+      const authUser = authData.user;
+      setProfileEmail(authUser?.email || sessionUser.email || "");
+
+      const { data: profileData, error: profileError } = await supabase
+          .from('Detalle_Perfil')
+          .select('Nombre, Apellido')
+          .eq('id', sessionUser.id)
+          .maybeSingle();
+
+      if (profileError) {
+          console.error("Error al cargar perfil:", profileError);
+          setProfileName("");
+          setProfileLastName("");
+          return;
+      }
+
+      setProfileName(profileData?.Nombre || "");
+      setProfileLastName(profileData?.Apellido || "");
   };
 
   const saveProfile = async () => { 
       if(!sessionUser) return; 
       setIsProfileSaving(true); 
       try { 
-          await supabase.from('Detalle_Perfil').update({Nombre: profileName, Apellido: profileLastName}).eq('id', sessionUser.id); 
+          const { error: upsertError } = await supabase
+              .from('Detalle_Perfil')
+              .upsert(
+                  {
+                      id: sessionUser.id,
+                      Nombre: profileName,
+                      Apellido: profileLastName
+                  },
+                  { onConflict: 'id' }
+              );
+
+          if (upsertError) {
+              throw upsertError;
+          }
+
+          const { data: persistedProfile, error: reloadError } = await supabase
+              .from('Detalle_Perfil')
+              .select('Nombre, Apellido')
+              .eq('id', sessionUser.id)
+              .single();
+
+          if (reloadError) {
+              throw reloadError;
+          }
+
+          setProfileName(persistedProfile?.Nombre || "");
+          setProfileLastName(persistedProfile?.Apellido || "");
           showToast("Perfil actualizado", "success"); 
-      } catch { showToast("Error al actualizar", "error"); } 
+      } catch (error) {
+          console.error("Error al actualizar perfil:", error);
+          showToast("Error al actualizar", "error");
+      } 
       finally { setIsProfileSaving(false); } 
   };
 
