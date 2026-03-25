@@ -10,6 +10,18 @@ import { useRecordsFlow } from "./flow/useRecordsFlow";
 
 const MASTER_BUCKET = "Remodelacion_Tacna"; 
 const sanitizeName = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase();
+const withTimeout = async <T,>(label: string, work: Promise<T>, timeoutMs = 15000): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} excedió ${timeoutMs}ms`)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([work, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
 
 export function useReportFlow() {
   const [step, setStep] = useState<Step>("auth");
@@ -256,9 +268,21 @@ export function useReportFlow() {
 
   const handleLoginBridge = () => {
     session.handleLogin(async () => {
-      await catalog.performFullSync();
-      await catalog.loadProjectsLocal();
+      console.log("[AUTH] Post-login: iniciando sincronización");
+      try {
+        await withTimeout("performFullSync", catalog.performFullSync());
+        console.log("[AUTH] Post-login: sincronización completada");
+      } catch (error) {
+        console.error("[AUTH] Post-login: fallo en performFullSync", error);
+        showToast("No se pudo sincronizar en este momento. Se cargarán los datos locales.", "info");
+      }
+
+      console.log("[AUTH] Post-login: cargando proyectos locales");
+      await withTimeout("loadProjectsLocal", catalog.loadProjectsLocal(), 5000);
+      console.log("[AUTH] Post-login: proyectos locales listos");
+
       setStep("project");
+      console.log("[AUTH] Post-login: navegación a project completada");
       syncPendingUploads();
     });
   };

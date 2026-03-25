@@ -168,6 +168,7 @@ export function useSessionFlow(
     setAuthMessage(null);
 
     try {
+      console.log("[AUTH] Iniciando login", { mode: authMode, email: authEmail.trim() });
       if (authMode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email: authEmail.trim(),
@@ -176,6 +177,7 @@ export function useSessionFlow(
         if (error) throw error;
         if (!data.user) return showToast("Verifica tu correo", "info");
         setSessionUser({ email: data.user.email || "", id: data.user.id });
+        console.log("[AUTH] Signup exitoso", { userId: data.user.id });
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authEmail.trim(),
@@ -183,10 +185,14 @@ export function useSessionFlow(
         });
         if (error) throw error;
         if (data.user) setSessionUser({ email: data.user.email || "", id: data.user.id });
+        console.log("[AUTH] SignIn exitoso", { userId: data.user?.id });
       }
 
+      console.log("[AUTH] Ejecutando post-login");
       await onSuccess();
+      console.log("[AUTH] Post-login completado");
     } catch (error: any) {
+      console.error("[AUTH] Error en login/post-login", error);
       const message = error?.message || "No se pudo completar el inicio de sesión.";
       setAuthMessage({ type: "error", text: message });
       showToast(message, "error");
