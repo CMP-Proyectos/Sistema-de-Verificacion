@@ -79,6 +79,7 @@ export function useSessionFlow(
   const [authView, setAuthView] = useState<AuthView>("login");
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authLoadingLabel, setAuthLoadingLabel] = useState("AUTENTICANDO...");
   const [resetEmail, setResetEmail] = useState("");
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
@@ -94,6 +95,7 @@ export function useSessionFlow(
     recoveryFlowActiveRef.current = true;
     openAuthScreen();
     setIsAuthLoading(false);
+    setAuthLoadingLabel("ACTUALIZANDO...");
     setAuthView("password_recovery");
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
@@ -165,6 +167,7 @@ export function useSessionFlow(
   const handleLogin = async (onSuccess: () => void | Promise<void>) => {
     setIsLoading(true);
     setIsAuthLoading(true);
+    setAuthLoadingLabel("AUTENTICANDO...");
     setAuthMessage(null);
 
     try {
@@ -206,6 +209,7 @@ export function useSessionFlow(
     setResetEmail(authEmail.trim());
     setAuthMessage(null);
     setIsAuthLoading(false);
+    setAuthLoadingLabel("ENVIANDO...");
     setAuthView("reset_request");
   };
 
@@ -214,6 +218,7 @@ export function useSessionFlow(
     recoveryFlowActiveRef.current = false;
     setSessionUser(null);
     setIsAuthLoading(false);
+    setAuthLoadingLabel("AUTENTICANDO...");
     clearRecoveryUrl();
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
@@ -235,6 +240,7 @@ export function useSessionFlow(
     }
 
     setIsAuthLoading(true);
+    setAuthLoadingLabel("ENVIANDO...");
     setAuthMessage(null);
 
     try {
@@ -269,6 +275,7 @@ export function useSessionFlow(
     }
 
     setIsAuthLoading(true);
+    setAuthLoadingLabel("ACTUALIZANDO...");
     setAuthMessage(null);
 
     try {
@@ -394,6 +401,8 @@ export function useSessionFlow(
     isLoading,
     setIsLoading,
     isAuthLoading,
+    authLoadingLabel,
+    setAuthLoadingLabel,
     authEmail,
     setAuthEmail,
     authPassword,

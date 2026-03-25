@@ -17,6 +17,7 @@ interface Props {
   authView: AuthView;
   authMessage: AuthMessage;
   isLoading: boolean;
+  authLoadingLabel: string;
   syncStatus: string;
   resetEmail: string;
   setResetEmail: (val: string) => void;
@@ -59,6 +60,7 @@ export const AuthScreen = ({
   authView,
   authMessage,
   isLoading,
+  authLoadingLabel,
   syncStatus,
   resetEmail,
   setResetEmail,
@@ -153,7 +155,7 @@ export const AuthScreen = ({
             cursor: isLoading ? "wait" : "pointer",
           }}
         >
-          {isLoading ? "AUTENTICANDO..." : isLogin ? "INGRESAR AL SISTEMA" : "REGISTRAR CUENTA"}
+          {isLoading ? authLoadingLabel : isLogin ? "INGRESAR AL SISTEMA" : "REGISTRAR CUENTA"}
         </button>
       </form>
 
@@ -198,7 +200,7 @@ export const AuthScreen = ({
             cursor: isLoading ? "wait" : "pointer",
           }}
         >
-          {isLoading ? "ENVIANDO..." : "ENVIAR ENLACE DE RECUPERACIÓN"}
+          {isLoading ? authLoadingLabel : "ENVIAR ENLACE DE RECUPERACIÓN"}
         </button>
       </form>
 
@@ -251,7 +253,7 @@ export const AuthScreen = ({
             cursor: isLoading ? "wait" : "pointer",
           }}
         >
-          {isLoading ? "ACTUALIZANDO..." : "ACTUALIZAR CONTRASEÑA"}
+          {isLoading ? authLoadingLabel : "ACTUALIZAR CONTRASEÑA"}
         </button>
       </form>
 

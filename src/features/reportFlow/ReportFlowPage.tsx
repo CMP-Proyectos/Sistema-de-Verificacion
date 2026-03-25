@@ -78,6 +78,7 @@ export default function ReportFlowPage() {
             authView={flow.authView}
             authMessage={flow.authMessage}
             isLoading={flow.isAuthLoading}
+            authLoadingLabel={flow.authLoadingLabel}
             syncStatus={flow.syncStatus}
             resetEmail={flow.resetEmail}
             setResetEmail={flow.setResetEmail}

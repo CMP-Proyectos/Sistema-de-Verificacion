@@ -56,6 +56,7 @@ export function useCatalogFlow(isOnline: boolean) {
     if (!isOnline) return;
     setSyncStatus("Sincronizando...");
     try {
+      console.log("[SYNC] Descargando catálogos remotos");
       const [p, f, l, d, a] = await Promise.all([
         getAllProjects(),
         getAllFronts(),
@@ -63,7 +64,15 @@ export function useCatalogFlow(isOnline: boolean) {
         getAllDetails(),
         getAllActivities(),
       ]);
+      console.log("[SYNC] Descarga completada", {
+        projects: p.length,
+        fronts: f.length,
+        localities: l.length,
+        details: d.length,
+        activities: a.length,
+      });
 
+      console.log("[SYNC] Persistiendo proyectos, frentes y localidades");
       await db.transaction("rw", db.catalog_projects, db.catalog_fronts, db.catalog_localities, async () => {
         await db.catalog_projects.clear();
         await db.catalog_projects.bulkPut(p);
@@ -72,13 +81,16 @@ export function useCatalogFlow(isOnline: boolean) {
         await db.catalog_localities.clear();
         await db.catalog_localities.bulkPut(l);
       });
+      console.log("[SYNC] Persistencia base completada");
 
+      console.log("[SYNC] Persistiendo detalles y actividades");
       await db.transaction("rw", db.catalog_details, db.catalog_activities, async () => {
         await db.catalog_details.clear();
         await db.catalog_details.bulkPut(d);
         await db.catalog_activities.clear();
         await db.catalog_activities.bulkPut(a);
       });
+      console.log("[SYNC] Persistencia secundaria completada");
 
       setProjects(p);
       setActivities(a);
@@ -86,12 +98,22 @@ export function useCatalogFlow(isOnline: boolean) {
     } catch (e) {
       console.error("Sync error", e);
       setSyncStatus("Error Sync");
+      throw e;
     }
   };
 
   const loadProjectsLocal = useCallback(async () => {
-    setProjects(await db.catalog_projects.toArray());
-    setActivities(await db.catalog_activities.toArray());
+    console.log("[SYNC] Leyendo proyectos y actividades locales");
+    const [projectsLocal, activitiesLocal] = await Promise.all([
+      db.catalog_projects.toArray(),
+      db.catalog_activities.toArray(),
+    ]);
+    console.log("[SYNC] Lectura local completada", {
+      projects: projectsLocal.length,
+      activities: activitiesLocal.length,
+    });
+    setProjects(projectsLocal);
+    setActivities(activitiesLocal);
   }, []);
 
   const loadFrontsLocal = useCallback(async (pid: number) => {
