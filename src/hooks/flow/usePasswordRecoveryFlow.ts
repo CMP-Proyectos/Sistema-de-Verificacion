@@ -1,0 +1,233 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "../../services/dataService";
+
+type RecoveryView = "request" | "update" | null;
+type RecoveryMessage = {
+  type: "success" | "error" | "info";
+  text: string;
+} | null;
+
+const getFriendlyAuthErrorMessage = (error: any) => {
+  const rawMessage = String(error?.message || error?.code || "").toLowerCase();
+
+  if (rawMessage.includes("auth session missing")) {
+    return "No se pudo actualizar la contraseña porque la sesión de recuperación no está activa. Solicita un nuevo enlace e inténtalo nuevamente.";
+  }
+
+  if (rawMessage.includes("password should contain at least one character of each")) {
+    return "La contraseña debe contener al menos una mayúscula, una minúscula y un número.";
+  }
+
+  if (
+    rawMessage.includes("otp_expired") ||
+    rawMessage.includes("expired") ||
+    rawMessage.includes("invalid") ||
+    rawMessage.includes("session_not_found") ||
+    rawMessage.includes("flow state")
+  ) {
+    return "El enlace de recuperación expiró o ya no es válido. Solicita un nuevo enlace para continuar.";
+  }
+
+  return error?.message || "Ocurrió un error inesperado.";
+};
+
+const buildRecoveryRedirectTo = () => {
+  if (typeof window === "undefined") return "https://sistema-de-verificacion.vercel.app/?recovery=1";
+  return `${window.location.origin}${window.location.pathname}?recovery=1`;
+};
+
+const getRecoveryUrlState = () => {
+  if (typeof window === "undefined") {
+    return { hasRecoveryQuery: false, hasRecoveryHash: false, hasRecoveryError: false };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.toLowerCase();
+
+  return {
+    hasRecoveryQuery: searchParams.get("recovery") === "1",
+    hasRecoveryHash: hash.includes("type=recovery") || hash.includes("access_token="),
+    hasRecoveryError: hash.includes("otp_expired") || hash.includes("error=") || hash.includes("error_code="),
+  };
+};
+
+const clearRecoveryUrl = () => {
+  if (typeof window === "undefined") return;
+  window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+};
+
+export function usePasswordRecoveryFlow(
+  showToast: (msg: string, type: "success" | "error" | "info") => void
+) {
+  const initialUrlState = useMemo(() => getRecoveryUrlState(), []);
+  const [view, setView] = useState<RecoveryView>(
+    initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError ? "update" : null
+  );
+  const [message, setMessage] = useState<RecoveryMessage>(
+    initialUrlState.hasRecoveryError
+      ? {
+          type: "error",
+          text: "El enlace de recuperación expiró o ya no es válido. Solicita uno nuevo para continuar.",
+        }
+      : initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash
+        ? {
+            type: "info",
+            text: "Ingresa tu nueva contraseña para completar la recuperación.",
+          }
+        : null
+  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState("ENVIANDO...");
+  const recoverySessionDetectedRef = useRef(
+    initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError
+  );
+
+  const isRecoveryContextActive = view !== null || recoverySessionDetectedRef.current;
+
+  const openRequest = (nextEmail?: string) => {
+    setEmail(nextEmail || "");
+    setPassword("");
+    setPasswordConfirm("");
+    setMessage(null);
+    setLoadingLabel("ENVIANDO...");
+    setIsLoading(false);
+    setView("request");
+  };
+
+  const activateUpdate = (nextMessage?: RecoveryMessage) => {
+    recoverySessionDetectedRef.current = true;
+    setPassword("");
+    setPasswordConfirm("");
+    setIsLoading(false);
+    setLoadingLabel("ACTUALIZANDO...");
+    setView("update");
+    setMessage(
+      nextMessage || {
+        type: "info",
+        text: "Ingresa tu nueva contraseña para completar la recuperación.",
+      }
+    );
+  };
+
+  const closeRecovery = async (nextMessage: RecoveryMessage = null) => {
+    setIsLoading(false);
+    setLoadingLabel("ENVIANDO...");
+    setView(null);
+    setMessage(nextMessage);
+    setPassword("");
+    setPasswordConfirm("");
+    recoverySessionDetectedRef.current = false;
+    clearRecoveryUrl();
+    await supabase.auth.signOut();
+  };
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        activateUpdate();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleRequestReset = async () => {
+    const nextEmail = email.trim();
+    if (!nextEmail) {
+      setMessage({ type: "error", text: "Ingresa tu correo para enviar el enlace." });
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingLabel("ENVIANDO...");
+    setMessage(null);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(nextEmail, {
+        redirectTo: buildRecoveryRedirectTo(),
+      });
+      if (error) throw error;
+
+      setMessage({
+        type: "success",
+        text: "Enlace enviado. Revisa tu correo y abre el link de recuperación.",
+      });
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: getFriendlyAuthErrorMessage(error),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!password.trim() || !passwordConfirm.trim()) {
+      setMessage({ type: "error", text: "Completa ambos campos de contraseña." });
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setMessage({ type: "error", text: "Las contraseñas no coinciden." });
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingLabel("ACTUALIZANDO...");
+    setMessage(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user) {
+        throw new Error("Auth session missing");
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+
+      const successMessage = {
+        type: "success",
+        text: "Contraseña actualizada. Inicia sesión con tu nueva clave.",
+      } as const;
+
+      showToast(successMessage.text, "success");
+      await closeRecovery(successMessage);
+    } catch (error) {
+      setPassword("");
+      setPasswordConfirm("");
+      setMessage({
+        type: "error",
+        text: getFriendlyAuthErrorMessage(error),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    view,
+    message,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    passwordConfirm,
+    setPasswordConfirm,
+    isLoading,
+    loadingLabel,
+    isRecoveryContextActive,
+    openRequest,
+    activateUpdate,
+    closeRecovery,
+    handleRequestReset,
+    handleUpdatePassword,
+  };
+}

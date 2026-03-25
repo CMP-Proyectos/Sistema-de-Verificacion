@@ -80,6 +80,20 @@ export default function ReportFlowPage() {
             authLoadingLabel={flow.authLoadingLabel}
             syncStatus={flow.syncStatus}
             onLogin={flow.handleLogin}
+            recoveryView={flow.recoveryView}
+            recoveryMessage={flow.recoveryMessage}
+            recoveryEmail={flow.recoveryEmail}
+            setRecoveryEmail={flow.setRecoveryEmail}
+            recoveryPassword={flow.recoveryPassword}
+            setRecoveryPassword={flow.setRecoveryPassword}
+            recoveryPasswordConfirm={flow.recoveryPasswordConfirm}
+            setRecoveryPasswordConfirm={flow.setRecoveryPasswordConfirm}
+            recoveryIsLoading={flow.recoveryIsLoading}
+            recoveryLoadingLabel={flow.recoveryLoadingLabel}
+            onOpenRecoveryRequest={flow.openRecoveryRequest}
+            onCloseRecovery={flow.closeRecovery}
+            onRequestRecovery={flow.requestRecovery}
+            onSubmitRecoveryPassword={flow.submitRecoveryPassword}
           />
         )}
 

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { uploadEvidence, createCheckedActivity, createRegistro, supabase, fetchHistoryForDetail } from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
 
 import { useSessionFlow } from "./flow/useSessionFlow";
+import { usePasswordRecoveryFlow } from "./flow/usePasswordRecoveryFlow";
 import { useCatalogFlow } from "./flow/useCatalogFlow";
 import { useEvidenceFlow } from "./flow/useEvidenceFlow";
 import { useRecordsFlow } from "./flow/useRecordsFlow";
@@ -24,6 +25,7 @@ export function useReportFlow() {
   };
 
   const session = useSessionFlow(showToast, setConfirmModal);
+  const recovery = usePasswordRecoveryFlow(showToast);
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
@@ -96,7 +98,14 @@ export function useReportFlow() {
   }, [session.isOnline, syncPendingUploads]);
 
   // --- COORDINACIÓN INICIAL ---
+  const bootstrappedAuthRef = useRef(false);
+
   useEffect(() => {
+    if (bootstrappedAuthRef.current || recovery.isRecoveryContextActive) {
+      return;
+    }
+
+    bootstrappedAuthRef.current = true;
     let cancelled = false;
 
     const bootstrapSession = async () => {
@@ -137,7 +146,7 @@ export function useReportFlow() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [recovery.isRecoveryContextActive]);
 
   useEffect(() => {
     if ((step === "profile" || step === "user_records" || step === "files") && session.sessionUser) {
@@ -328,6 +337,20 @@ export function useReportFlow() {
     authLoadingLabel: session.authLoadingLabel, setAuthLoadingLabel: session.setAuthLoadingLabel,
     authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
     authMessage: session.authMessage,
+    recoveryView: recovery.view,
+    recoveryMessage: recovery.message,
+    recoveryEmail: recovery.email,
+    setRecoveryEmail: recovery.setEmail,
+    recoveryPassword: recovery.password,
+    setRecoveryPassword: recovery.setPassword,
+    recoveryPasswordConfirm: recovery.passwordConfirm,
+    setRecoveryPasswordConfirm: recovery.setPasswordConfirm,
+    recoveryIsLoading: recovery.isLoading,
+    recoveryLoadingLabel: recovery.loadingLabel,
+    openRecoveryRequest: () => recovery.openRequest(session.authEmail.trim()),
+    closeRecovery: recovery.closeRecovery,
+    requestRecovery: recovery.handleRequestReset,
+    submitRecoveryPassword: recovery.handleUpdatePassword,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
     handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
     
