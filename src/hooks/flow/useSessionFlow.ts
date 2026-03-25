@@ -13,6 +13,10 @@ type AuthMessage = {
 const getFriendlyAuthErrorMessage = (error: any) => {
   const rawMessage = String(error?.message || error?.code || "").toLowerCase();
 
+  if (rawMessage.includes("auth session missing")) {
+    return "No se pudo actualizar la contraseña porque la sesión de recuperación no está activa. Solicita un nuevo enlace e inténtalo nuevamente.";
+  }
+
   if (rawMessage.includes("password should contain at least one character of each")) {
     return "La contraseña debe contener al menos una mayúscula, una minúscula y un número.";
   }
@@ -236,6 +240,11 @@ export function useSessionFlow(
     setAuthMessage(null);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user) {
+        throw new Error("Auth session missing");
+      }
+
       const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
       if (error) throw error;
 
