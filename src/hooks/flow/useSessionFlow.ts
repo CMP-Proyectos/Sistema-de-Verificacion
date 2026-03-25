@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../services/dataService";
 import { db } from "../../services/db_local";
 import { ConfirmModalState } from "../../features/reportFlow/types";
@@ -54,6 +54,18 @@ const clearRecoveryUrl = () => {
   window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
 };
 
+const getRecoveryHashState = () => {
+  if (typeof window === "undefined") {
+    return { hasRecoveryHash: false, hasRecoveryError: false };
+  }
+
+  const hash = window.location.hash.toLowerCase();
+  return {
+    hasRecoveryHash: hash.includes("type=recovery") || hash.includes("access_token="),
+    hasRecoveryError: hash.includes("otp_expired") || hash.includes("error_code=") || hash.includes("error="),
+  };
+};
+
 export function useSessionFlow(
   showToast: (msg: string, type: "success" | "error" | "info") => void,
   setConfirmModal: (modal: ConfirmModalState | null) => void,
@@ -70,6 +82,7 @@ export function useSessionFlow(
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
   const [authMessage, setAuthMessage] = useState<AuthMessage>(null);
+  const recoveryFlowActiveRef = useRef(false);
 
   const [profileName, setProfileName] = useState("");
   const [profileLastName, setProfileLastName] = useState("");
@@ -77,6 +90,7 @@ export function useSessionFlow(
   const [isProfileSaving, setIsProfileSaving] = useState(false);
 
   const activatePasswordRecovery = (message: string) => {
+    recoveryFlowActiveRef.current = true;
     openAuthScreen();
     setIsLoading(false);
     setAuthView("password_recovery");
@@ -109,6 +123,7 @@ export function useSessionFlow(
       }
 
       if (event === "SIGNED_OUT") {
+        recoveryFlowActiveRef.current = false;
         setSessionUser(null);
       }
 
@@ -124,12 +139,17 @@ export function useSessionFlow(
 
   const checkSession = async (): Promise<AuthCheckResult> => {
     const { data } = await supabase.auth.getSession();
+    const { hasRecoveryHash, hasRecoveryError } = getRecoveryHashState();
 
-    if (isPasswordRecoveryUrl()) {
+    if (isPasswordRecoveryUrl() || hasRecoveryHash || hasRecoveryError) {
       if (data.session?.user) {
         setSessionUser({ email: data.session.user.email || "", id: data.session.user.id });
       }
-      activatePasswordRecovery("Ingresa tu nueva contraseña para terminar el proceso.");
+      activatePasswordRecovery(
+        hasRecoveryError
+          ? "El enlace de recuperación expiró o no es válido. Solicita uno nuevo para continuar."
+          : "Ingresa tu nueva contraseña para terminar el proceso."
+      );
       return "password_recovery";
     }
 
@@ -180,6 +200,7 @@ export function useSessionFlow(
 
   const returnToLogin = () => {
     void supabase.auth.signOut();
+    recoveryFlowActiveRef.current = false;
     setSessionUser(null);
     setIsLoading(false);
     clearRecoveryUrl();
@@ -249,6 +270,7 @@ export function useSessionFlow(
       if (error) throw error;
 
       await supabase.auth.signOut();
+      recoveryFlowActiveRef.current = false;
       setSessionUser(null);
       setAuthPassword("");
       setRecoveryPassword("");
@@ -392,5 +414,6 @@ export function useSessionFlow(
     handleRequestPasswordReset,
     handleUpdatePassword,
     passwordResetRedirectTo: getRecoveryRedirectTo(),
+    hasRecoveryFlowActive: () => recoveryFlowActiveRef.current,
   };
 }

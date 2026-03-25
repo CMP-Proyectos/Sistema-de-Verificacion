@@ -98,12 +98,16 @@ export function useReportFlow() {
   // --- COORDINACIÓN INICIAL ---
   useEffect(() => {
     session.checkSession().then((authState) => {
-      if (authState === "authenticated") {
+      if (authState === "authenticated" && !session.hasRecoveryFlowActive()) {
         if(session.isOnline) {
             session.setIsLoading(true);
             syncPendingUploads();
         }
         catalog.performFullSync().then(() => {
+          if (session.hasRecoveryFlowActive()) {
+            session.setIsLoading(false);
+            return;
+          }
           catalog.loadProjectsLocal();
           session.setIsLoading(false);
           setStep("project");
