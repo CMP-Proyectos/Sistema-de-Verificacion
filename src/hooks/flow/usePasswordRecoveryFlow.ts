@@ -87,6 +87,7 @@ export function usePasswordRecoveryFlow(
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState("ENVIANDO...");
+  const [hasResolvedInitialCheck, setHasResolvedInitialCheck] = useState(false);
   const recoverySessionDetectedRef = useRef(
     initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError
   );
@@ -148,10 +149,12 @@ export function usePasswordRecoveryFlow(
     const syncRecoveryFromUrl = () => {
       const urlState = getRecoveryUrlState();
       if (!urlState.hasRecoveryQuery && !urlState.hasRecoveryHash && !urlState.hasRecoveryError) {
+        setHasResolvedInitialCheck(true);
         return;
       }
 
       activateUpdate(getRecoveryActivationMessage(urlState));
+      setHasResolvedInitialCheck(true);
     };
 
     syncRecoveryFromUrl();
@@ -247,6 +250,7 @@ export function usePasswordRecoveryFlow(
     setPasswordConfirm,
     isLoading,
     loadingLabel,
+    hasResolvedInitialCheck,
     isRecoveryContextActive,
     openRequest,
     activateUpdate,

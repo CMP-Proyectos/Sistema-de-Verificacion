@@ -101,7 +101,7 @@ export function useReportFlow() {
   const bootstrappedAuthRef = useRef(false);
 
   useEffect(() => {
-    if (bootstrappedAuthRef.current || recovery.isRecoveryContextActive) {
+    if (bootstrappedAuthRef.current || !recovery.hasResolvedInitialCheck || recovery.isRecoveryContextActive) {
       return;
     }
 
