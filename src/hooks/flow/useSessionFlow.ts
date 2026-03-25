@@ -78,6 +78,7 @@ export function useSessionFlow(
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authView, setAuthView] = useState<AuthView>("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [recoveryPassword, setRecoveryPassword] = useState("");
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
@@ -92,7 +93,7 @@ export function useSessionFlow(
   const activatePasswordRecovery = (message: string) => {
     recoveryFlowActiveRef.current = true;
     openAuthScreen();
-    setIsLoading(false);
+    setIsAuthLoading(false);
     setAuthView("password_recovery");
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
@@ -163,6 +164,7 @@ export function useSessionFlow(
 
   const handleLogin = async (onSuccess: () => void) => {
     setIsLoading(true);
+    setIsAuthLoading(true);
     setAuthMessage(null);
 
     try {
@@ -187,6 +189,7 @@ export function useSessionFlow(
     } catch (error: any) {
       showToast(error?.message || "Error al ingresar", "error");
     } finally {
+      setIsAuthLoading(false);
       setIsLoading(false);
     }
   };
@@ -194,7 +197,7 @@ export function useSessionFlow(
   const openResetPassword = () => {
     setResetEmail(authEmail.trim());
     setAuthMessage(null);
-    setIsLoading(false);
+    setIsAuthLoading(false);
     setAuthView("reset_request");
   };
 
@@ -202,7 +205,7 @@ export function useSessionFlow(
     void supabase.auth.signOut();
     recoveryFlowActiveRef.current = false;
     setSessionUser(null);
-    setIsLoading(false);
+    setIsAuthLoading(false);
     clearRecoveryUrl();
     setRecoveryPassword("");
     setRecoveryPasswordConfirm("");
@@ -223,7 +226,7 @@ export function useSessionFlow(
       return;
     }
 
-    setIsLoading(true);
+    setIsAuthLoading(true);
     setAuthMessage(null);
 
     try {
@@ -242,7 +245,7 @@ export function useSessionFlow(
         text: getFriendlyAuthErrorMessage(error),
       });
     } finally {
-      setIsLoading(false);
+      setIsAuthLoading(false);
     }
   };
 
@@ -257,7 +260,7 @@ export function useSessionFlow(
       return;
     }
 
-    setIsLoading(true);
+    setIsAuthLoading(true);
     setAuthMessage(null);
 
     try {
@@ -290,7 +293,7 @@ export function useSessionFlow(
         text: getFriendlyAuthErrorMessage(error),
       });
     } finally {
-      setIsLoading(false);
+      setIsAuthLoading(false);
     }
   };
 
@@ -382,6 +385,7 @@ export function useSessionFlow(
     sessionUser,
     isLoading,
     setIsLoading,
+    isAuthLoading,
     authEmail,
     setAuthEmail,
     authPassword,

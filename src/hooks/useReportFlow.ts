@@ -295,6 +295,7 @@ export function useReportFlow() {
     step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
     isOnline: session.isOnline, syncStatus,
     isLoading: session.isLoading, sessionUser: session.sessionUser,
+    isAuthLoading: session.isAuthLoading,
     authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
     authView: session.authView, authMessage: session.authMessage,
     resetEmail: session.resetEmail, setResetEmail: session.setResetEmail,
