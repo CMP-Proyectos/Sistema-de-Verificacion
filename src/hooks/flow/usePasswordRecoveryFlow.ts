@@ -56,6 +56,24 @@ const clearRecoveryUrl = () => {
   window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
 };
 
+const getRecoveryActivationMessage = (urlState: ReturnType<typeof getRecoveryUrlState>): RecoveryMessage => {
+  if (urlState.hasRecoveryError) {
+    return {
+      type: "error",
+      text: "El enlace de recuperación expiró o ya no es válido. Solicita uno nuevo para continuar.",
+    };
+  }
+
+  if (urlState.hasRecoveryQuery || urlState.hasRecoveryHash) {
+    return {
+      type: "info",
+      text: "Ingresa tu nueva contraseña para completar la recuperación.",
+    };
+  }
+
+  return null;
+};
+
 export function usePasswordRecoveryFlow(
   showToast: (msg: string, type: "success" | "error" | "info") => void
 ) {
@@ -63,19 +81,7 @@ export function usePasswordRecoveryFlow(
   const [view, setView] = useState<RecoveryView>(
     initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError ? "update" : null
   );
-  const [message, setMessage] = useState<RecoveryMessage>(
-    initialUrlState.hasRecoveryError
-      ? {
-          type: "error",
-          text: "El enlace de recuperación expiró o ya no es válido. Solicita uno nuevo para continuar.",
-        }
-      : initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash
-        ? {
-            type: "info",
-            text: "Ingresa tu nueva contraseña para completar la recuperación.",
-          }
-        : null
-  );
+  const [message, setMessage] = useState<RecoveryMessage>(getRecoveryActivationMessage(initialUrlState));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -135,6 +141,24 @@ export function usePasswordRecoveryFlow(
 
     return () => {
       subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncRecoveryFromUrl = () => {
+      const urlState = getRecoveryUrlState();
+      if (!urlState.hasRecoveryQuery && !urlState.hasRecoveryHash && !urlState.hasRecoveryError) {
+        return;
+      }
+
+      activateUpdate(getRecoveryActivationMessage(urlState));
+    };
+
+    syncRecoveryFromUrl();
+    window.addEventListener("hashchange", syncRecoveryFromUrl);
+
+    return () => {
+      window.removeEventListener("hashchange", syncRecoveryFromUrl);
     };
   }, []);
 
