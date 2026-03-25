@@ -162,7 +162,7 @@ export function useSessionFlow(
     return "unauthenticated";
   };
 
-  const handleLogin = async (onSuccess: () => void) => {
+  const handleLogin = async (onSuccess: () => void | Promise<void>) => {
     setIsLoading(true);
     setIsAuthLoading(true);
     setAuthMessage(null);
@@ -185,9 +185,11 @@ export function useSessionFlow(
         if (data.user) setSessionUser({ email: data.user.email || "", id: data.user.id });
       }
 
-      onSuccess();
+      await onSuccess();
     } catch (error: any) {
-      showToast(error?.message || "Error al ingresar", "error");
+      const message = error?.message || "No se pudo completar el inicio de sesión.";
+      setAuthMessage({ type: "error", text: message });
+      showToast(message, "error");
     } finally {
       setIsAuthLoading(false);
       setIsLoading(false);
