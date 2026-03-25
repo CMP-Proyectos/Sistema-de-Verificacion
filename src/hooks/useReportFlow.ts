@@ -23,7 +23,7 @@ export function useReportFlow() {
       setToast({ msg, type }); setTimeout(() => setToast(null), 3500);
   };
 
-  const session = useSessionFlow(showToast, setConfirmModal);
+  const session = useSessionFlow(showToast, setConfirmModal, () => setStep("auth"));
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
@@ -97,8 +97,8 @@ export function useReportFlow() {
 
   // --- COORDINACIÓN INICIAL ---
   useEffect(() => {
-    session.checkSession().then(isAuth => {
-      if(isAuth) {
+    session.checkSession().then((authState) => {
+      if (authState === "authenticated") {
         if(session.isOnline) {
             session.setIsLoading(true);
             syncPendingUploads();
@@ -292,6 +292,13 @@ export function useReportFlow() {
     isOnline: session.isOnline, syncStatus,
     isLoading: session.isLoading, sessionUser: session.sessionUser,
     authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
+    authView: session.authView, authMessage: session.authMessage,
+    resetEmail: session.resetEmail, setResetEmail: session.setResetEmail,
+    recoveryPassword: session.recoveryPassword, setRecoveryPassword: session.setRecoveryPassword,
+    recoveryPasswordConfirm: session.recoveryPasswordConfirm, setRecoveryPasswordConfirm: session.setRecoveryPasswordConfirm,
+    openResetPassword: session.openResetPassword, returnToLogin: session.returnToLogin,
+    handleRequestPasswordReset: session.handleRequestPasswordReset, handleUpdatePassword: session.handleUpdatePassword,
+    passwordResetRedirectTo: session.passwordResetRedirectTo,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
     handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
     

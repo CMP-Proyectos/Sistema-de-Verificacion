@@ -1,146 +1,387 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../services/dataService";
 import { db } from "../../services/db_local";
 import { ConfirmModalState } from "../../features/reportFlow/types";
 
+type AuthView = "login" | "reset_request" | "password_recovery";
+type AuthCheckResult = "authenticated" | "unauthenticated" | "password_recovery";
+type AuthMessage = {
+  type: "success" | "error" | "info";
+  text: string;
+} | null;
+
+const getFriendlyAuthErrorMessage = (error: any) => {
+  const rawMessage = String(error?.message || error?.code || "").toLowerCase();
+
+  if (rawMessage.includes("password should contain at least one character of each")) {
+    return "La contraseña debe contener al menos una mayúscula, una minúscula y un número.";
+  }
+
+  if (
+    rawMessage.includes("otp_expired") ||
+    rawMessage.includes("expired") ||
+    rawMessage.includes("invalid") ||
+    rawMessage.includes("session_not_found") ||
+    rawMessage.includes("flow state")
+  ) {
+    return "El enlace de recuperación expiró o ya no es válido. Solicita un nuevo enlace para continuar.";
+  }
+
+  return error?.message || "Ocurrió un error inesperado.";
+};
+
+const getRecoveryRedirectTo = () => {
+  if (typeof window === "undefined") return "https://sistema-de-verificacion.vercel.app/?recovery=1";
+  return `${window.location.origin}${window.location.pathname}?recovery=1`;
+};
+
+const isPasswordRecoveryUrl = () => {
+  if (typeof window === "undefined") return false;
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hasRecoveryQuery = searchParams.get("recovery") === "1";
+  const hasRecoveryHash = window.location.hash.includes("type=recovery") && window.location.hash.includes("access_token=");
+
+  return hasRecoveryQuery || hasRecoveryHash;
+};
+
+const clearRecoveryUrl = () => {
+  if (typeof window === "undefined") return;
+  window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+};
+
 export function useSessionFlow(
-  showToast: (msg: string, type: 'success'|'error'|'info') => void,
-  setConfirmModal: (modal: ConfirmModalState | null) => void
+  showToast: (msg: string, type: "success" | "error" | "info") => void,
+  setConfirmModal: (modal: ConfirmModalState | null) => void,
+  openAuthScreen: () => void
 ) {
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [sessionUser, setSessionUser] = useState<{ email: string; id: string } | null>(null);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
-  const [authMode, setAuthMode] = useState<"login"|"signup">("login");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authView, setAuthView] = useState<AuthView>("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
+  const [authMessage, setAuthMessage] = useState<AuthMessage>(null);
 
-  // Perfil
   const [profileName, setProfileName] = useState("");
   const [profileLastName, setProfileLastName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [isProfileSaving, setIsProfileSaving] = useState(false);
 
+  const activatePasswordRecovery = (message: string) => {
+    openAuthScreen();
+    setIsLoading(false);
+    setAuthView("password_recovery");
+    setRecoveryPassword("");
+    setRecoveryPasswordConfirm("");
+    setAuthMessage({
+      type: "info",
+      text: message,
+    });
+  };
+
   useEffect(() => {
     const handleStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', handleStatus);
-    window.addEventListener('offline', handleStatus);
+    window.addEventListener("online", handleStatus);
+    window.addEventListener("offline", handleStatus);
     checkSession();
-    return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
+
+    return () => {
+      window.removeEventListener("online", handleStatus);
+      window.removeEventListener("offline", handleStatus);
+    };
   }, []);
 
-  const checkSession = async () => {
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setSessionUser({ email: session.user.email || "", id: session.user.id });
+      }
+
+      if (event === "SIGNED_OUT") {
+        setSessionUser(null);
+      }
+
+      if (event === "PASSWORD_RECOVERY") {
+        activatePasswordRecovery("Define una nueva contraseña para completar la recuperación.");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [openAuthScreen]);
+
+  const checkSession = async (): Promise<AuthCheckResult> => {
     const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      setSessionUser({ email: data.session.user.email!, id: data.session.user.id });
-      return true;
+
+    if (isPasswordRecoveryUrl()) {
+      if (data.session?.user) {
+        setSessionUser({ email: data.session.user.email || "", id: data.session.user.id });
+      }
+      activatePasswordRecovery("Ingresa tu nueva contraseña para terminar el proceso.");
+      return "password_recovery";
     }
-    return false;
+
+    if (data.session?.user) {
+      setSessionUser({ email: data.session.user.email || "", id: data.session.user.id });
+      return "authenticated";
+    }
+
+    return "unauthenticated";
   };
 
   const handleLogin = async (onSuccess: () => void) => {
     setIsLoading(true);
+    setAuthMessage(null);
+
     try {
       if (authMode === "signup") {
-         const { data, error } = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword.trim() });
-         if (error) throw error; if (!data.user) return showToast("Verifica tu correo", "info");
-         setSessionUser({ email: data.user.email!, id: data.user.id });
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail.trim(),
+          password: authPassword.trim(),
+        });
+        if (error) throw error;
+        if (!data.user) return showToast("Verifica tu correo", "info");
+        setSessionUser({ email: data.user.email || "", id: data.user.id });
       } else {
-         const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword.trim() });
-         if (error) throw error; if (data.user) setSessionUser({ email: data.user.email!, id: data.user.id });
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authEmail.trim(),
+          password: authPassword.trim(),
+        });
+        if (error) throw error;
+        if (data.user) setSessionUser({ email: data.user.email || "", id: data.user.id });
       }
+
       onSuccess();
-    } catch (e: any) { showToast(e.message || "Error al ingresar", "error"); } 
-    finally { setIsLoading(false); }
+    } catch (error: any) {
+      showToast(error?.message || "Error al ingresar", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openResetPassword = () => {
+    setResetEmail(authEmail.trim());
+    setAuthMessage(null);
+    setIsLoading(false);
+    setAuthView("reset_request");
+  };
+
+  const returnToLogin = () => {
+    void supabase.auth.signOut();
+    setSessionUser(null);
+    setIsLoading(false);
+    clearRecoveryUrl();
+    setRecoveryPassword("");
+    setRecoveryPasswordConfirm("");
+    setAuthMessage(null);
+    setAuthView("login");
+  };
+
+  const handleRequestPasswordReset = async () => {
+    const email = (resetEmail || authEmail).trim();
+    if (!email) {
+      setAuthMessage({ type: "error", text: "Ingresa tu correo para enviar el enlace." });
+      return;
+    }
+
+    const redirectTo = getRecoveryRedirectTo();
+    if (!redirectTo) {
+      setAuthMessage({ type: "error", text: "No se pudo construir la URL de recuperación." });
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthMessage(null);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+
+      setAuthEmail(email);
+      setResetEmail(email);
+      setAuthMessage({
+        type: "success",
+        text: "Enlace enviado. Revisa tu correo y abre el link de recuperación.",
+      });
+    } catch (error: any) {
+      setAuthMessage({
+        type: "error",
+        text: getFriendlyAuthErrorMessage(error),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!recoveryPassword.trim() || !recoveryPasswordConfirm.trim()) {
+      setAuthMessage({ type: "error", text: "Completa ambos campos de contraseña." });
+      return;
+    }
+
+    if (recoveryPassword !== recoveryPasswordConfirm) {
+      setAuthMessage({ type: "error", text: "Las contraseñas no coinciden." });
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthMessage(null);
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+      if (error) throw error;
+
+      await supabase.auth.signOut();
+      setSessionUser(null);
+      setAuthPassword("");
+      setRecoveryPassword("");
+      setRecoveryPasswordConfirm("");
+      setAuthView("login");
+      clearRecoveryUrl();
+      openAuthScreen();
+      setAuthMessage({
+        type: "success",
+        text: "Contraseña actualizada. Inicia sesión con tu nueva clave.",
+      });
+    } catch (error: any) {
+      setRecoveryPassword("");
+      setRecoveryPasswordConfirm("");
+      setAuthMessage({
+        type: "error",
+        text: getFriendlyAuthErrorMessage(error),
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = async () => {
     try {
-        // se usan los nombres definidos en db_local.ts
-        await db.catalog_projects.clear(); 
-        await db.catalog_fronts.clear(); 
-        await db.catalog_localities.clear(); 
-        await db.catalog_details.clear();
-        await db.catalog_activities.clear(); 
-      
-        await supabase.auth.signOut();
-        setSessionUser(null);
+      await db.catalog_projects.clear();
+      await db.catalog_fronts.clear();
+      await db.catalog_localities.clear();
+      await db.catalog_details.clear();
+      await db.catalog_activities.clear();
+
+      await supabase.auth.signOut();
+      setSessionUser(null);
     } catch (error) {
-        console.error("Error al cerrar sesión:", error);
-        setSessionUser(null);
+      console.error("Error al cerrar sesión:", error);
+      setSessionUser(null);
     }
   };
 
   const loadProfileData = async () => {
-      if (!sessionUser) return;
+    if (!sessionUser) return;
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-          console.error("Error al obtener usuario autenticado:", authError);
-      }
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) {
+      console.error("Error al obtener usuario autenticado:", authError);
+    }
 
-      const authUser = authData.user;
-      setProfileEmail(authUser?.email || sessionUser.email || "");
+    const authUser = authData.user;
+    setProfileEmail(authUser?.email || sessionUser.email || "");
 
-      const { data: profileData, error: profileError } = await supabase
-          .from('Detalle_Perfil')
-          .select('Nombre, Apellido')
-          .eq('id', sessionUser.id)
-          .maybeSingle();
+    const { data: profileData, error: profileError } = await supabase
+      .from("Detalle_Perfil")
+      .select("Nombre, Apellido")
+      .eq("id", sessionUser.id)
+      .maybeSingle();
 
-      if (profileError) {
-          console.error("Error al cargar perfil:", profileError);
-          setProfileName("");
-          setProfileLastName("");
-          return;
-      }
+    if (profileError) {
+      console.error("Error al cargar perfil:", profileError);
+      setProfileName("");
+      setProfileLastName("");
+      return;
+    }
 
-      setProfileName(profileData?.Nombre || "");
-      setProfileLastName(profileData?.Apellido || "");
+    setProfileName(profileData?.Nombre || "");
+    setProfileLastName(profileData?.Apellido || "");
   };
 
-  const saveProfile = async () => { 
-      if(!sessionUser) return; 
-      setIsProfileSaving(true); 
-      try { 
-          const { error: upsertError } = await supabase
-              .from('Detalle_Perfil')
-              .upsert(
-                  {
-                      id: sessionUser.id,
-                      Nombre: profileName,
-                      Apellido: profileLastName
-                  },
-                  { onConflict: 'id' }
-              );
+  const saveProfile = async () => {
+    if (!sessionUser) return;
 
-          if (upsertError) {
-              throw upsertError;
-          }
+    setIsProfileSaving(true);
+    try {
+      const { error: upsertError } = await supabase.from("Detalle_Perfil").upsert(
+        {
+          id: sessionUser.id,
+          Nombre: profileName,
+          Apellido: profileLastName,
+        },
+        { onConflict: "id" }
+      );
 
-          const { data: persistedProfile, error: reloadError } = await supabase
-              .from('Detalle_Perfil')
-              .select('Nombre, Apellido')
-              .eq('id', sessionUser.id)
-              .single();
+      if (upsertError) {
+        throw upsertError;
+      }
 
-          if (reloadError) {
-              throw reloadError;
-          }
+      const { data: persistedProfile, error: reloadError } = await supabase
+        .from("Detalle_Perfil")
+        .select("Nombre, Apellido")
+        .eq("id", sessionUser.id)
+        .single();
 
-          setProfileName(persistedProfile?.Nombre || "");
-          setProfileLastName(persistedProfile?.Apellido || "");
-          showToast("Perfil actualizado", "success"); 
-      } catch (error) {
-          console.error("Error al actualizar perfil:", error);
-          showToast("Error al actualizar", "error");
-      } 
-      finally { setIsProfileSaving(false); } 
+      if (reloadError) {
+        throw reloadError;
+      }
+
+      setProfileName(persistedProfile?.Nombre || "");
+      setProfileLastName(persistedProfile?.Apellido || "");
+      showToast("Perfil actualizado", "success");
+    } catch (error) {
+      console.error("Error al actualizar perfil:", error);
+      showToast("Error al actualizar", "error");
+    } finally {
+      setIsProfileSaving(false);
+    }
   };
 
   return {
-    isOnline, sessionUser, isLoading, setIsLoading,
-    authEmail, setAuthEmail, authPassword, setAuthPassword, authMode, setAuthMode,
-    profileName, setProfileName, profileLastName, setProfileLastName, profileEmail, isProfileSaving,
-    checkSession, handleLogin, handleLogout, loadProfileData, saveProfile
+    isOnline,
+    sessionUser,
+    isLoading,
+    setIsLoading,
+    authEmail,
+    setAuthEmail,
+    authPassword,
+    setAuthPassword,
+    authMode,
+    setAuthMode,
+    authView,
+    setAuthView,
+    authMessage,
+    setAuthMessage,
+    resetEmail,
+    setResetEmail,
+    recoveryPassword,
+    setRecoveryPassword,
+    recoveryPasswordConfirm,
+    setRecoveryPasswordConfirm,
+    profileName,
+    setProfileName,
+    profileLastName,
+    setProfileLastName,
+    profileEmail,
+    isProfileSaving,
+    checkSession,
+    handleLogin,
+    handleLogout,
+    loadProfileData,
+    saveProfile,
+    openResetPassword,
+    returnToLogin,
+    handleRequestPasswordReset,
+    handleUpdatePassword,
+    passwordResetRedirectTo: getRecoveryRedirectTo(),
   };
 }

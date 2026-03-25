@@ -75,9 +75,21 @@ export default function ReportFlowPage() {
             setAuthPassword={flow.setAuthPassword}
             authMode={flow.authMode}
             setAuthMode={flow.setAuthMode}
+            authView={flow.authView}
+            authMessage={flow.authMessage}
             isLoading={flow.isLoading}
             syncStatus={flow.syncStatus}
+            resetEmail={flow.resetEmail}
+            setResetEmail={flow.setResetEmail}
+            recoveryPassword={flow.recoveryPassword}
+            setRecoveryPassword={flow.setRecoveryPassword}
+            recoveryPasswordConfirm={flow.recoveryPasswordConfirm}
+            setRecoveryPasswordConfirm={flow.setRecoveryPasswordConfirm}
             onLogin={flow.handleLogin}
+            onOpenResetPassword={flow.openResetPassword}
+            onBackToLogin={flow.returnToLogin}
+            onRequestPasswordReset={flow.handleRequestPasswordReset}
+            onUpdatePassword={flow.handleUpdatePassword}
           />
         )}
 
