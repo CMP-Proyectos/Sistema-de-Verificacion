@@ -23,7 +23,7 @@ export function useReportFlow() {
       setToast({ msg, type }); setTimeout(() => setToast(null), 3500);
   };
 
-  const session = useSessionFlow(showToast, setConfirmModal, () => setStep("auth"));
+  const session = useSessionFlow(showToast, setConfirmModal);
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
@@ -97,23 +97,46 @@ export function useReportFlow() {
 
   // --- COORDINACIÓN INICIAL ---
   useEffect(() => {
-    session.checkSession().then((authState) => {
-      if (authState === "authenticated" && !session.hasRecoveryFlowActive()) {
-        if(session.isOnline) {
-            session.setIsLoading(true);
-            syncPendingUploads();
+    let cancelled = false;
+
+    const bootstrapSession = async () => {
+      try {
+        const isAuth = await session.checkSession();
+        if (!isAuth) return;
+
+        session.setIsLoading(true);
+        session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
+
+        if (session.isOnline) {
+          void syncPendingUploads();
         }
-        catalog.performFullSync().then(() => {
-          if (session.hasRecoveryFlowActive()) {
-            session.setIsLoading(false);
-            return;
-          }
-          catalog.loadProjectsLocal();
-          session.setIsLoading(false);
+
+        await catalog.performFullSync();
+        await catalog.loadProjectsLocal();
+
+        if (!cancelled) {
           setStep("project");
+        }
+      } catch (error) {
+        console.error("[AUTH] Bootstrap post-login falló", error);
+        session.setAuthMessage({
+          type: "error",
+          text: "No se pudo cargar la información necesaria para ingresar. Intenta nuevamente.",
         });
+        showToast("No se pudo cargar la información necesaria para ingresar. Intenta nuevamente.", "error");
+      } finally {
+        if (!cancelled) {
+          session.setAuthLoadingLabel("AUTENTICANDO...");
+          session.setIsLoading(false);
+        }
       }
-    });
+    };
+
+    void bootstrapSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -257,22 +280,16 @@ export function useReportFlow() {
   const handleLoginBridge = () => {
     session.handleLogin(async () => {
       session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
-      console.log("[AUTH] Post-login: iniciando sincronización");
       try {
         await catalog.performFullSync();
-        console.log("[AUTH] Post-login: sincronización completada");
+        await catalog.loadProjectsLocal();
       } catch (error) {
-        console.error("[AUTH] Post-login: fallo en performFullSync", error);
+        console.error("[AUTH] Post-login: fallo en sincronización", error);
         throw new Error("No se pudo sincronizar la información necesaria para ingresar. Intenta nuevamente.");
       }
 
-      console.log("[AUTH] Post-login: cargando proyectos locales");
-      await catalog.loadProjectsLocal();
-      console.log("[AUTH] Post-login: proyectos locales listos");
-
       setStep("project");
-      console.log("[AUTH] Post-login: navegación a project completada");
-      syncPendingUploads();
+      void syncPendingUploads();
     });
   };
 
@@ -308,16 +325,9 @@ export function useReportFlow() {
     step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
     isOnline: session.isOnline, syncStatus,
     isLoading: session.isLoading, sessionUser: session.sessionUser,
-    isAuthLoading: session.isAuthLoading,
     authLoadingLabel: session.authLoadingLabel, setAuthLoadingLabel: session.setAuthLoadingLabel,
     authEmail: session.authEmail, setAuthEmail: session.setAuthEmail, authPassword: session.authPassword, setAuthPassword: session.setAuthPassword, authMode: session.authMode, setAuthMode: session.setAuthMode,
-    authView: session.authView, authMessage: session.authMessage,
-    resetEmail: session.resetEmail, setResetEmail: session.setResetEmail,
-    recoveryPassword: session.recoveryPassword, setRecoveryPassword: session.setRecoveryPassword,
-    recoveryPasswordConfirm: session.recoveryPasswordConfirm, setRecoveryPasswordConfirm: session.setRecoveryPasswordConfirm,
-    openResetPassword: session.openResetPassword, returnToLogin: session.returnToLogin,
-    handleRequestPasswordReset: session.handleRequestPasswordReset, handleUpdatePassword: session.handleUpdatePassword,
-    passwordResetRedirectTo: session.passwordResetRedirectTo,
+    authMessage: session.authMessage,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
     handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
     
