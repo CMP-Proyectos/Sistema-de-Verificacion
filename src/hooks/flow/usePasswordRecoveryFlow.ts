@@ -7,6 +7,8 @@ type RecoveryMessage = {
   text: string;
 } | null;
 
+const RECOVERY_SESSION_STORAGE_KEY = "password_recovery_active";
+
 const getFriendlyAuthErrorMessage = (error: any) => {
   const rawMessage = String(error?.message || error?.code || "").toLowerCase();
 
@@ -56,6 +58,22 @@ const clearRecoveryUrl = () => {
   window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
 };
 
+const getStoredRecoveryFlag = () => {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(RECOVERY_SESSION_STORAGE_KEY) === "1";
+};
+
+const setStoredRecoveryFlag = (isActive: boolean) => {
+  if (typeof window === "undefined") return;
+
+  if (isActive) {
+    window.sessionStorage.setItem(RECOVERY_SESSION_STORAGE_KEY, "1");
+    return;
+  }
+
+  window.sessionStorage.removeItem(RECOVERY_SESSION_STORAGE_KEY);
+};
+
 const getRecoveryActivationMessage = (urlState: ReturnType<typeof getRecoveryUrlState>): RecoveryMessage => {
   if (urlState.hasRecoveryError) {
     return {
@@ -78,10 +96,18 @@ export function usePasswordRecoveryFlow(
   showToast: (msg: string, type: "success" | "error" | "info") => void
 ) {
   const initialUrlState = useMemo(() => getRecoveryUrlState(), []);
+  const initialStoredRecovery = useMemo(() => getStoredRecoveryFlag(), []);
   const [view, setView] = useState<RecoveryView>(
-    initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError ? "update" : null
+    initialStoredRecovery || initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError ? "update" : null
   );
-  const [message, setMessage] = useState<RecoveryMessage>(getRecoveryActivationMessage(initialUrlState));
+  const [message, setMessage] = useState<RecoveryMessage>(
+    initialStoredRecovery
+      ? {
+          type: "info",
+          text: "Ingresa tu nueva contraseña para completar la recuperación.",
+        }
+      : getRecoveryActivationMessage(initialUrlState)
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -89,7 +115,7 @@ export function usePasswordRecoveryFlow(
   const [loadingLabel, setLoadingLabel] = useState("ENVIANDO...");
   const [hasResolvedInitialCheck, setHasResolvedInitialCheck] = useState(false);
   const recoverySessionDetectedRef = useRef(
-    initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError
+    initialStoredRecovery || initialUrlState.hasRecoveryQuery || initialUrlState.hasRecoveryHash || initialUrlState.hasRecoveryError
   );
 
   const isRecoveryContextActive = view !== null || recoverySessionDetectedRef.current;
@@ -106,6 +132,7 @@ export function usePasswordRecoveryFlow(
 
   const activateUpdate = (nextMessage?: RecoveryMessage) => {
     recoverySessionDetectedRef.current = true;
+    setStoredRecoveryFlag(true);
     setPassword("");
     setPasswordConfirm("");
     setIsLoading(false);
@@ -127,6 +154,7 @@ export function usePasswordRecoveryFlow(
     setPassword("");
     setPasswordConfirm("");
     recoverySessionDetectedRef.current = false;
+    setStoredRecoveryFlag(false);
     clearRecoveryUrl();
     await supabase.auth.signOut();
   };
@@ -148,6 +176,19 @@ export function usePasswordRecoveryFlow(
   useEffect(() => {
     const syncRecoveryFromUrl = () => {
       const urlState = getRecoveryUrlState();
+      if (getStoredRecoveryFlag()) {
+        activateUpdate(
+          urlState.hasRecoveryError
+            ? getRecoveryActivationMessage(urlState)
+            : {
+                type: "info",
+                text: "Ingresa tu nueva contraseña para completar la recuperación.",
+              }
+        );
+        setHasResolvedInitialCheck(true);
+        return;
+      }
+
       if (!urlState.hasRecoveryQuery && !urlState.hasRecoveryHash && !urlState.hasRecoveryError) {
         setHasResolvedInitialCheck(true);
         return;
