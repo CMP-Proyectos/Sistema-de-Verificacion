@@ -8,6 +8,19 @@ type AuthMessage = {
   text: string;
 } | null;
 
+const hasRecoveryContextInUrl = () => {
+  if (typeof window === "undefined") return false;
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.toLowerCase();
+
+  return (
+    searchParams.get("recovery") === "1" ||
+    hash.includes("type=recovery") ||
+    hash.includes("access_token=")
+  );
+};
+
 export function useSessionFlow(
   showToast: (msg: string, type: "success" | "error" | "info") => void,
   setConfirmModal: (modal: ConfirmModalState | null) => void
@@ -30,7 +43,9 @@ export function useSessionFlow(
     const handleStatus = () => setIsOnline(navigator.onLine);
     window.addEventListener("online", handleStatus);
     window.addEventListener("offline", handleStatus);
-    void checkSession();
+    if (!hasRecoveryContextInUrl()) {
+      void checkSession();
+    }
 
     return () => {
       window.removeEventListener("online", handleStatus);
@@ -39,6 +54,10 @@ export function useSessionFlow(
   }, []);
 
   const checkSession = async () => {
+    if (hasRecoveryContextInUrl()) {
+      return false;
+    }
+
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
       setSessionUser({ email: data.session.user.email || "", id: data.session.user.id });
