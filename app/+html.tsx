@@ -8,6 +8,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="google-site-verification" content="0cyCWEMy_FexMpfBARoI48z4Bddzzy6dkRsg0blmWD8" />
         <link rel="manifest" href="/manifest.json" />
         <ScrollViewStyleReset />  
         <link rel="preconnect" href="https://fonts.googleapis.com" />
