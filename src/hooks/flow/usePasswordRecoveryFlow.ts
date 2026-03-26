@@ -225,7 +225,7 @@ export function usePasswordRecoveryFlow(
 
       setMessage({
         type: "success",
-        text: "Enlace enviado. Revisa tu correo y abre el link de recuperación.",
+        text: "Enlace enviado. Se recomienda cerrar esta pestaña y abrir el enlace de restablecimiento de contraseña enviado a su correo electrónico. Revise también la carpeta de spam o correo no deseado.",
       });
     } catch (error) {
       setMessage({
