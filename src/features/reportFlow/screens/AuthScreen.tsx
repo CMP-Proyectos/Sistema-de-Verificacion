@@ -52,6 +52,34 @@ const feedbackStyles: Record<NonNullable<AuthMessage>["type"], React.CSSProperti
   },
 };
 
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "#64748B",
+  marginBottom: "8px",
+};
+
+const infoPanelStyle: React.CSSProperties = {
+  backgroundColor: "#F8FAFC",
+  border: "1px solid #E2E8F0",
+  borderRadius: "8px",
+  padding: "16px",
+  marginBottom: "18px",
+};
+
+const warningPanelStyle: React.CSSProperties = {
+  backgroundColor: "#FFF7ED",
+  border: "1px solid #FED7AA",
+  borderRadius: "8px",
+  padding: "12px 14px",
+  marginBottom: "18px",
+  color: "#9A3412",
+  fontSize: "12px",
+  lineHeight: 1.5,
+};
+
 export const AuthScreen = ({
   authEmail,
   setAuthEmail,
@@ -81,6 +109,7 @@ export const AuthScreen = ({
 }: Props) => {
   const isLogin = authMode === "login";
   const activeMessage = recoveryView ? recoveryMessage : recoveryMessage || authMessage;
+  const isRecoveryFlow = recoveryView !== null;
 
   const renderRequestRecovery = () => (
     <form
@@ -89,8 +118,15 @@ export const AuthScreen = ({
         onRequestRecovery();
       }}
     >
+      <div style={{ ...infoPanelStyle, marginBottom: "16px" }}>
+        <div style={sectionTitleStyle}>Solicitud de recuperacion</div>
+        <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
+          Este modulo envia un enlace temporal de restablecimiento al correo corporativo registrado.
+        </div>
+      </div>
+
       <div>
-        <label style={styles.label}>Correo Corporativo</label>
+        <label style={styles.label}>Correo corporativo</label>
         <input
           type="email"
           placeholder="usuario@empresa.com"
@@ -110,12 +146,12 @@ export const AuthScreen = ({
           cursor: recoveryIsLoading ? "wait" : "pointer",
         }}
       >
-        {recoveryIsLoading ? recoveryLoadingLabel : "ENVIAR ENLACE DE RECUPERACIÓN"}
+        {recoveryIsLoading ? recoveryLoadingLabel : "ENVIAR ENLACE DE RECUPERACION"}
       </button>
 
       <div style={{ marginTop: "20px", textAlign: "center" }}>
         <button type="button" onClick={onCloseRecovery} style={styles.btnLink}>
-          Volver al inicio de sesión
+          Volver al inicio de sesion
         </button>
       </div>
     </form>
@@ -128,11 +164,18 @@ export const AuthScreen = ({
         onSubmitRecoveryPassword();
       }}
     >
+      <div style={{ ...infoPanelStyle, marginBottom: "16px" }}>
+        <div style={sectionTitleStyle}>Restablecimiento de contrasena</div>
+        <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
+          Completa el cambio de credenciales solo si abriste un enlace oficial enviado por el sistema.
+        </div>
+      </div>
+
       <div>
-        <label style={styles.label}>Nueva Contraseña</label>
+        <label style={styles.label}>Nueva contrasena</label>
         <input
           type="password"
-          placeholder="Ingresa tu nueva contraseña"
+          placeholder="Ingresa tu nueva contrasena"
           value={recoveryPassword}
           onChange={(event) => setRecoveryPassword(event.target.value)}
           style={styles.input}
@@ -141,10 +184,10 @@ export const AuthScreen = ({
       </div>
 
       <div>
-        <label style={styles.label}>Confirmar Contraseña</label>
+        <label style={styles.label}>Confirmar contrasena</label>
         <input
           type="password"
-          placeholder="Repite la nueva contraseña"
+          placeholder="Repite la nueva contrasena"
           value={recoveryPasswordConfirm}
           onChange={(event) => setRecoveryPasswordConfirm(event.target.value)}
           style={styles.input}
@@ -161,7 +204,7 @@ export const AuthScreen = ({
           cursor: recoveryIsLoading ? "wait" : "pointer",
         }}
       >
-        {recoveryIsLoading ? recoveryLoadingLabel : "ACTUALIZAR CONTRASEÑA"}
+        {recoveryIsLoading ? recoveryLoadingLabel : "ACTUALIZAR CONTRASENA"}
       </button>
 
       <div style={{ marginTop: "20px", textAlign: "center" }}>
@@ -174,22 +217,50 @@ export const AuthScreen = ({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
-      <div style={{ ...styles.card, width: "100%", maxWidth: "400px", padding: "40px" }}>
-        <div style={{ marginBottom: "30px", textAlign: "center" }}>
+      <div style={{ ...styles.card, width: "100%", maxWidth: "560px", padding: "32px", maxHeight: "none" }}>
+        <div style={{ marginBottom: "24px", textAlign: "center" }}>
+          <div style={sectionTitleStyle}>{isRecoveryFlow ? "Modulo de recuperacion de acceso" : "Acceso institucional"}</div>
           <h1 style={{ ...styles.heading, borderBottom: "none", fontSize: "24px", marginBottom: "8px" }}>
             {recoveryView === "request"
-              ? "Recuperar contraseña"
+              ? "Recuperar acceso"
               : recoveryView === "update"
-                ? "Definir nueva contraseña"
-                : "CMP Contratistas SAC."}
+                ? "Restablecer contrasena"
+                : "Sistema de Verificacion de Reportes de Campo"}
           </h1>
           <p style={{ ...styles.text, color: "#64748B", fontSize: "14px", margin: 0 }}>
             {recoveryView === "request"
-              ? "Ingresa tu correo para enviarte el enlace de recuperación"
+              ? "Solicitud de enlace de recuperacion para personal autorizado"
               : recoveryView === "update"
-                ? "Completa el cambio de contraseña desde el enlace recibido"
-                : "Plataforma de Reportes de Campo"}
+                ? "Actualizacion de credenciales mediante un enlace temporal de seguridad"
+                : "Plataforma interna para registro y sincronizacion operativa"}
           </p>
+        </div>
+
+        <div style={infoPanelStyle}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A", marginBottom: "8px" }}>
+            CMP Contratistas SAC.
+          </div>
+          <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
+            Sistema interno para el registro de reportes de campo, validacion operativa, sincronizacion y consulta de informacion del proyecto.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px", marginTop: "14px" }}>
+            <div>
+              <div style={sectionTitleStyle}>Responsable</div>
+              <div style={{ fontSize: "13px", color: "#0F172A" }}>CMP Contratistas SAC.</div>
+            </div>
+            <div>
+              <div style={sectionTitleStyle}>Uso permitido</div>
+              <div style={{ fontSize: "13px", color: "#0F172A" }}>Solo personal autorizado y cuentas corporativas</div>
+            </div>
+            <div>
+              <div style={sectionTitleStyle}>Soporte</div>
+              <div style={{ fontSize: "13px", color: "#0F172A" }}>Mesa de ayuda interna o coordinacion TI de CMP</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={warningPanelStyle}>
+          Acceso restringido para uso interno. Si no perteneces al equipo autorizado o no reconoces esta plataforma, no ingreses credenciales y comunicate con el canal interno de soporte.
         </div>
 
         {activeMessage ? (
@@ -219,7 +290,7 @@ export const AuthScreen = ({
               }}
             >
               <div>
-                <label style={styles.label}>Correo Corporativo</label>
+                <label style={styles.label}>Correo corporativo</label>
                 <input
                   type="email"
                   placeholder="usuario@empresa.com"
@@ -231,21 +302,15 @@ export const AuthScreen = ({
               </div>
 
               <div>
-                <label style={styles.label}>Contraseña</label>
+                <label style={styles.label}>Contrasena</label>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={authPassword}
                   onChange={(event) => setAuthPassword(event.target.value)}
                   style={styles.input}
                   disabled={isLoading}
                 />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "-8px", marginBottom: "8px" }}>
-                <button type="button" onClick={onOpenRecoveryRequest} style={{ ...styles.btnLink, paddingRight: 0 }} disabled={isLoading}>
-                  ¿Olvidaste tu contraseña?
-                </button>
               </div>
 
               <button
@@ -261,9 +326,27 @@ export const AuthScreen = ({
               </button>
             </form>
 
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "16px",
+                borderRadius: "8px",
+                border: "1px dashed #CBD5E1",
+                backgroundColor: "#FAFCFF",
+              }}
+            >
+              <div style={sectionTitleStyle}>Recuperacion de acceso</div>
+              <div style={{ fontSize: "13px", color: "#64748B", lineHeight: 1.5, marginBottom: "8px" }}>
+                Usa este modulo solo si perdiste acceso a tu cuenta corporativa y necesitas un enlace oficial de restablecimiento.
+              </div>
+              <button type="button" onClick={onOpenRecoveryRequest} style={{ ...styles.btnLink, paddingLeft: 0 }} disabled={isLoading}>
+                Solicitar recuperacion de contrasena
+              </button>
+            </div>
+
             <div style={{ marginTop: "24px", textAlign: "center", borderTop: "1px solid #F1F5F9", paddingTop: "20px" }}>
               <button type="button" onClick={() => setAuthMode(isLogin ? "signup" : "login")} style={styles.btnLink}>
-                {isLogin ? "¿Aún no tienes acceso? Crear cuenta" : "Volver a iniciar sesión"}
+                {isLogin ? "Aun no tienes acceso? Crear cuenta" : "Volver a iniciar sesion"}
               </button>
             </div>
           </>
