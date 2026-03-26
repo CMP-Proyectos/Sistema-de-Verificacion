@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { supabase } from "../../services/dataService";
+import { useCallback, useState } from "react";
+import { supabase, fetchUserRecords } from "../../services/dataService";
 import { UserRecord, ConfirmModalState } from "../../features/reportFlow/types";
 
 export function useRecordsFlow(
@@ -19,17 +19,16 @@ export function useRecordsFlow(
   const [editComment, setEditComment] = useState("");
   const [editPreviewUrl, setEditPreviewUrl] = useState("");
 
-  const loadUserRecords = async () => { 
+  const loadUserRecords = useCallback(async () => { 
       if(!sessionUserId) return; 
       setIsLoadingRecords(true); 
       try { 
-          const {data, error} = await supabase.rpc('obtener_historial_usuario', { usuario_uid: sessionUserId }); 
-          if (error) throw error;
-          setUserRecords(data || []); 
+          const data = await fetchUserRecords(sessionUserId);
+          setUserRecords(data); 
       } catch (err) {
           console.error("Error historial:", err);
       } finally { setIsLoadingRecords(false); } 
-  };
+  }, [sessionUserId]);
   
   const requestDeleteRecord = (i: UserRecord) => { 
       setConfirmModal({
@@ -73,7 +72,9 @@ export function useRecordsFlow(
           if (error) throw error;
 
           showToast("Actualizado", "success");
-          setIsPhotoModalOpen(false); setEditEvidenceFile(null); loadUserRecords();
+          setIsPhotoModalOpen(false);
+          setEditEvidenceFile(null);
+          await loadUserRecords();
       } catch (e) { console.error(e); showToast("Error al actualizar", "error"); } finally { setIsLoading(false); }
   };
 

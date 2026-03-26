@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { db } from "./db_local";
+import type { UserRecord } from "../features/reportFlow/types";
 
 export { supabase };
 
@@ -137,6 +138,105 @@ export const createRegistro = async (payload: {
   const { data, error } = await supabase.from("Registros").insert(payload).select();
   if (error) throw error;
   return { data, error };
+};
+
+type RegistroRow = {
+  ID_Registros: number;
+  Fecha_Subida: string;
+  URL_Archivo: string | null;
+  Comentario: string | null;
+  Ruta_Archivo: string | null;
+  Bucket: string | null;
+  ID_Verificada: number | null;
+};
+
+type CheckedActivityRow = {
+  ID_Verificada: number;
+  ID_DetallesActividad: number | null;
+  Latitud: number | null;
+  Longitud: number | null;
+  Cantidad: number | null;
+};
+
+export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> => {
+  if (!userId) return [];
+
+  const { data: registros, error: registrosError } = await supabase
+    .from("Registros")
+    .select("ID_Registros, Fecha_Subida, URL_Archivo, Comentario, Ruta_Archivo, Bucket, ID_Verificada")
+    .eq("user_id", userId)
+    .order("Fecha_Subida", { ascending: false });
+
+  if (registrosError) throw registrosError;
+
+  const registroRows = (registros || []) as RegistroRow[];
+  if (registroRows.length === 0) return [];
+
+  const verificadaIds = registroRows
+    .map((record) => record.ID_Verificada)
+    .filter((value): value is number => typeof value === "number");
+
+  const checkedById = new Map<number, CheckedActivityRow>();
+  if (verificadaIds.length > 0) {
+    const { data: checkedRows, error: checkedError } = await supabase
+      .from("Actividad_Verificada")
+      .select("ID_Verificada, ID_DetallesActividad, Latitud, Longitud, Cantidad")
+      .in("ID_Verificada", verificadaIds);
+
+    if (checkedError) throw checkedError;
+
+    for (const row of (checkedRows || []) as CheckedActivityRow[]) {
+      checkedById.set(row.ID_Verificada, row);
+    }
+  }
+
+  const [details, localities, fronts, projects, activities] = await Promise.all([
+    db.catalog_details.toArray(),
+    db.catalog_localities.toArray(),
+    db.catalog_fronts.toArray(),
+    db.catalog_projects.toArray(),
+    db.catalog_activities.toArray(),
+  ]);
+
+  const detailById = new Map(details.map((detail) => [detail.ID_DetallesActividad, detail]));
+  const localityById = new Map(localities.map((locality) => [locality.ID_Localidad, locality]));
+  const frontById = new Map(fronts.map((front) => [front.ID_Frente, front]));
+  const projectById = new Map(projects.map((project) => [project.ID_Proyectos, project]));
+  const activityById = new Map(activities.map((activity) => [activity.ID_Actividad, activity]));
+
+  const mappedRecords = registroRows.map((record) => {
+    const checked = record.ID_Verificada ? checkedById.get(record.ID_Verificada) : undefined;
+    const detail = checked?.ID_DetallesActividad ? detailById.get(checked.ID_DetallesActividad) : undefined;
+    const locality = detail ? localityById.get(detail.ID_Localidad) : undefined;
+    const front = locality ? frontById.get(locality.ID_Frente) : undefined;
+    const project = front ? projectById.get(front.ID_Proyecto) : undefined;
+    const activity = detail ? activityById.get(detail.ID_Actividad) : undefined;
+
+    return {
+      id_registro: record.ID_Registros,
+      fecha_subida: record.Fecha_Subida,
+      url_foto: record.URL_Archivo,
+      nombre_actividad: activity?.Nombre_Actividad || "Actividad sin catalogo",
+      nombre_localidad: locality?.Nombre_Localidad || "",
+      nombre_detalle: detail?.Nombre_Detalle || "",
+      comentario: record.Comentario,
+      ruta_archivo: record.Ruta_Archivo,
+      bucket: record.Bucket,
+      latitud: checked?.Latitud ?? detail?.Latitud ?? null,
+      longitud: checked?.Longitud ?? detail?.Longitud ?? null,
+      nombre_proyecto: project?.Proyecto_Nombre,
+      nombre_frente: front?.Nombre_Frente,
+      cantidad: checked?.Cantidad ?? 0,
+    };
+  });
+
+  console.info("[records] fetchUserRecords", {
+    userId,
+    registrosCount: registroRows.length,
+    mappedCount: mappedRecords.length,
+  });
+
+  return mappedRecords;
 };
 
 export const getActivityProperties = async () => [];

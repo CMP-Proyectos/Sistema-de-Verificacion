@@ -11,9 +11,16 @@ interface Props {
   onEdit: () => void;
 }
 
-export const UserGalleryScreen = ({ 
-    records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit 
+export const UserGalleryScreen = ({
+    records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit
 }: Props) => {
+  React.useEffect(() => {
+    console.info("[records] UserGalleryScreen render", {
+      isLoading,
+      renderedCount: records.length,
+      selectedRecordId,
+    });
+  }, [isLoading, records.length, selectedRecordId]);
 
   const renderDetail = () => {
     const rec = records.find(r => r.id_registro === selectedRecordId);
@@ -23,7 +30,6 @@ export const UserGalleryScreen = ({
 
     return (
         <div style={styles.detailOverlay}>
-            {/* Header */}
             <div style={styles.detailHeader}>
                 <div style={{flex: 1}}>
                     <span style={{fontSize:'11px', color:'#64748B', textTransform:'uppercase', display:'block', fontWeight:'700'}}>
@@ -34,16 +40,13 @@ export const UserGalleryScreen = ({
                     </h3>
                 </div>
                 <button onClick={() => onSelectRecord(null)} style={styles.backArrowBtn}>
-                    ←
+                    {"<-"}
                 </button>
             </div>
 
-            {/* Contenido */}
             <div style={styles.detailContent}>
-                
-                {/* Imagen */}
                 <div style={{
-                    backgroundColor:'#F1F5F9', border: '1px solid #E2E8F0', borderRadius:'8px', 
+                    backgroundColor:'#F1F5F9', border: '1px solid #E2E8F0', borderRadius:'8px',
                     marginBottom:'24px', display:'flex', justifyContent:'center', alignItems: 'center',
                     minHeight:'250px', padding: '10px'
                 }}>
@@ -54,18 +57,17 @@ export const UserGalleryScreen = ({
                     )}
                 </div>
 
-                {/* Datos */}
                 <div style={{...styles.card, padding: '20px', boxShadow: 'none', border: '1px solid #E2E8F0'}}>
                     <h4 style={{...styles.heading, fontSize: '14px', borderBottom: '1px solid #F1F5F9'}}>
                         DATOS DEL REPORTE
                     </h4>
-                    
+
                     <div style={{display:'grid', gap:'16px'}}>
                         <div>
                             <label style={styles.label}>PROYECTO</label>
                             <div style={styles.text}>{proyectoStr}</div>
                         </div>
-                        
+
                         <div>
                             <label style={styles.label}>LOCALIDAD</label>
                             <div style={styles.text}>{rec.nombre_localidad || "---"}</div>
@@ -86,7 +88,7 @@ export const UserGalleryScreen = ({
                         <div>
                             <label style={styles.label}>OBSERVACIONES</label>
                             <div style={{
-                                ...styles.text, backgroundColor: '#F8FAFC', padding: '10px', 
+                                ...styles.text, backgroundColor: '#F8FAFC', padding: '10px',
                                 borderRadius: '4px', border: '1px solid #F1F5F9',
                                 color: rec.comentario ? '#334155' : '#94A3B8',
                                 fontStyle: rec.comentario ? 'normal' : 'italic'
@@ -97,31 +99,30 @@ export const UserGalleryScreen = ({
                     </div>
                 </div>
 
-                {/* BOTONES CORREGIDOS CON GRID (Alineación Perfecta) */}
                 <div style={{
-                    display: 'grid',               // Usamos Grid en vez de Flex
-                    gridTemplateColumns: '1fr 1fr', // Dos columnas exactamente iguales
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
                     gap: '16px',
                     paddingBottom: '40px',
                     marginTop: '20px'
                 }}>
-                    <button 
-                        onClick={() => onDelete(rec)} 
+                    <button
+                        onClick={() => onDelete(rec)}
                         style={{
-                            ...styles.btnDanger, 
-                            margin: 0, 
-                            height: '48px', // Altura forzada
+                            ...styles.btnDanger,
+                            margin: 0,
+                            height: '48px',
                             width: '100%'
                         }}
                     >
                         ELIMINAR
                     </button>
-                    <button 
-                        onClick={onEdit} 
+                    <button
+                        onClick={onEdit}
                         style={{
-                            ...styles.btnSecondary, 
-                            margin: 0, 
-                            height: '48px', // Altura forzada
+                            ...styles.btnSecondary,
+                            margin: 0,
+                            height: '48px',
                             width: '100%'
                         }}
                     >
@@ -152,36 +153,20 @@ export const UserGalleryScreen = ({
             ) : (
                 <div style={styles.grid}>
                     {records.map(rec => (
-                        <div 
-                            key={rec.id_registro} 
-                            onClick={() => onSelectRecord(rec.id_registro)} 
-                            style={{
-                                ...styles.gridItem, padding: 0, overflow: 'hidden',
-                                border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column',
-                                height: 'auto', aspectRatio: '1/1.1'
-                            }}
+                        <div
+                            key={rec.id_registro}
+                            onClick={() => onSelectRecord(rec.id_registro)}
+                            style={{ ...styles.gridItem, ...styles.galleryCard }}
                         >
-                            <div style={{
-                                width:'100%', flex: 1, backgroundColor:'#F8FAFC', 
-                                display:'flex', alignItems:'center', justifyContent:'center',
-                                borderBottom: '1px solid #E2E8F0'
-                            }}>
+                            <div style={styles.galleryThumbWrap}>
                                 {rec.url_foto ? (
-                                    <img src={rec.url_foto} style={{width:'100%', height:'100%', objectFit:'cover'}} loading="lazy" alt="thumb" />
+                                    <img src={rec.url_foto} style={styles.galleryThumbImage} loading="lazy" alt="thumb" />
                                 ) : (
-                                    <span style={{fontSize:'24px', opacity:0.3}}>📷</span>
+                                    <span style={{fontSize:'24px', opacity:0.3}}>IMG</span>
                                 )}
                             </div>
-                            <div style={{
-                                padding:'8px 10px', width:'100%', boxSizing:'border-box', 
-                                backgroundColor: '#FFFFFF', minHeight: '40px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <span style={{
-                                    fontSize:'10px', fontWeight:'700', color:'#334155', lineHeight:'1.3',
-                                    textAlign: 'center', display: '-webkit-box',
-                                    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
-                                }}>
+                            <div style={styles.galleryTextWrap}>
+                                <span style={styles.galleryText}>
                                     {rec.nombre_actividad}
                                 </span>
                             </div>

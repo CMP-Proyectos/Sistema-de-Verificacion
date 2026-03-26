@@ -82,6 +82,11 @@ export const styles: Record<string, React.CSSProperties> = {
   // --- UTILS ---
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" },
   gridItem: { padding: "20px", backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "4px", textAlign: "center", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
+  galleryCard: { padding: 0, overflow: "hidden", border: "1px solid #E2E8F0", display: "grid", gridTemplateRows: "140px minmax(56px, auto)", minHeight: "196px", alignItems: "stretch" },
+  galleryThumbWrap: { width: "100%", height: "140px", backgroundColor: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "center", borderBottom: "1px solid #E2E8F0", overflow: "hidden" },
+  galleryThumbImage: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
+  galleryTextWrap: { padding: "10px 12px", width: "100%", boxSizing: "border-box", backgroundColor: "#FFFFFF", minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "center" },
+  galleryText: { fontSize: "11px", fontWeight: "700", color: "#334155", lineHeight: "1.35", textAlign: "center", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minWidth: 0, wordBreak: "break-word" },
   flexBetween: { display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 },
   breadcrumbs: { padding: "12px 20px", fontSize: "12px", color: palette.slateLight, display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", flexShrink: 0 },
   breadcrumbItem: { fontWeight: "700", color: palette.navy },

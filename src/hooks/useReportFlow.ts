@@ -55,6 +55,7 @@ export function useReportFlow() {
   // --- SINCRONIZACIÓN ---
   const syncPendingUploads = useCallback(async () => { 
       try {
+          if (!session.sessionUser) return;
           const count = await db.pendingUploads.count(); 
           if(count > 0) { 
               showToast(`Subiendo ${count} pendientes...`, "info");
@@ -87,11 +88,11 @@ export function useReportFlow() {
                       if(r.id) await db.pendingUploads.delete(r.id); 
                   } catch (err: any) { console.error(`[SYNC ERROR]`, err); } 
               }
+              await records.loadUserRecords();
               showToast("Sincronización finalizada", "success");
-              if(step === "user_records" && session.sessionUser) records.loadUserRecords();
           } 
       } catch (e) { console.error("[SYNC FATAL]", e); }
-  }, [step, session.sessionUser]);
+  }, [records.loadUserRecords, session.sessionUser]);
 
   useEffect(() => {
       if (session.isOnline) syncPendingUploads();
@@ -153,7 +154,7 @@ export function useReportFlow() {
         if(step === "profile") session.loadProfileData();
         else records.loadUserRecords();
     }
-  }, [step, session.sessionUser]);
+  }, [step, session.sessionUser, records.loadUserRecords]);
 
   const handleGoHome = () => { 
       catalog.resetSelection(); 
@@ -194,6 +195,7 @@ export function useReportFlow() {
                 Nombre_Archivo: fileName, URL_Archivo: pubUrl, user_id: session.sessionUser.id, 
                 ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Valor: evidence.registerDetailText || null, Ruta_Archivo: path, Bucket: MASTER_BUCKET 
             });
+            await records.loadUserRecords();
             if (checked.excedido) {
               showToast(`Guardado: Se ha superado el metrado (Total: ${checked.acumulado})`, "info");
             } else {
