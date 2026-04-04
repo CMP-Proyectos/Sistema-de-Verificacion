@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { styles, evidenceStyles as es } from '../../../theme/styles';
-import { ActivitiesTypes } from '../types';
-import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud, AlertCircle } from 'lucide-react';
+import { EvidenceImage } from '../types';
+import { RefreshCw, Navigation, MapPin, Camera, Image as ImageIcon, UploadCloud, AlertCircle, Trash2 } from 'lucide-react';
 
 interface Props {
   isOnline: boolean;
@@ -14,15 +14,13 @@ interface Props {
   utmEast: string; setUtmEast: (v: string) => void;
   utmNorth: string; setUtmNorth: (v: string) => void;
   onUpdateUtm: () => void;
+  evidenceImages: EvidenceImage[];
   evidencePreview: string | null;
   isAnalyzing: boolean;
   aiFeedback: { type: 'warning' | 'info' | 'success', message: string } | null;
   onCaptureFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveImage: (imageId: string) => void;
   note: string; setNote: (v: string) => void;
-  registerProperties: ActivitiesTypes[];
-  registerPropId: string; setRegisterPropId: (v: string) => void;
-  registerDetailText: string; setRegisterDetailText: (v: string) => void;
-  registerDetailQuantity: string; setRegisterDetailQuantity: (v: string) => void;
   isLoading: boolean;
   onSave: () => void;
   previousRecord?: any;
@@ -32,9 +30,8 @@ export const EvidenceFormScreen = ({
   isOnline, mapUrl, displayLat, displayLng,
   isFetchingGps, onCaptureGps,
   utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, onUpdateUtm,
-  evidencePreview, isAnalyzing, aiFeedback, onCaptureFile,
+  evidenceImages, evidencePreview, isAnalyzing, aiFeedback, onCaptureFile, onRemoveImage,
   note, setNote,
-  registerProperties, registerPropId, setRegisterPropId, registerDetailText, setRegisterDetailText, registerDetailQuantity, setRegisterDetailQuantity,
   isLoading, onSave,
   previousRecord
 }: Props) => {
@@ -107,7 +104,7 @@ export const EvidenceFormScreen = ({
 
       <div style={styles.card}>
         <div style={{ ...styles.flexBetween, ...styles.mb16 }}>
-          <h3 style={es.headerClean}>1. Ubicación Geodésica</h3>
+          <h3 style={es.headerClean}>1. Ubicacion Geodesica</h3>
           <span style={getBadgeStyle()}>
             {isOnline ? 'ONLINE' : 'OFFLINE'}
           </span>
@@ -143,7 +140,7 @@ export const EvidenceFormScreen = ({
             </div>
             <button onClick={onCaptureGps} disabled={isFetchingGps} style={styles.btnSecondary}>
               {isFetchingGps ? <RefreshCw className="spin" size={16} /> : <Navigation size={16} />}
-              <span style={{ marginLeft: '8px' }}>{isFetchingGps ? "TRIANGULANDO..." : "ACTUALIZAR POSICIÓN"}</span>
+              <span style={{ marginLeft: '8px' }}>{isFetchingGps ? "TRIANGULANDO..." : "ACTUALIZAR POSICION"}</span>
             </button>
           </>
         )}
@@ -175,18 +172,18 @@ export const EvidenceFormScreen = ({
         <h3 style={styles.heading}>2. Evidencia de Campo</h3>
 
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
-        <input ref={galleryInputRef} type="file" accept="image/*" onChange={onCaptureFile} style={{ display: 'none' }} />
+        <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={onCaptureFile} style={{ display: 'none' }} />
 
         {!evidencePreview ? (
           <div style={es.uploadRow}>
             <button onClick={() => cameraInputRef.current?.click()} style={getCameraBtnStyle()}>
               <Camera size={32} style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '12px', fontWeight: '700' }}>CÁMARA</span>
+              <span style={{ fontSize: '12px', fontWeight: '700' }}>CAMARA</span>
             </button>
 
             <button onClick={() => galleryInputRef.current?.click()} style={es.uploadBtnLarge}>
               <ImageIcon size={32} style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '12px', fontWeight: '700' }}>GALERÍA</span>
+              <span style={{ fontSize: '12px', fontWeight: '700' }}>GALERIA</span>
             </button>
           </div>
         ) : (
@@ -194,12 +191,29 @@ export const EvidenceFormScreen = ({
             <div style={es.previewContainer}>
               <img src={evidencePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Evidencia" />
             </div>
+            <div style={es.helperText}>
+              Idealmente usa 3 imagenes utiles y complementarias. Evita fotos redundantes. Maximo 5 por registro.
+            </div>
+            <div style={es.imageCounter}>{evidenceImages.length} / 5 imagenes</div>
+            <div style={es.thumbnailGrid}>
+              {evidenceImages.map((image, index) => (
+                <div key={image.id} style={es.thumbnailCard}>
+                  <img src={image.previewUrl} style={es.thumbnailImage} alt={`Evidencia ${index + 1}`} />
+                  <div style={es.thumbnailMeta}>
+                    <span>{index === 0 ? 'Principal' : `Imagen ${index + 1}`}</span>
+                    <button type="button" onClick={() => onRemoveImage(image.id)} style={es.thumbnailDeleteBtn}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
             <div style={es.actionsRow}>
-              <button onClick={() => cameraInputRef.current?.click()} style={es.btnSmall}>
-                <Camera size={14} /> RE-TOMAR
+              <button onClick={() => cameraInputRef.current?.click()} style={es.btnSmall} disabled={evidenceImages.length >= 5}>
+                <Camera size={14} /> AGREGAR CAMARA
               </button>
-              <button onClick={() => galleryInputRef.current?.click()} style={es.btnSmall}>
-                <UploadCloud size={14} /> SUBIR OTRA
+              <button onClick={() => galleryInputRef.current?.click()} style={es.btnSmall} disabled={evidenceImages.length >= 5}>
+                <UploadCloud size={14} /> AGREGAR GALERIA
               </button>
             </div>
           </div>
@@ -217,7 +231,7 @@ export const EvidenceFormScreen = ({
           </div>
         )}
 
-        <label style={styles.label}>Observaciones Técnicas</label>
+        <label style={styles.label}>Observaciones Tecnicas</label>
         <textarea
           value={note}
           onChange={e => setNote(e.target.value)}
@@ -225,45 +239,18 @@ export const EvidenceFormScreen = ({
           placeholder={`ejemplo:
 - poste CAC 8/300 con fisura longitudinal
 - vano 36 m. con flecha excedida
-- suelo arenoso inestable, requiere encofrado para cimentación`}
+- suelo arenoso inestable, requiere encofrado para cimentacion`}
         />
-      </div>
-
-      <div style={styles.card}>
-        <h3 style={styles.heading}>Parámetros adicionales (opcional)</h3>
-        <div style={es.grid2}>
-          <div>
-            <label style={styles.label}>Valor</label>
-            <input
-              value={registerDetailText}
-              onChange={(e) => setRegisterDetailText(e.target.value)}
-              style={styles.input}
-              placeholder="Ingrese un valor adicional si aplica"
-            />
-          </div>
-          <div>
-            <label style={styles.label}>Cantidad</label>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              value={registerDetailQuantity}
-              onChange={(e) => setRegisterDetailQuantity(e.target.value)}
-              style={styles.input}
-              placeholder="Cantidad"
-            />
-          </div>
-        </div>
       </div>
 
       <div style={{ marginBottom: '24px' }}>
         <button
           onClick={onSave}
-          disabled={isLoading || !evidencePreview || isAnalyzing}
+          disabled={isLoading || evidenceImages.length === 0 || isAnalyzing}
           style={{
             ...styles.btnPrimary,
-            opacity: (isLoading || !evidencePreview) ? 0.6 : 1,
-            cursor: (isLoading || !evidencePreview) ? 'not-allowed' : 'pointer'
+            opacity: (isLoading || evidenceImages.length === 0) ? 0.6 : 1,
+            cursor: (isLoading || evidenceImages.length === 0) ? 'not-allowed' : 'pointer'
           }}
         >
           {isLoading ? "GUARDANDO..." : "GUARDAR Y FINALIZAR"}

@@ -404,19 +404,14 @@ export default function ReportFlowPage() {
             utmNorth={flow.utmNorth}
             setUtmNorth={flow.setUtmNorth}
             onUpdateUtm={flow.handleUpdateFromUtm}
+            evidenceImages={flow.evidenceImages}
             evidencePreview={flow.evidencePreview}
             isAnalyzing={flow.isAnalyzing}
             aiFeedback={flow.aiFeedback}
             onCaptureFile={flow.handleCaptureFile}
+            onRemoveImage={flow.removeEvidenceImage}
             note={flow.note}
             setNote={flow.setNote}
-            registerProperties={flow.registerProperties}
-            registerPropId={flow.registerPropId}
-            setRegisterPropId={flow.setRegisterPropId}
-            registerDetailText={flow.registerDetailText}
-            setRegisterDetailText={flow.setRegisterDetailText}
-            registerDetailQuantity={flow.registerDetailQuantity}
-            setRegisterDetailQuantity={flow.setRegisterDetailQuantity}
             isLoading={flow.isLoading}
             onSave={() => {
               flow.saveReport();
@@ -455,10 +450,26 @@ export default function ReportFlowPage() {
 
         {flow.step === "files" && (
           <div style={styles.card}>
-            <div style={styles.flexBetween}>
+            <div style={{ ...styles.flexBetween, marginBottom: "16px" }}>
               <h2 style={{ ...styles.heading, borderBottom: "none", margin: 0 }}>Exportar Datos</h2>
-              <button onClick={() => flow.handleDownloadCSV(flow.userRecords)} style={styles.btnSecondary}>
-                DESCARGAR CSV
+              <button
+                onClick={() => flow.handleDownloadCSV(flow.userRecords)}
+                style={{
+                  ...styles.btnSecondary,
+                  width: "auto",
+                  height: "36px",
+                  padding: "0 12px",
+                  margin: 0,
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  textTransform: "none",
+                  color: "#475569",
+                  border: "1px solid #CBD5E1",
+                  backgroundColor: "#F8FAFC",
+                  boxShadow: "none",
+                }}
+              >
+                Descargar CSV
               </button>
             </div>
             <div style={styles.scrollableY}>

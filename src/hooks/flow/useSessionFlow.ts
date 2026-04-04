@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../services/dataService";
-import { db } from "../../services/db_local";
+import { supabase, clearAllLocalData } from "../../services/dataService";
 import { ConfirmModalState } from "../../features/reportFlow/types";
 
 type AuthMessage = {
@@ -55,15 +54,16 @@ export function useSessionFlow(
 
   const checkSession = async () => {
     if (hasRecoveryContextInUrl()) {
-      return false;
+      return null;
     }
 
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
-      setSessionUser({ email: data.session.user.email || "", id: data.session.user.id });
-      return true;
+      const user = { email: data.session.user.email || "", id: data.session.user.id };
+      setSessionUser(user);
+      return user;
     }
-    return false;
+    return null;
   };
 
   const handleLogin = async (onSuccess: () => void | Promise<void>) => {
@@ -107,11 +107,7 @@ export function useSessionFlow(
 
   const handleLogout = async () => {
     try {
-      await db.catalog_projects.clear();
-      await db.catalog_fronts.clear();
-      await db.catalog_localities.clear();
-      await db.catalog_details.clear();
-      await db.catalog_activities.clear();
+      await clearAllLocalData();
 
       await supabase.auth.signOut();
       setSessionUser(null);

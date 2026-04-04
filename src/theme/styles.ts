@@ -144,6 +144,13 @@ export const evidenceStyles: Record<string, React.CSSProperties> = {
 
   previewContainer: { borderRadius: '6px', border: `1px solid ${palette.border}`, overflow: 'hidden', height: '240px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', marginBottom: '16px' },
   actionsRow: { display: 'flex', gap: '10px', marginTop: '12px' },
+  helperText: { fontSize: '12px', color: palette.slateLight, marginBottom: '8px', lineHeight: '1.4' },
+  imageCounter: { fontSize: '11px', fontWeight: '700', color: palette.navy, marginBottom: '12px', textTransform: 'uppercase' },
+  thumbnailGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginBottom: '12px' },
+  thumbnailCard: { border: `1px solid ${palette.border}`, borderRadius: '8px', overflow: 'hidden', backgroundColor: '#F8FAFC' },
+  thumbnailImage: { width: '100%', height: '90px', objectFit: 'cover', display: 'block' },
+  thumbnailMeta: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '8px', fontSize: '11px', fontWeight: '700', color: palette.slateDark },
+  thumbnailDeleteBtn: { width: '28px', height: '28px', borderRadius: '50%', border: `1px solid ${palette.border}`, backgroundColor: palette.white, color: palette.error, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
 
   // 8. Consola
   console: { backgroundColor: palette.consoleBg, color: palette.consoleText, padding: '12px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', marginBottom: '16px', borderLeft: `4px solid ${palette.success}` }

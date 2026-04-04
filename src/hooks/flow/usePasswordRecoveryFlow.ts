@@ -13,7 +13,7 @@ const getFriendlyAuthErrorMessage = (error: any) => {
   const rawMessage = String(error?.message || error?.code || "").toLowerCase();
 
   if (rawMessage.includes("auth session missing")) {
-    return "No se pudo actualizar la contraseña porque la sesión de recuperación no está activa. Solicita un nuevo enlace e inténtalo nuevamente.";
+    return "No se pudo actualizar la contraseña porque la sesión de recuperación no está activa. Solicite un nuevo enlace e inténtelo nuevamente.";
   }
 
   if (rawMessage.includes("password should contain at least one character of each")) {
@@ -27,7 +27,7 @@ const getFriendlyAuthErrorMessage = (error: any) => {
     rawMessage.includes("session_not_found") ||
     rawMessage.includes("flow state")
   ) {
-    return "El enlace de recuperación expiró o ya no es válido. Solicita un nuevo enlace para continuar.";
+    return "El enlace de recuperación expiró o ya no es válido. Solicite un nuevo enlace para continuar.";
   }
 
   return error?.message || "Ocurrió un error inesperado.";
@@ -78,14 +78,14 @@ const getRecoveryActivationMessage = (urlState: ReturnType<typeof getRecoveryUrl
   if (urlState.hasRecoveryError) {
     return {
       type: "error",
-      text: "El enlace de recuperación expiró o ya no es válido. Solicita uno nuevo para continuar.",
+      text: "El enlace de recuperación expiró o ya no es válido. Solicite uno nuevo para continuar.",
     };
   }
 
   if (urlState.hasRecoveryQuery || urlState.hasRecoveryHash) {
     return {
       type: "info",
-      text: "Ingresa tu nueva contraseña para completar la recuperación.",
+      text: "Ingrese su nueva contraseña para completar la recuperación.",
     };
   }
 
@@ -104,7 +104,7 @@ export function usePasswordRecoveryFlow(
     initialStoredRecovery
       ? {
           type: "info",
-          text: "Ingresa tu nueva contraseña para completar la recuperación.",
+          text: "Ingrese su nueva contraseña para completar la recuperación.",
         }
       : getRecoveryActivationMessage(initialUrlState)
   );
@@ -141,7 +141,7 @@ export function usePasswordRecoveryFlow(
     setMessage(
       nextMessage || {
         type: "info",
-        text: "Ingresa tu nueva contraseña para completar la recuperación.",
+        text: "Ingrese su nueva contraseña para completar la recuperación.",
       }
     );
   };
@@ -182,7 +182,7 @@ export function usePasswordRecoveryFlow(
             ? getRecoveryActivationMessage(urlState)
             : {
                 type: "info",
-                text: "Ingresa tu nueva contraseña para completar la recuperación.",
+                text: "Ingrese su nueva contraseña para completar la recuperación.",
               }
         );
         setHasResolvedInitialCheck(true);
@@ -209,7 +209,7 @@ export function usePasswordRecoveryFlow(
   const handleRequestReset = async () => {
     const nextEmail = email.trim();
     if (!nextEmail) {
-      setMessage({ type: "error", text: "Ingresa tu correo para enviar el enlace." });
+      setMessage({ type: "error", text: "Ingrese su usuario (email) para enviar el enlace." });
       return;
     }
 
@@ -225,7 +225,7 @@ export function usePasswordRecoveryFlow(
 
       setMessage({
         type: "success",
-        text: "Enlace enviado. Se recomienda cerrar esta pestaña y abrir el enlace de restablecimiento de contraseña enviado a su correo electrónico. Revise también la carpeta de spam o correo no deseado.",
+        text: "Enlace enviado. Puede cerrar esta pestaña y abrir el enlace de restablecimiento de contraseña enviado a su correo electrónico. Revise también la carpeta de spam o correo no deseado.",
       });
     } catch (error) {
       setMessage({
@@ -239,7 +239,7 @@ export function usePasswordRecoveryFlow(
 
   const handleUpdatePassword = async () => {
     if (!password.trim() || !passwordConfirm.trim()) {
-      setMessage({ type: "error", text: "Completa ambos campos de contraseña." });
+      setMessage({ type: "error", text: "Complete ambos campos de contraseña." });
       return;
     }
 
@@ -263,7 +263,7 @@ export function usePasswordRecoveryFlow(
 
       const successMessage = {
         type: "success",
-        text: "Contraseña actualizada. Inicia sesión con tu nueva clave.",
+        text: "Contraseña actualizada. Inicie sesión con su nueva clave.",
       } as const;
 
       showToast(successMessage.text, "success");

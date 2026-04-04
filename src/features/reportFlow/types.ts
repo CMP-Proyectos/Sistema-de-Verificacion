@@ -20,11 +20,14 @@ export type Step =
 // Estructura de un registro de usuario (base de datos)
 export interface UserRecord { 
     id_registro: number; 
+    id_verificada?: number | null;
     fecha_subida: string; 
     url_foto: string | null; 
     nombre_actividad: string; 
     nombre_localidad: string; 
     nombre_detalle: string; 
+    nombre_grupo?: string | null;
+    nombre_item?: string | null;
     comentario: string | null; 
     ruta_archivo: string | null; 
     bucket: string | null; 
@@ -32,7 +35,14 @@ export interface UserRecord {
     longitud: number | null;
     nombre_proyecto?: string;
     nombre_frente?: string;
+    total_imagenes?: number;
     cantidad: number;
+}
+
+export interface EvidenceImage {
+    id: string;
+    file: File;
+    previewUrl: string;
 }
 
 // Estructura para las propiedades/atributos dinámicos

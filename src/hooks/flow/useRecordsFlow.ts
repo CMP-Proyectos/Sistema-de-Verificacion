@@ -36,10 +36,39 @@ export function useRecordsFlow(
           onConfirm: async () => {
               setConfirmModal(null); setIsLoading(true); 
               try { 
-                  if(i.bucket && i.ruta_archivo) await supabase.storage.from(i.bucket).remove([i.ruta_archivo]); 
-                  await supabase.rpc('eliminar_evidencia_completa', { p_id_registro: i.id_registro }); 
+                  const filesToDelete = new Set<string>();
+                  const bucketToUse = i.bucket || MASTER_BUCKET;
+
+                  if (i.ruta_archivo) filesToDelete.add(i.ruta_archivo);
+
+                  const { data: childImages } = await supabase
+                    .from("Registro_Imagenes")
+                    .select("Ruta_Archivo")
+                    .eq("ID_Registro", i.id_registro);
+
+                  (childImages || []).forEach((image: { Ruta_Archivo?: string | null }) => {
+                    if (image.Ruta_Archivo) filesToDelete.add(image.Ruta_Archivo);
+                  });
+
+                  if (bucketToUse && filesToDelete.size > 0) {
+                    await supabase.storage.from(bucketToUse).remove(Array.from(filesToDelete));
+                  }
+
+                  const { error: rpcError } = await supabase.rpc('eliminar_evidencia_completa', { p_id_registro: i.id_registro });
+                  if (rpcError) {
+                    const { error: childDeleteError } = await supabase.from("Registro_Imagenes").delete().eq("ID_Registro", i.id_registro);
+                    if (childDeleteError) throw childDeleteError;
+
+                    const { error: registroDeleteError } = await supabase.from("Registros").delete().eq("ID_Registros", i.id_registro);
+                    if (registroDeleteError) throw registroDeleteError;
+
+                    if (i.id_verificada) {
+                      const { error: checkedDeleteError } = await supabase.from("Actividad_Verificada").delete().eq("ID_Verificada", i.id_verificada);
+                      if (checkedDeleteError) throw checkedDeleteError;
+                    }
+                  }
                   await loadUserRecords(); setSelectedRecordId(null); showToast("Eliminado", "success");
-              } catch { showToast("Error al eliminar", "error"); } finally { setIsLoading(false); } 
+               } catch { showToast("Error al eliminar", "error"); } finally { setIsLoading(false); } 
           }
       });
   };
@@ -59,15 +88,26 @@ export function useRecordsFlow(
               const {data, error: upErr} = await supabase.storage.from(bucketToUse).upload(`${folder}/${fn}`, editEvidenceFile);
               if (upErr) throw upErr;
 
-              if(data){ 
-                  const {data:p}=supabase.storage.from(bucketToUse).getPublicUrl(data.path); 
-                  updates.URL_Archivo = p.publicUrl;
-                  updates.Ruta_Archivo = data.path;
-                  updates.Nombre_Archivo = fn;
-                  
-                  if(item.ruta_archivo) await supabase.storage.from(bucketToUse).remove([item.ruta_archivo]); 
-              }
-          }
+               if(data){ 
+                   const {data:p}=supabase.storage.from(bucketToUse).getPublicUrl(data.path); 
+                   updates.URL_Archivo = p.publicUrl;
+                   updates.Ruta_Archivo = data.path;
+                   updates.Nombre_Archivo = fn;
+                   
+                   if(item.ruta_archivo) await supabase.storage.from(bucketToUse).remove([item.ruta_archivo]); 
+
+                   await supabase
+                     .from("Registro_Imagenes")
+                     .update({
+                       URL_Archivo: p.publicUrl,
+                       Ruta_Archivo: data.path,
+                       Nombre_Archivo: fn,
+                       Bucket: bucketToUse,
+                     })
+                     .eq("ID_Registro", item.id_registro)
+                     .eq("Es_Principal", true);
+               }
+           }
           const { error } = await supabase.from('Registros').update(updates).eq('ID_Registros', item.id_registro);
           if (error) throw error;
 

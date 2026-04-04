@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { uploadEvidence, createCheckedActivity, createRegistro, supabase, fetchHistoryForDetail } from "../services/dataService";
+import {
+  uploadEvidence,
+  createCheckedActivity,
+  createRegistro,
+  createRegistroImagenes,
+  fetchHistoryForDetail,
+  syncHistoryToLocal,
+} from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
 
@@ -9,7 +16,8 @@ import { useCatalogFlow } from "./flow/useCatalogFlow";
 import { useEvidenceFlow } from "./flow/useEvidenceFlow";
 import { useRecordsFlow } from "./flow/useRecordsFlow";
 
-const MASTER_BUCKET = "Remodelacion_Tacna"; 
+const MASTER_BUCKET = "user-assets";
+const MAX_EVIDENCE_IMAGES = 5;
 const sanitizeName = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase();
 
 export function useReportFlow() {
@@ -61,29 +69,70 @@ export function useReportFlow() {
               showToast(`Subiendo ${count} pendientes...`, "info");
               const recs = await db.pendingUploads.toArray(); 
               
-              for(const r of recs) { 
-                  try { 
-                      console.log("[SYNC] Procesando:", r.meta.fileName);
-                      const targetBucket = MASTER_BUCKET; 
-                      const pub = await uploadEvidence(targetBucket, r.meta.fullPath, r.evidenceBlob, "image/jpeg"); 
-                      
-                      const chk = await createCheckedActivity({ 
-                          ID_DetallesActividad: r.meta.detailId, 
+               for(const r of recs) { 
+                   try { 
+                       console.log("[SYNC] Procesando:", r.meta.fileName || r.meta.fileNames?.[0]);
+                       const targetBucket = MASTER_BUCKET; 
+                       const offlineFiles = (r.evidenceBlobs && r.evidenceBlobs.length > 0)
+                         ? r.evidenceBlobs.map((blob, index) => ({
+                             blob,
+                             fileName: r.meta.fileNames?.[index] || `offline_${r.timestamp}_${index + 1}.jpg`,
+                             fullPath: r.meta.fullPaths?.[index] || r.meta.fullPath || `pendiente/${r.timestamp}_${index + 1}.jpg`,
+                             fileType: r.fileTypes?.[index] || "image/jpeg",
+                           }))
+                         : (r.evidenceBlob && r.meta.fileName && r.meta.fullPath)
+                           ? [{
+                               blob: r.evidenceBlob,
+                               fileName: r.meta.fileName,
+                               fullPath: r.meta.fullPath,
+                               fileType: r.fileType || "image/jpeg",
+                             }]
+                           : [];
+
+                       if (offlineFiles.length === 0) {
+                         throw new Error("Registro offline sin imagenes");
+                       }
+
+                       const uploadedImages = [];
+                       for (const [index, image] of offlineFiles.entries()) {
+                         const pub = await uploadEvidence(targetBucket, image.fullPath, image.blob, image.fileType);
+                         uploadedImages.push({
+                           Orden: index + 1,
+                           Nombre_Archivo: image.fileName,
+                           URL_Archivo: pub,
+                           Ruta_Archivo: image.fullPath,
+                           Bucket: targetBucket,
+                           Es_Principal: index === 0,
+                         });
+                       }
+                       
+                       const chk = await createCheckedActivity({ 
+                           ID_DetallesActividad: r.meta.detailId, 
                           Latitud: r.meta.lat, 
                           Longitud: r.meta.lng,
-                          Cantidad: r.meta.quantity || 0
-                      }); 
+                          Cantidad: 0
+                       }); 
                       
-                      await createRegistro({ 
-                          Nombre_Archivo: r.meta.fileName, 
-                          URL_Archivo: pub, 
-                          user_id: r.meta.userId, 
-                          ID_Verificada: chk.ID_Verificada, 
-                          Comentario: r.meta.comment, 
-                          Valor: r.meta.propertyValue || null,
-                          Ruta_Archivo: r.meta.fullPath,
-                          Bucket: targetBucket
-                      });
+                       const mainImage = uploadedImages[0];
+                       const regData = await createRegistro({ 
+                           Nombre_Archivo: mainImage.Nombre_Archivo, 
+                           URL_Archivo: mainImage.URL_Archivo, 
+                            user_id: r.meta.userId, 
+                            ID_Verificada: chk.ID_Verificada, 
+                            Comentario: r.meta.comment, 
+                            Ruta_Archivo: mainImage.Ruta_Archivo,
+                            Bucket: targetBucket
+                        });
+
+                       const registroId = regData.data?.[0]?.ID_Registros;
+                       if (registroId) {
+                         await createRegistroImagenes(
+                           uploadedImages.map((image) => ({
+                             ID_Registro: registroId,
+                             ...image,
+                           }))
+                         );
+                       }
                       
                       if(r.id) await db.pendingUploads.delete(r.id); 
                   } catch (err: any) { console.error(`[SYNC ERROR]`, err); } 
@@ -111,8 +160,8 @@ export function useReportFlow() {
 
     const bootstrapSession = async () => {
       try {
-        const isAuth = await session.checkSession();
-        if (!isAuth) return;
+        const authUser = await session.checkSession();
+        if (!authUser) return;
 
         session.setIsLoading(true);
         session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
@@ -121,8 +170,9 @@ export function useReportFlow() {
           void syncPendingUploads();
         }
 
-        await catalog.performFullSync();
+        await catalog.performScopedSync();
         await catalog.loadProjectsLocal();
+        await syncHistoryToLocal(authUser.id);
 
         if (!cancelled) {
           setStep("project");
@@ -165,7 +215,8 @@ export function useReportFlow() {
 
   const saveReport = async () => {
     if (evidence.isAnalyzing) return showToast("Analizando imagen...", "info");
-    if (!evidence.evidenceFile || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error"); 
+    if (evidence.evidenceFiles.length === 0 || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error"); 
+    if (evidence.evidenceFiles.length > MAX_EVIDENCE_IMAGES) return showToast("Maximo 5 imagenes", "error");
     
     session.setIsLoading(true);
     const timestamp = Date.now();
@@ -179,22 +230,54 @@ export function useReportFlow() {
     const folderLocality = sanitizeName(currentLocality?.Nombre_Localidad || "Sin_Localidad");
     const activityTag = sanitizeName(catalog.selectedActivity?.Nombre_Actividad || "Evidencia").substring(0, 30);
     
-    const fileName = `${activityTag}_${timestamp}.jpg`;
-    const path = `${folderProject}/${folderFront}/${folderLocality}/${fileName}`;
+    const evidenceFiles = evidence.evidenceFiles.map((file, index) => {
+      const order = index + 1;
+      const fileName = `${activityTag}_${timestamp}_${order}.jpg`;
+      return {
+        file,
+        order,
+        fileName,
+        path: `${folderProject}/${folderFront}/${folderLocality}/${fileName}`,
+      };
+    });
 
     try {
         if(navigator.onLine) {
-            const pubUrl = await uploadEvidence(MASTER_BUCKET, path, evidence.evidenceFile, "image/jpeg");
             const checked = await createCheckedActivity({ 
               ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad, 
               Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud, 
               Longitud: evidence.gpsLocation?.longitude || catalog.selectedDetail.Longitud,
-              Cantidad: Number(evidence.registerDetailQuantity) || 0
+              Cantidad: 0
             });
-            await createRegistro({ 
-                Nombre_Archivo: fileName, URL_Archivo: pubUrl, user_id: session.sessionUser.id, 
-                ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Valor: evidence.registerDetailText || null, Ruta_Archivo: path, Bucket: MASTER_BUCKET 
+
+            const uploadedImages = [];
+            for (const image of evidenceFiles) {
+              const pubUrl = await uploadEvidence(MASTER_BUCKET, image.path, image.file, "image/jpeg");
+              uploadedImages.push({
+                Orden: image.order,
+                Nombre_Archivo: image.fileName,
+                URL_Archivo: pubUrl,
+                Ruta_Archivo: image.path,
+                Bucket: MASTER_BUCKET,
+                Es_Principal: image.order === 1,
+              });
+            }
+
+            const mainImage = uploadedImages[0];
+            const regData = await createRegistro({ 
+                Nombre_Archivo: mainImage.Nombre_Archivo, URL_Archivo: mainImage.URL_Archivo, user_id: session.sessionUser.id, 
+                ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: mainImage.Ruta_Archivo, Bucket: MASTER_BUCKET 
             });
+
+            const registroId = regData.data?.[0]?.ID_Registros;
+            if (registroId) {
+              await createRegistroImagenes(
+                uploadedImages.map((image) => ({
+                  ID_Registro: registroId,
+                  ...image,
+                }))
+              );
+            }
             await records.loadUserRecords();
             if (checked.excedido) {
               showToast(`Guardado: Se ha superado el metrado (Total: ${checked.acumulado})`, "info");
@@ -203,15 +286,17 @@ export function useReportFlow() {
             }
         } else {
             const pend: PendingRecord = { 
-                timestamp, evidenceBlob: evidence.evidenceFile, fileType: "image/jpeg", 
+                timestamp,
+                evidenceBlobs: evidenceFiles.map((image) => image.file),
+                fileTypes: evidenceFiles.map(() => "image/jpeg"),
                 meta: { 
-                
-                    bucketName: MASTER_BUCKET, fullPath: path, fileName, userId: session.sessionUser.id, detailId: catalog.selectedDetail.ID_DetallesActividad, 
+                    bucketName: MASTER_BUCKET,
+                    fullPaths: evidenceFiles.map((image) => image.path),
+                    fileNames: evidenceFiles.map((image) => image.fileName),
+                    fullPath: evidenceFiles[0]?.path,
+                    fileName: evidenceFiles[0]?.fileName,
+                    userId: session.sessionUser.id, detailId: catalog.selectedDetail.ID_DetallesActividad, 
                     lat: evidence.gpsLocation?.latitude || 0, lng: evidence.gpsLocation?.longitude || 0, comment: evidence.note,
-                    // Parametric fields for offline support
-                    quantity: Number(evidence.registerDetailQuantity) || 0,
-                    propertyId: evidence.registerPropId ? Number(evidence.registerPropId) : null,
-                    propertyValue: evidence.registerDetailText || ''
                 } 
             };
             await db.pendingUploads.add(pend);
@@ -292,8 +377,12 @@ export function useReportFlow() {
     session.handleLogin(async () => {
       session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
       try {
-        await catalog.performFullSync();
+        await catalog.performScopedSync();
         await catalog.loadProjectsLocal();
+        const loginUserId = session.sessionUser?.id ?? (await session.checkSession())?.id;
+        if (loginUserId) {
+          await syncHistoryToLocal(loginUserId);
+        }
       } catch (error) {
         console.error("[AUTH] Post-login: fallo en sincronización", error);
         throw new Error("No se pudo sincronizar la información necesaria para ingresar. Intenta nuevamente.");
@@ -388,8 +477,7 @@ export function useReportFlow() {
     selectProject, selectFront, selectLocality, selectItem, selectGroup, selectActivity, selectDetail,
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
     utmZone: evidence.utmZone, setUtmZone: evidence.setUtmZone, utmEast: evidence.utmEast, setUtmEast: evidence.setUtmEast, utmNorth: evidence.utmNorth, setUtmNorth: evidence.setUtmNorth, handleUpdateFromUtm: evidence.handleUpdateFromUtm,
-    evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
-    registerProperties: evidence.registerProperties, registerPropId: evidence.registerPropId, setRegisterPropId: evidence.setRegisterPropId, registerDetailText: evidence.registerDetailText, setRegisterDetailText: evidence.setRegisterDetailText, registerDetailQuantity: evidence.registerDetailQuantity, setRegisterDetailQuantity: evidence.setRegisterDetailQuantity,
+    evidenceImages: evidence.evidenceImages, evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, removeEvidenceImage: evidence.removeEvidenceImage, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
     saveReport, getMapUrl,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
     requestDeleteRecord: records.requestDeleteRecord, 

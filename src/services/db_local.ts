@@ -16,21 +16,21 @@ export interface CachedRecord {
 export interface PendingRecord {
   id?: number;
   timestamp: number;
-  evidenceBlob: Blob;
-  fileType: string;
+  evidenceBlob?: Blob;
+  fileType?: string;
+  evidenceBlobs?: Blob[];
+  fileTypes?: string[];
   meta: {
     bucketName: string;
-    fullPath: string;
-    fileName: string;
+    fullPath?: string;
+    fileName?: string;
+    fullPaths?: string[];
+    fileNames?: string[];
     userId: string;
     detailId: number;
     lat: number;
     lng: number;
     comment: string;
-    // Parametric fields for offline support
-    quantity: number;
-    propertyId: number | null;
-    propertyValue: string;
   };
 }
 
@@ -59,7 +59,7 @@ class MyDatabase extends Dexie {
     
     // 2. Definimos el esquema (Nombres de tablas y sus índices)
     // NOTA: Si cambias esto, a veces es necesario borrar la BD en el navegador para que se regenere
-    this.version(3).stores({ // Updated to version 3 for activity properties cache
+    this.version(4).stores({
       pendingUploads: '++id, timestamp, meta.userId',
       
       // Catálogos (Nombres deben coincidir con las propiedades de arriba)

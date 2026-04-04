@@ -1,11 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Recomendado: mover a variables de entorno (se mantienen defaults para no romper el proyecto).
 const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL ??
-  "https://torwsfbxltzibydrlrqc.supabase.co";
+  "https://ydkxmguafdrmllgpxdct.supabase.co";
 const SUPABASE_ANON_KEY =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-  "sb_publishable_3JI-glaa0JqNcYOucy00kw_c75LwHld";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlka3htZ3VhZmRybWxsZ3B4ZGN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODk0OTcsImV4cCI6MjA5MDU2NTQ5N30.RMfAbXGbtur79Ptl4eU3ZH21aGM5vPrUzgaoVAytPac";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

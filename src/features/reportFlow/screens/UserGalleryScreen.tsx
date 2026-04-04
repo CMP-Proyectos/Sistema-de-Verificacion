@@ -14,6 +14,14 @@ interface Props {
 export const UserGalleryScreen = ({
     records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit
 }: Props) => {
+  const buildCombinedLabel = (...values: Array<string | null | undefined>) => {
+    const filteredValues = values.map((value) => value?.trim()).filter(Boolean);
+    return filteredValues.length > 0 ? filteredValues.join(" - ") : "Sin información";
+  };
+
+  const getPrimaryRecordLabel = (record: UserRecord) => buildCombinedLabel(record.nombre_grupo, record.nombre_detalle);
+  const getActivityDetailLabel = (record: UserRecord) => buildCombinedLabel(record.nombre_actividad, record.nombre_detalle);
+
   React.useEffect(() => {
     console.info("[records] UserGalleryScreen render", {
       isLoading,
@@ -27,17 +35,25 @@ export const UserGalleryScreen = ({
     if (!rec) return null;
 
     const proyectoStr = rec.nombre_proyecto || (rec.bucket ? rec.bucket.replace(/_/g, ' ').toUpperCase() : "GENERAL");
+    const primaryLabel = getPrimaryRecordLabel(rec);
+    const activityDetailLabel = getActivityDetailLabel(rec);
+    const imageCount = rec.total_imagenes || 0;
 
     return (
         <div style={styles.detailOverlay}>
             <div style={styles.detailHeader}>
                 <div style={{flex: 1}}>
                     <span style={{fontSize:'11px', color:'#64748B', textTransform:'uppercase', display:'block', fontWeight:'700'}}>
-                        ACTIVIDAD REGISTRADA
+                        REGISTRO SELECCIONADO
                     </span>
                     <h3 style={{margin:0, fontSize:'16px', color:'#0F172A', fontWeight:'700', lineHeight:'1.2'}}>
-                        {rec.nombre_actividad}
+                        {primaryLabel}
                     </h3>
+                    {rec.nombre_actividad && (
+                        <div style={{ marginTop: '4px', fontSize: '12px', color: '#64748B' }}>
+                            {rec.nombre_actividad}
+                        </div>
+                    )}
                 </div>
                 <button onClick={() => onSelectRecord(null)} style={styles.backArrowBtn}>
                     {"<-"}
@@ -48,8 +64,23 @@ export const UserGalleryScreen = ({
                 <div style={{
                     backgroundColor:'#F1F5F9', border: '1px solid #E2E8F0', borderRadius:'8px',
                     marginBottom:'24px', display:'flex', justifyContent:'center', alignItems: 'center',
-                    minHeight:'250px', padding: '10px'
+                    minHeight:'250px', padding: '10px', position: 'relative'
                 }}>
+                    {imageCount > 1 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '12px',
+                            right: '12px',
+                            backgroundColor: 'rgba(15, 23, 42, 0.82)',
+                            color: '#FFFFFF',
+                            borderRadius: '999px',
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: '700'
+                        }}>
+                            {imageCount}
+                        </div>
+                    )}
                     {rec.url_foto ? (
                         <img src={rec.url_foto} style={{maxWidth:'100%', maxHeight:'50vh', objectFit:'contain', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} alt="Evidencia" />
                     ) : (
@@ -69,13 +100,28 @@ export const UserGalleryScreen = ({
                         </div>
 
                         <div>
+                            <label style={styles.label}>FRENTE</label>
+                            <div style={styles.text}>{rec.nombre_frente || "---"}</div>
+                        </div>
+
+                        <div>
                             <label style={styles.label}>LOCALIDAD</label>
                             <div style={styles.text}>{rec.nombre_localidad || "---"}</div>
                         </div>
 
                         <div>
-                            <label style={styles.label}>SECTOR / DETALLE</label>
-                            <div style={styles.text}>{rec.nombre_detalle || "---"}</div>
+                            <label style={styles.label}>ÍTEM</label>
+                            <div style={styles.text}>{rec.nombre_item || "---"}</div>
+                        </div>
+
+                        <div>
+                            <label style={styles.label}>GRUPO</label>
+                            <div style={styles.text}>{rec.nombre_grupo || "---"}</div>
+                        </div>
+
+                        <div>
+                            <label style={styles.label}>ACTIVIDAD / DETALLE</label>
+                            <div style={styles.text}>{activityDetailLabel}</div>
                         </div>
 
                         <div>
@@ -152,26 +198,67 @@ export const UserGalleryScreen = ({
                 </div>
             ) : (
                 <div style={styles.grid}>
-                    {records.map(rec => (
+                    {records.map(rec => {
+                        const primaryLabel = getPrimaryRecordLabel(rec);
+                        const imageCount = rec.total_imagenes || 0;
+
+                        return (
                         <div
                             key={rec.id_registro}
                             onClick={() => onSelectRecord(rec.id_registro)}
-                            style={{ ...styles.gridItem, ...styles.galleryCard }}
+                            style={{ ...styles.gridItem, ...styles.galleryCard, position: 'relative' }}
                         >
                             <div style={styles.galleryThumbWrap}>
+                                {imageCount > 1 && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '10px',
+                                        minWidth: '24px',
+                                        height: '24px',
+                                        borderRadius: '999px',
+                                        backgroundColor: 'rgba(15, 23, 42, 0.82)',
+                                        color: '#FFFFFF',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '0 7px',
+                                        fontSize: '11px',
+                                        fontWeight: '700',
+                                        zIndex: 1
+                                    }}>
+                                        {imageCount}
+                                    </div>
+                                )}
                                 {rec.url_foto ? (
                                     <img src={rec.url_foto} style={styles.galleryThumbImage} loading="lazy" alt="thumb" />
                                 ) : (
                                     <span style={{fontSize:'24px', opacity:0.3}}>IMG</span>
                                 )}
                             </div>
-                            <div style={styles.galleryTextWrap}>
-                                <span style={styles.galleryText}>
-                                    {rec.nombre_actividad}
+                            <div style={{ ...styles.galleryTextWrap, flexDirection: 'column', gap: '4px', alignItems: 'flex-start', justifyContent: 'center' }}>
+                                <span style={{ ...styles.galleryText, textAlign: 'left', WebkitLineClamp: 2 }}>
+                                    {primaryLabel}
                                 </span>
+                                {rec.nombre_actividad && (
+                                    <span style={{
+                                        fontSize: '10px',
+                                        color: '#64748B',
+                                        lineHeight: '1.35',
+                                        textAlign: 'left',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                        width: '100%'
+                                    }}>
+                                        {rec.nombre_actividad}
+                                    </span>
+                                )}
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { db } from "../../services/db_local";
 import {
-  getAllProjects,
-  getAllFronts,
-  getAllLocalities,
-  getAllDetails,
-  getAllActivities,
+  getAllowedProjects,
+  getFrontsByProjectIds,
+  getLocalitiesByFrontIds,
+  getDetailsByLocalityIds,
+  getActivitiesByIds,
+  clearCatalogCache,
   ProjectRecord,
   FrontRecord,
   LocalityRecord,
@@ -49,51 +50,62 @@ export function useCatalogFlow(isOnline: boolean) {
       setProjects(await db.catalog_projects.toArray());
       setActivities(await db.catalog_activities.toArray());
     };
-    loadInitialData();
+    void loadInitialData();
   }, []);
 
-  const performFullSync = async () => {
+  const performScopedSync = async () => {
     if (!isOnline) return;
     setSyncStatus("Sincronizando...");
+
     try {
-      console.log("[SYNC] Descargando catálogos remotos");
-      const [p, f, l, d, a] = await Promise.all([
-        getAllProjects(),
-        getAllFronts(),
-        getAllLocalities(),
-        getAllDetails(),
-        getAllActivities(),
-      ]);
-      console.log("[SYNC] Descarga completada", {
-        projects: p.length,
-        fronts: f.length,
-        localities: l.length,
-        details: d.length,
-        activities: a.length,
+      console.log("[SYNC] Descargando catalogos remotos filtrados por alcance");
+      const { assignedProjectIds, projects: scopedProjects } = await getAllowedProjects();
+      const projectIds = scopedProjects.map((project) => project.ID_Proyectos);
+
+      const scopedFronts = await getFrontsByProjectIds(projectIds);
+      const frontIds = scopedFronts.map((front) => front.ID_Frente);
+
+      const scopedLocalities = await getLocalitiesByFrontIds(frontIds);
+      const localityIds = scopedLocalities.map((locality) => locality.ID_Localidad);
+
+      const scopedDetails = await getDetailsByLocalityIds(localityIds);
+      const activityIds = Array.from(new Set(scopedDetails.map((detail) => detail.ID_Actividad)));
+
+      const scopedActivities = await getActivitiesByIds(activityIds);
+
+      console.log("[SYNC] Descarga filtrada completada", {
+        assignedProjects: assignedProjectIds.length,
+        visibleProjects: scopedProjects.length,
+        visibleProjectIds: projectIds,
+        assignedProjectIds,
+        projects: scopedProjects.length,
+        fronts: scopedFronts.length,
+        localities: scopedLocalities.length,
+        details: scopedDetails.length,
+        activities: scopedActivities.length,
       });
 
-      console.log("[SYNC] Persistiendo proyectos, frentes y localidades");
-      await db.transaction("rw", db.catalog_projects, db.catalog_fronts, db.catalog_localities, async () => {
-        await db.catalog_projects.clear();
-        await db.catalog_projects.bulkPut(p);
-        await db.catalog_fronts.clear();
-        await db.catalog_fronts.bulkPut(f);
-        await db.catalog_localities.clear();
-        await db.catalog_localities.bulkPut(l);
-      });
-      console.log("[SYNC] Persistencia base completada");
+      if (assignedProjectIds.length !== scopedProjects.length) {
+        console.warn("[SYNC] Diferencia entre asignaciones y proyectos visibles", {
+          assignedProjectIds,
+          visibleProjectIds: projectIds,
+        });
+      }
 
-      console.log("[SYNC] Persistiendo detalles y actividades");
-      await db.transaction("rw", db.catalog_details, db.catalog_activities, async () => {
-        await db.catalog_details.clear();
-        await db.catalog_details.bulkPut(d);
-        await db.catalog_activities.clear();
-        await db.catalog_activities.bulkPut(a);
-      });
-      console.log("[SYNC] Persistencia secundaria completada");
+      console.log("[SYNC] Reemplazando cache local por el alcance autorizado");
+      await clearCatalogCache();
 
-      setProjects(p);
-      setActivities(a);
+      await db.catalog_projects.bulkPut(scopedProjects);
+      await db.catalog_fronts.bulkPut(scopedFronts);
+      await db.catalog_localities.bulkPut(scopedLocalities);
+      await db.catalog_details.bulkPut(scopedDetails);
+      await db.catalog_activities.bulkPut(scopedActivities);
+
+      setProjects(scopedProjects);
+      setFronts([]);
+      setLocalities([]);
+      setDetails([]);
+      setActivities(scopedActivities);
       setSyncStatus("");
     } catch (e) {
       console.error("Sync error", e);
@@ -282,6 +294,9 @@ export function useCatalogFlow(isOnline: boolean) {
     setGroupSearch("");
     setDetailSearch("");
     setExpandedGroups({});
+    setFronts([]);
+    setLocalities([]);
+    setDetails([]);
   };
 
   return {
@@ -327,7 +342,7 @@ export function useCatalogFlow(isOnline: boolean) {
     selectActivity,
     selectDetail,
     toggleGroupExpanded,
-    performFullSync,
+    performScopedSync,
     loadProjectsLocal,
     loadFrontsLocal,
     loadLocalitiesLocal,
