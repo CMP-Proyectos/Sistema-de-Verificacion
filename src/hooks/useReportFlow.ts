@@ -11,6 +11,7 @@ import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
 
 import { useSessionFlow } from "./flow/useSessionFlow";
+import type { SessionUser } from "./flow/useSessionFlow";
 import { usePasswordRecoveryFlow } from "./flow/usePasswordRecoveryFlow";
 import { useCatalogFlow } from "./flow/useCatalogFlow";
 import { useEvidenceFlow } from "./flow/useEvidenceFlow";
@@ -40,7 +41,6 @@ export function useReportFlow() {
 
   const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
 
-  // --- CONSULTA ON-DEMAND ---
   useEffect(() => {
     const checkPreviousRecord = async () => {
       if (!catalog.selectedDetail || !session.isOnline) {
@@ -60,19 +60,18 @@ export function useReportFlow() {
 
   const isAlreadyRegistered = !!previousRecord;
 
-  // --- SINCRONIZACIÃ“N ---
-  const syncPendingUploads = useCallback(async () => { 
+  const syncPendingUploads = useCallback(async () => {
       try {
           if (!session.sessionUser) return;
-          const count = await db.pendingUploads.count(); 
-          if(count > 0) { 
+          const count = await db.pendingUploads.count();
+          if(count > 0) {
               showToast(`Subiendo ${count} pendientes...`, "info");
-              const recs = await db.pendingUploads.toArray(); 
-              
-               for(const r of recs) { 
-                   try { 
+              const recs = await db.pendingUploads.toArray();
+
+               for(const r of recs) {
+                   try {
                        console.log("[SYNC] Procesando:", r.meta.fileName || r.meta.fileNames?.[0]);
-                       const targetBucket = MASTER_BUCKET; 
+                       const targetBucket = MASTER_BUCKET;
                        const offlineFiles = (r.evidenceBlobs && r.evidenceBlobs.length > 0)
                          ? r.evidenceBlobs.map((blob, index) => ({
                              blob,
@@ -105,21 +104,21 @@ export function useReportFlow() {
                            Es_Principal: index === 0,
                          });
                        }
-                       
-                       const chk = await createCheckedActivity({ 
-                           ID_DetallesActividad: r.meta.detailId, 
-                          Latitud: r.meta.lat, 
+
+                       const chk = await createCheckedActivity({
+                           ID_DetallesActividad: r.meta.detailId,
+                          Latitud: r.meta.lat,
                           Longitud: r.meta.lng,
                           Cantidad: 0
-                       }); 
-                      
+                       });
+
                        const mainImage = uploadedImages[0];
-                       const regData = await createRegistro({ 
-                           Nombre_Archivo: mainImage.Nombre_Archivo, 
-                           URL_Archivo: mainImage.URL_Archivo, 
-                            user_id: r.meta.userId, 
-                            ID_Verificada: chk.ID_Verificada, 
-                            Comentario: r.meta.comment, 
+                       const regData = await createRegistro({
+                           Nombre_Archivo: mainImage.Nombre_Archivo,
+                           URL_Archivo: mainImage.URL_Archivo,
+                            user_id: r.meta.userId,
+                            ID_Verificada: chk.ID_Verificada,
+                            Comentario: r.meta.comment,
                             Ruta_Archivo: mainImage.Ruta_Archivo,
                             Bucket: targetBucket
                         });
@@ -133,13 +132,13 @@ export function useReportFlow() {
                            }))
                          );
                        }
-                      
-                      if(r.id) await db.pendingUploads.delete(r.id); 
-                  } catch (err: any) { console.error(`[SYNC ERROR]`, err); } 
+
+                      if(r.id) await db.pendingUploads.delete(r.id);
+                  } catch (err: any) { console.error(`[SYNC ERROR]`, err); }
               }
               await records.loadUserRecords();
               showToast("SincronizaciÃ³n finalizada", "success");
-          } 
+          }
       } catch (e) { console.error("[SYNC FATAL]", e); }
   }, [records.loadUserRecords, session.sessionUser]);
 
@@ -147,57 +146,119 @@ export function useReportFlow() {
       if (session.isOnline) syncPendingUploads();
   }, [session.isOnline, syncPendingUploads]);
 
-  // --- COORDINACIÃ“N INICIAL ---
-  const bootstrappedAuthRef = useRef(false);
+  const bootstrappedSessionUserIdRef = useRef<string | null>(null);
+  const bootstrapInFlightRef = useRef<Promise<void> | null>(null);
 
-  useEffect(() => {
-    if (bootstrappedAuthRef.current || !recovery.hasResolvedInitialCheck || recovery.isRecoveryContextActive) {
+  const bootstrapAuthenticatedUser = useCallback(async (user: SessionUser, origin: string) => {
+    if (bootstrappedSessionUserIdRef.current === user.id) {
+      console.info("[AUTH FLOW] Bootstrap omitido: usuario ya inicializado", { origin, userId: user.id });
       return;
     }
 
-    bootstrappedAuthRef.current = true;
-    let cancelled = false;
+    if (bootstrapInFlightRef.current) {
+      console.info("[AUTH FLOW] Esperando bootstrap en curso", { origin, userId: user.id });
+      await bootstrapInFlightRef.current;
+      return;
+    }
 
-    const bootstrapSession = async () => {
+    const runBootstrap = async () => {
+      console.info("[AUTH FLOW] Iniciando bootstrap autenticado", {
+        origin,
+        userId: user.id,
+        isOnline: session.isOnline,
+        isRecoveryContextActive: recovery.isRecoveryContextActive,
+      });
+
+      session.setIsLoading(true);
+      session.setAuthLoadingLabel(session.isOnline ? "SINCRONIZANDO DATOS..." : "RESTAURANDO SESION...");
+
       try {
-        const authUser = await session.checkSession();
-        if (!authUser) return;
-
-        session.setIsLoading(true);
-        session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
-
         if (session.isOnline) {
-          void syncPendingUploads();
+          await catalog.performScopedSync();
+          await syncHistoryToLocal(user.id);
+          await syncPendingUploads();
+        } else {
+          console.info("[AUTH FLOW] Restaurando sesion offline con datos locales", { userId: user.id });
         }
 
-        await catalog.performScopedSync();
         await catalog.loadProjectsLocal();
-        await syncHistoryToLocal(authUser.id);
-
-        if (!cancelled) {
-          setStep("project");
-        }
+        bootstrappedSessionUserIdRef.current = user.id;
+        setStep("project");
       } catch (error) {
-        console.error("[AUTH] Bootstrap post-login fallÃ³", error);
-        session.setAuthMessage({
-          type: "error",
-          text: "No se pudo cargar la informaciÃ³n necesaria para ingresar. Intenta nuevamente.",
-        });
-        showToast("No se pudo cargar la informaciÃ³n necesaria para ingresar. Intenta nuevamente.", "error");
-      } finally {
-        if (!cancelled) {
-          session.setAuthLoadingLabel("AUTENTICANDO...");
-          session.setIsLoading(false);
+        console.error("[AUTH FLOW] Bootstrap autenticado fallo; usando cache local si existe", error);
+        try {
+          await catalog.loadProjectsLocal();
+          bootstrappedSessionUserIdRef.current = user.id;
+          setStep("project");
+          showToast(
+            session.isOnline
+              ? "Se restauró la sesión con datos locales tras un fallo de sincronización."
+              : "Sesión restaurada con datos locales sin conexión.",
+            "info"
+          );
+        } catch (localError) {
+          console.error("[AUTH FLOW] Tampoco se pudo restaurar la cache local", localError);
+          session.setAuthMessage({
+            type: "error",
+            text: "No se pudo cargar la información necesaria para ingresar. Intenta nuevamente.",
+          });
+          showToast("No se pudo cargar la información necesaria para ingresar. Intenta nuevamente.", "error");
         }
+      } finally {
+        session.setAuthLoadingLabel("AUTENTICANDO...");
+        session.setIsLoading(false);
+        bootstrapInFlightRef.current = null;
       }
     };
 
-    void bootstrapSession();
+    bootstrapInFlightRef.current = runBootstrap();
+    await bootstrapInFlightRef.current;
+  }, [catalog, recovery.isRecoveryContextActive, session, syncPendingUploads]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [recovery.isRecoveryContextActive]);
+  useEffect(() => {
+    if (!recovery.hasResolvedInitialCheck || !session.hasResolvedInitialSession) {
+      return;
+    }
+
+    if (recovery.isRecoveryContextActive) {
+      if (step !== "auth") {
+        console.info("[AUTH FLOW] Recovery tiene prioridad; manteniendo vista auth", { previousStep: step });
+        setStep("auth");
+      }
+      return;
+    }
+
+    if (!session.sessionUser) {
+      bootstrappedSessionUserIdRef.current = null;
+      return;
+    }
+
+    void bootstrapAuthenticatedUser(session.sessionUser, "session-restore");
+  }, [
+    bootstrapAuthenticatedUser,
+    recovery.hasResolvedInitialCheck,
+    recovery.isRecoveryContextActive,
+    session.hasResolvedInitialSession,
+    session.sessionUser,
+    step,
+  ]);
+
+  useEffect(() => {
+    if (!recovery.hasResolvedInitialCheck || !session.hasResolvedInitialSession || recovery.isRecoveryContextActive) {
+      return;
+    }
+
+    if (!session.sessionUser && step !== "auth") {
+      console.info("[AUTH FLOW] No hay sesion activa; regresando a auth", { previousStep: step });
+      setStep("auth");
+    }
+  }, [
+    recovery.hasResolvedInitialCheck,
+    recovery.isRecoveryContextActive,
+    session.hasResolvedInitialSession,
+    session.sessionUser,
+    step,
+  ]);
 
   useEffect(() => {
     if ((step === "profile" || step === "user_records" || step === "files") && session.sessionUser) {
@@ -206,30 +267,30 @@ export function useReportFlow() {
     }
   }, [step, session.sessionUser, records.loadUserRecords]);
 
-  const handleGoHome = () => { 
-      catalog.resetSelection(); 
-      evidence.resetEvidence(); 
-      setStep("project"); 
-      setIsMenuOpen(false); 
+  const handleGoHome = () => {
+      catalog.resetSelection();
+      evidence.resetEvidence();
+      setStep("project");
+      setIsMenuOpen(false);
   };
 
   const saveReport = async () => {
     if (evidence.isAnalyzing) return showToast("Analizando imagen...", "info");
-    if (evidence.evidenceFiles.length === 0 || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error"); 
+    if (evidence.evidenceFiles.length === 0 || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error");
     if (evidence.evidenceFiles.length > MAX_EVIDENCE_IMAGES) return showToast("Maximo 5 imagenes", "error");
-    
+
     session.setIsLoading(true);
     const timestamp = Date.now();
-    
+
     const currentProject = catalog.projects.find(p => p.ID_Proyectos === catalog.selectedProjectId);
     const currentFront = catalog.fronts.find(f => f.ID_Frente === catalog.selectedFrontId);
     const currentLocality = catalog.localities.find(l => l.ID_Localidad === catalog.selectedLocalityId);
-    
+
     const folderProject = sanitizeName(currentProject?.Proyecto_Nombre || "General");
     const folderFront = sanitizeName(currentFront?.Nombre_Frente || "Sin_Frente");
     const folderLocality = sanitizeName(currentLocality?.Nombre_Localidad || "Sin_Localidad");
     const activityTag = sanitizeName(catalog.selectedActivity?.Nombre_Actividad || "Evidencia").substring(0, 30);
-    
+
     const evidenceFiles = evidence.evidenceFiles.map((file, index) => {
       const order = index + 1;
       const fileName = `${activityTag}_${timestamp}_${order}.jpg`;
@@ -243,9 +304,9 @@ export function useReportFlow() {
 
     try {
         if(navigator.onLine) {
-            const checked = await createCheckedActivity({ 
-              ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad, 
-              Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud, 
+            const checked = await createCheckedActivity({
+              ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad,
+              Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud,
               Longitud: evidence.gpsLocation?.longitude || catalog.selectedDetail.Longitud,
               Cantidad: 0
             });
@@ -264,9 +325,9 @@ export function useReportFlow() {
             }
 
             const mainImage = uploadedImages[0];
-            const regData = await createRegistro({ 
-                Nombre_Archivo: mainImage.Nombre_Archivo, URL_Archivo: mainImage.URL_Archivo, user_id: session.sessionUser.id, 
-                ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: mainImage.Ruta_Archivo, Bucket: MASTER_BUCKET 
+            const regData = await createRegistro({
+                Nombre_Archivo: mainImage.Nombre_Archivo, URL_Archivo: mainImage.URL_Archivo, user_id: session.sessionUser.id,
+                ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: mainImage.Ruta_Archivo, Bucket: MASTER_BUCKET
             });
 
             const registroId = regData.data?.[0]?.ID_Registros;
@@ -285,25 +346,25 @@ export function useReportFlow() {
               showToast("Reporte guardado exitosamente", "success");
             }
         } else {
-            const pend: PendingRecord = { 
+            const pend: PendingRecord = {
                 timestamp,
                 evidenceBlobs: evidenceFiles.map((image) => image.file),
                 fileTypes: evidenceFiles.map(() => "image/jpeg"),
-                meta: { 
+                meta: {
                     bucketName: MASTER_BUCKET,
                     fullPaths: evidenceFiles.map((image) => image.path),
                     fileNames: evidenceFiles.map((image) => image.fileName),
                     fullPath: evidenceFiles[0]?.path,
                     fileName: evidenceFiles[0]?.fileName,
-                    userId: session.sessionUser.id, detailId: catalog.selectedDetail.ID_DetallesActividad, 
+                    userId: session.sessionUser.id, detailId: catalog.selectedDetail.ID_DetallesActividad,
                     lat: evidence.gpsLocation?.latitude || 0, lng: evidence.gpsLocation?.longitude || 0, comment: evidence.note,
-                } 
+                }
             };
             await db.pendingUploads.add(pend);
             showToast("Guardado localmente (Pendiente)", "info");
         }
         handleGoHome();
-    } catch (err) { console.error(err); showToast("Error al guardar", "error"); } 
+    } catch (err) { console.error(err); showToast("Error al guardar", "error"); }
     finally { session.setIsLoading(false); }
   };
 
@@ -355,7 +416,7 @@ export function useReportFlow() {
     setStep("confirm");
   };
 
-  const goBack = () => { 
+  const goBack = () => {
       const stepMap: Record<string, Step> = {
         "front": "project",
         "locality": "front",
@@ -374,22 +435,8 @@ export function useReportFlow() {
   };
 
   const handleLoginBridge = () => {
-    session.handleLogin(async () => {
-      session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
-      try {
-        await catalog.performScopedSync();
-        await catalog.loadProjectsLocal();
-        const loginUserId = session.sessionUser?.id ?? (await session.checkSession())?.id;
-        if (loginUserId) {
-          await syncHistoryToLocal(loginUserId);
-        }
-      } catch (error) {
-        console.error("[AUTH] Post-login: fallo en sincronizaciÃ³n", error);
-        throw new Error("No se pudo sincronizar la informaciÃ³n necesaria para ingresar. Intenta nuevamente.");
-      }
-
-      setStep("project");
-      void syncPendingUploads();
+    session.handleLogin(async (authenticatedUser) => {
+      await bootstrapAuthenticatedUser(authenticatedUser, "login");
     });
   };
 
@@ -417,7 +464,7 @@ export function useReportFlow() {
       },
     });
   };
-  
+
   const getMapUrl = () => { const lat = evidence.gpsLocation?.latitude ?? catalog.selectedDetail?.Latitud; const lng = evidence.gpsLocation?.longitude ?? catalog.selectedDetail?.Longitud; return (lat && lng) ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.005}%2C${lat-0.005}%2C${lng+0.005}%2C${lat+0.005}&layer=mapnik&marker=${lat}%2C${lng}` : null; };
 
 
@@ -444,10 +491,9 @@ export function useReportFlow() {
     submitRecoveryPassword: recovery.handleUpdatePassword,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
     handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
-    
-    // CATALOGO EXPORTS (AquÃ­ agregamos lo nuevo)
-    projects: catalog.projects, 
-    fronts: catalog.fronts, 
+
+    projects: catalog.projects,
+    fronts: catalog.fronts,
     localities: catalog.localities,
     filteredLocalities: catalog.filteredLocalities,
     localitySearch: catalog.localitySearch,
@@ -465,14 +511,14 @@ export function useReportFlow() {
     expandedGroups: catalog.expandedGroups,
     groupActivityPreviewMap: catalog.groupActivityPreviewMap,
     toggleGroupExpanded: catalog.toggleGroupExpanded,
-    
-    filteredDetails: catalog.filteredDetails, 
-    selectedDetail: catalog.selectedDetail, 
-    selectedActivity: catalog.selectedActivity, 
+
+    filteredDetails: catalog.filteredDetails,
+    selectedDetail: catalog.selectedDetail,
+    selectedActivity: catalog.selectedActivity,
     filteredActivities: catalog.filteredActivities,
-    detailSearch: catalog.detailSearch, 
+    detailSearch: catalog.detailSearch,
     setDetailSearch: catalog.setDetailSearch,
-    
+
     selectedProjectId: catalog.selectedProjectId, selectedFrontId: catalog.selectedFrontId, selectedLocalityId: catalog.selectedLocalityId,
     selectProject, selectFront, selectLocality, selectItem, selectGroup, selectActivity, selectDetail,
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
@@ -480,12 +526,12 @@ export function useReportFlow() {
     evidenceImages: evidence.evidenceImages, evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, removeEvidenceImage: evidence.removeEvidenceImage, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
     saveReport, getMapUrl,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
-    requestDeleteRecord: records.requestDeleteRecord, 
+    requestDeleteRecord: records.requestDeleteRecord,
     handleDownloadCSV: records.handleCreateCSV,
     isPhotoModalOpen: records.isPhotoModalOpen,
     openEditModal: records.openEditModal,
     closeEditModal: () => records.setIsPhotoModalOpen(false),
-    editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } }, 
+    editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } },
     saveRecordEdits: records.saveRecordEdits,
     handleGoHome, goBack,
     previousRecord,

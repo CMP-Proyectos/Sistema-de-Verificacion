@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../services/dataService";
+import { clearRecoveryUrl, getRecoveryUrlState } from "./authRouting";
 
 type RecoveryView = "request" | "update" | null;
 type RecoveryMessage = {
@@ -36,26 +37,6 @@ const getFriendlyAuthErrorMessage = (error: any) => {
 const buildRecoveryRedirectTo = () => {
   if (typeof window === "undefined") return "https://sistema-de-verificacion.vercel.app/?recovery=1";
   return `${window.location.origin}${window.location.pathname}?recovery=1`;
-};
-
-const getRecoveryUrlState = () => {
-  if (typeof window === "undefined") {
-    return { hasRecoveryQuery: false, hasRecoveryHash: false, hasRecoveryError: false };
-  }
-
-  const searchParams = new URLSearchParams(window.location.search);
-  const hash = window.location.hash.toLowerCase();
-
-  return {
-    hasRecoveryQuery: searchParams.get("recovery") === "1",
-    hasRecoveryHash: hash.includes("type=recovery") || hash.includes("access_token="),
-    hasRecoveryError: hash.includes("otp_expired") || hash.includes("error=") || hash.includes("error_code="),
-  };
-};
-
-const clearRecoveryUrl = () => {
-  if (typeof window === "undefined") return;
-  window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
 };
 
 const getStoredRecoveryFlag = () => {
@@ -131,6 +112,9 @@ export function usePasswordRecoveryFlow(
   };
 
   const activateUpdate = (nextMessage?: RecoveryMessage) => {
+    console.info("[RECOVERY] Activando vista de actualizacion", {
+      hasStoredFlag: getStoredRecoveryFlag(),
+    });
     recoverySessionDetectedRef.current = true;
     setStoredRecoveryFlag(true);
     setPassword("");
@@ -147,6 +131,7 @@ export function usePasswordRecoveryFlow(
   };
 
   const closeRecovery = async (nextMessage: RecoveryMessage = null) => {
+    console.info("[RECOVERY] Cerrando flujo de recuperacion");
     setIsLoading(false);
     setLoadingLabel("ENVIANDO...");
     setView(null);
@@ -163,6 +148,7 @@ export function usePasswordRecoveryFlow(
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
+      console.info("[RECOVERY] Auth event", { event });
       if (event === "PASSWORD_RECOVERY") {
         activateUpdate();
       }
@@ -176,6 +162,8 @@ export function usePasswordRecoveryFlow(
   useEffect(() => {
     const syncRecoveryFromUrl = () => {
       const urlState = getRecoveryUrlState();
+      console.info("[RECOVERY] Revisando URL", urlState);
+
       if (getStoredRecoveryFlag()) {
         activateUpdate(
           urlState.hasRecoveryError

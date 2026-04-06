@@ -1,23 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, clearAllLocalData } from "../../services/dataService";
 import { ConfirmModalState } from "../../features/reportFlow/types";
+import { hasRecoveryContextInUrl } from "./authRouting";
 
 type AuthMessage = {
   type: "success" | "error" | "info";
   text: string;
 } | null;
 
-const hasRecoveryContextInUrl = () => {
-  if (typeof window === "undefined") return false;
-
-  const searchParams = new URLSearchParams(window.location.search);
-  const hash = window.location.hash.toLowerCase();
-
-  return (
-    searchParams.get("recovery") === "1" ||
-    hash.includes("type=recovery") ||
-    hash.includes("access_token=")
-  );
+export type SessionUser = {
+  email: string;
+  id: string;
 };
 
 export function useSessionFlow(
@@ -25,53 +18,103 @@ export function useSessionFlow(
   setConfirmModal: (modal: ConfirmModalState | null) => void
 ) {
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
-  const [sessionUser, setSessionUser] = useState<{ email: string; id: string } | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [isLoading, setIsLoading] = useState(false);
   const [authLoadingLabel, setAuthLoadingLabel] = useState("AUTENTICANDO...");
   const [authMessage, setAuthMessage] = useState<AuthMessage>(null);
+  const [hasResolvedInitialSession, setHasResolvedInitialSession] = useState(false);
 
   const [profileName, setProfileName] = useState("");
   const [profileLastName, setProfileLastName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [isProfileSaving, setIsProfileSaving] = useState(false);
+  const initialSessionCheckStartedRef = useRef(false);
+
+  const applySession = useCallback((nextUser: SessionUser | null, origin: string) => {
+    console.info("[AUTH] Aplicando sesion", {
+      origin,
+      userId: nextUser?.id ?? null,
+      email: nextUser?.email ?? null,
+      hasRecoveryContext: hasRecoveryContextInUrl(),
+    });
+    setSessionUser(nextUser);
+  }, []);
+
+  const readStoredSession = useCallback(async (origin: string) => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      const nextUser = data.session?.user
+        ? { email: data.session.user.email || "", id: data.session.user.id }
+        : null;
+
+      console.info("[AUTH] Resultado de getSession", {
+        origin,
+        restored: Boolean(nextUser),
+        hasRecoveryContext: hasRecoveryContextInUrl(),
+      });
+
+      applySession(nextUser, `${origin}:getSession`);
+      return nextUser;
+    } catch (error) {
+      console.error("[AUTH] No se pudo leer la sesion persistida", { origin, error });
+      applySession(null, `${origin}:error`);
+      return null;
+    } finally {
+      setHasResolvedInitialSession(true);
+    }
+  }, [applySession]);
 
   useEffect(() => {
+    void setConfirmModal;
+
     const handleStatus = () => setIsOnline(navigator.onLine);
     window.addEventListener("online", handleStatus);
     window.addEventListener("offline", handleStatus);
-    if (!hasRecoveryContextInUrl()) {
-      void checkSession();
+
+    if (!initialSessionCheckStartedRef.current) {
+      initialSessionCheckStartedRef.current = true;
+      void readStoredSession("mount");
     }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      const nextUser = currentSession?.user
+        ? { email: currentSession.user.email || "", id: currentSession.user.id }
+        : null;
+
+      console.info("[AUTH] Auth state change", {
+        event,
+        hasSession: Boolean(currentSession?.user),
+        hasRecoveryContext: hasRecoveryContextInUrl(),
+      });
+
+      applySession(nextUser, `auth:${event}`);
+      setHasResolvedInitialSession(true);
+    });
 
     return () => {
       window.removeEventListener("online", handleStatus);
       window.removeEventListener("offline", handleStatus);
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [applySession, readStoredSession, setConfirmModal]);
 
-  const checkSession = async () => {
-    if (hasRecoveryContextInUrl()) {
-      return null;
-    }
+  const checkSession = async () => readStoredSession("checkSession");
 
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      const user = { email: data.session.user.email || "", id: data.session.user.id };
-      setSessionUser(user);
-      return user;
-    }
-    return null;
-  };
-
-  const handleLogin = async (onSuccess: () => void | Promise<void>) => {
+  const handleLogin = async (onSuccess: (user: SessionUser) => void | Promise<void>) => {
     setIsLoading(true);
     setAuthLoadingLabel("AUTENTICANDO...");
     setAuthMessage(null);
 
     try {
+      let authenticatedUser: SessionUser | null = null;
+
       if (authMode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email: authEmail.trim(),
@@ -82,7 +125,7 @@ export function useSessionFlow(
           showToast("Verifica tu correo", "info");
           return;
         }
-        setSessionUser({ email: data.user.email || "", id: data.user.id });
+        authenticatedUser = { email: data.user.email || "", id: data.user.id };
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authEmail.trim(),
@@ -90,11 +133,14 @@ export function useSessionFlow(
         });
         if (error) throw error;
         if (data.user) {
-          setSessionUser({ email: data.user.email || "", id: data.user.id });
+          authenticatedUser = { email: data.user.email || "", id: data.user.id };
         }
       }
 
-      await onSuccess();
+      if (authenticatedUser) {
+        applySession(authenticatedUser, "handleLogin");
+        await onSuccess(authenticatedUser);
+      }
     } catch (error: any) {
       const message = error?.message || "No se pudo completar el inicio de sesión.";
       setAuthMessage({ type: "error", text: message });
@@ -108,13 +154,12 @@ export function useSessionFlow(
   const handleLogout = async () => {
     try {
       await clearAllLocalData();
-
       await supabase.auth.signOut();
-      setSessionUser(null);
+      applySession(null, "handleLogout");
       setAuthMessage(null);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
-      setSessionUser(null);
+      applySession(null, "handleLogout:error");
     }
   };
 
@@ -190,6 +235,7 @@ export function useSessionFlow(
     setAuthLoadingLabel,
     authMessage,
     setAuthMessage,
+    hasResolvedInitialSession,
     authEmail,
     setAuthEmail,
     authPassword,
