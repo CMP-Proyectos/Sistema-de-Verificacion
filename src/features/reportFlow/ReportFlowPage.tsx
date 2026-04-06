@@ -105,6 +105,32 @@ export default function ReportFlowPage() {
               label: project.Proyecto_Nombre,
             }))}
             onSelect={flow.selectProject}
+            emptyState={
+              <>
+                <div style={{ fontWeight: "700", color: "#334155", marginBottom: "8px" }}>
+                  Su cuenta fue creada correctamente, pero aun no tiene proyectos asignados.
+                </div>
+                <div>
+                  Si el acceso no se habilita en unos minutos, comuniquese con soporte al{" "}
+                  <a
+                    href="mailto:cmpproyectos027@gmail.com"
+                    style={{ color: "#003366", fontWeight: "600", textDecoration: "underline" }}
+                  >
+                    cmpproyectos027@gmail.com
+                  </a>{" "}
+                  o al{" "}
+                  <a
+                    href="https://wa.me/51932588233"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#003366", fontWeight: "600", textDecoration: "underline" }}
+                  >
+                    +51 932 588 233
+                  </a>{" "}
+                  .
+                </div>
+              </>
+            }
           />
         )}
 

@@ -12,9 +12,10 @@ interface Props {
     items: SelectableItem[];
     onSelect: (id: number) => void;
     isLoading?: boolean;
+    emptyState?: React.ReactNode;
 }
 
-export const SelectionScreen = ({ title, items, onSelect, isLoading }: Props) => {
+export const SelectionScreen = ({ title, items, onSelect, isLoading, emptyState }: Props) => {
     return (
         <div style={styles.card}>
             <div style={styles.flexBetween}>
@@ -78,7 +79,7 @@ export const SelectionScreen = ({ title, items, onSelect, isLoading }: Props) =>
                             ))
                         ) : (
                             <div style={{ padding: '30px', textAlign: 'center', border: '1px dashed #D1D5DB', borderRadius: '6px', color: '#64748B' }}>
-                                No hay registros disponibles.
+                                {emptyState ?? 'No hay registros disponibles.'}
                             </div>
                         )}
                     </div>
