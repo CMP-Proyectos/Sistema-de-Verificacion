@@ -6,6 +6,7 @@ import {
   createRegistroImagenes,
   fetchHistoryForDetail,
   syncHistoryToLocal,
+  isNetworkUnavailableError,
 } from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
@@ -305,6 +306,9 @@ export function useReportFlow() {
     const folderLocality = sanitizeName(currentLocality?.Nombre_Localidad || "Sin_Localidad");
     const activityTag = sanitizeName(catalog.selectedActivity?.Nombre_Actividad || "Evidencia").substring(0, 30);
 
+    const sessionUser = session.sessionUser;
+    const selectedDetail = catalog.selectedDetail;
+
     const evidenceFiles = evidence.evidenceFiles.map((file, index) => {
       const order = index + 1;
       const fileName = `${activityTag}_${timestamp}_${order}.jpg`;
@@ -316,70 +320,94 @@ export function useReportFlow() {
       };
     });
 
+    const buildPendingRecord = (): PendingRecord => ({
+      timestamp,
+      evidenceBlobs: evidenceFiles.map((image) => image.file),
+      fileTypes: evidenceFiles.map(() => "image/jpeg"),
+      meta: {
+        bucketName: MASTER_BUCKET,
+        fullPaths: evidenceFiles.map((image) => image.path),
+        fileNames: evidenceFiles.map((image) => image.fileName),
+        fullPath: evidenceFiles[0]?.path,
+        fileName: evidenceFiles[0]?.fileName,
+        userId: sessionUser.id,
+        detailId: selectedDetail.ID_DetallesActividad,
+        lat: evidence.gpsLocation?.latitude || selectedDetail.Latitud || 0,
+        lng: evidence.gpsLocation?.longitude || selectedDetail.Longitud || 0,
+        comment: evidence.note,
+      }
+    });
+
+    const persistPendingRecord = async (reason: string) => {
+      const pendingRecord = buildPendingRecord();
+      await db.pendingUploads.add(pendingRecord);
+      console.info("[SAVE] Registro guardado localmente en pendingUploads", {
+        reason,
+        timestamp,
+        files: pendingRecord.meta.fileNames?.length || 0,
+      });
+      showToast("Guardado localmente (Pendiente)", "info");
+      handleGoHome();
+    };
+
     try {
-        if(navigator.onLine) {
-            const checked = await createCheckedActivity({
-              ID_DetallesActividad: catalog.selectedDetail.ID_DetallesActividad,
-              Latitud: evidence.gpsLocation?.latitude || catalog.selectedDetail.Latitud,
-              Longitud: evidence.gpsLocation?.longitude || catalog.selectedDetail.Longitud,
-              Cantidad: 0
-            });
+      if (!session.isOnline) {
+        await persistPendingRecord("offline-first");
+        return;
+      }
 
-            const uploadedImages = [];
-            for (const image of evidenceFiles) {
-              const pubUrl = await uploadEvidence(MASTER_BUCKET, image.path, image.file, "image/jpeg");
-              uploadedImages.push({
-                Orden: image.order,
-                Nombre_Archivo: image.fileName,
-                URL_Archivo: pubUrl,
-                Ruta_Archivo: image.path,
-                Bucket: MASTER_BUCKET,
-                Es_Principal: image.order === 1,
-              });
-            }
+      const checked = await createCheckedActivity({
+        ID_DetallesActividad: selectedDetail.ID_DetallesActividad,
+        Latitud: evidence.gpsLocation?.latitude || selectedDetail.Latitud,
+        Longitud: evidence.gpsLocation?.longitude || selectedDetail.Longitud,
+        Cantidad: 0
+      });
 
-            const mainImage = uploadedImages[0];
-            const regData = await createRegistro({
-                Nombre_Archivo: mainImage.Nombre_Archivo, URL_Archivo: mainImage.URL_Archivo, user_id: session.sessionUser.id,
-                ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: mainImage.Ruta_Archivo, Bucket: MASTER_BUCKET
-            });
+      const uploadedImages = [];
+      for (const image of evidenceFiles) {
+        const pubUrl = await uploadEvidence(MASTER_BUCKET, image.path, image.file, "image/jpeg");
+        uploadedImages.push({
+          Orden: image.order,
+          Nombre_Archivo: image.fileName,
+          URL_Archivo: pubUrl,
+          Ruta_Archivo: image.path,
+          Bucket: MASTER_BUCKET,
+          Es_Principal: image.order === 1,
+        });
+      }
 
-            const registroId = regData.data?.[0]?.ID_Registros;
-            if (registroId) {
-              await createRegistroImagenes(
-                uploadedImages.map((image) => ({
-                  ID_Registro: registroId,
-                  ...image,
-                }))
-              );
-            }
-            await records.loadUserRecords();
-            if (checked.excedido) {
-              showToast(`Guardado: Se ha superado el metrado (Total: ${checked.acumulado})`, "info");
-            } else {
-              showToast("Reporte guardado exitosamente", "success");
-            }
-        } else {
-            const pend: PendingRecord = {
-                timestamp,
-                evidenceBlobs: evidenceFiles.map((image) => image.file),
-                fileTypes: evidenceFiles.map(() => "image/jpeg"),
-                meta: {
-                    bucketName: MASTER_BUCKET,
-                    fullPaths: evidenceFiles.map((image) => image.path),
-                    fileNames: evidenceFiles.map((image) => image.fileName),
-                    fullPath: evidenceFiles[0]?.path,
-                    fileName: evidenceFiles[0]?.fileName,
-                    userId: session.sessionUser.id, detailId: catalog.selectedDetail.ID_DetallesActividad,
-                    lat: evidence.gpsLocation?.latitude || 0, lng: evidence.gpsLocation?.longitude || 0, comment: evidence.note,
-                }
-            };
-            await db.pendingUploads.add(pend);
-            showToast("Guardado localmente (Pendiente)", "info");
-        }
-        handleGoHome();
-    } catch (err) { console.error(err); showToast("Error al guardar", "error"); }
-    finally { session.setIsLoading(false); }
+      const mainImage = uploadedImages[0];
+      const regData = await createRegistro({
+          Nombre_Archivo: mainImage.Nombre_Archivo, URL_Archivo: mainImage.URL_Archivo, user_id: sessionUser.id,
+          ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: mainImage.Ruta_Archivo, Bucket: MASTER_BUCKET
+      });
+
+      const registroId = regData.data?.[0]?.ID_Registros;
+      if (registroId) {
+        await createRegistroImagenes(
+          uploadedImages.map((image) => ({
+            ID_Registro: registroId,
+            ...image,
+          }))
+        );
+      }
+      await records.loadUserRecords();
+      if (checked.excedido) {
+        showToast(`Guardado: Se ha superado el metrado (Total: ${checked.acumulado})`, "info");
+      } else {
+        showToast("Reporte guardado exitosamente", "success");
+      }
+      handleGoHome();
+    } catch (err) {
+      if (isNetworkUnavailableError(err)) {
+        console.warn("[SAVE] Error de red detectado; aplicando fallback a pendingUploads", err);
+        await persistPendingRecord("network-fallback");
+        return;
+      }
+
+      console.error(err);
+      showToast("Error al guardar", "error");
+    } finally { session.setIsLoading(false); }
   };
 
   const selectProject = (id: number) => {
@@ -552,6 +580,11 @@ export function useReportFlow() {
     isAlreadyRegistered
   };
 }
+
+
+
+
+
 
 
 
