@@ -1,4 +1,4 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+﻿import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
 
 export default function Root({ children }: PropsWithChildren) {
@@ -22,8 +22,14 @@ export default function Root({ children }: PropsWithChildren) {
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('Service Worker registrado con éxito:', registration.scope);
+                  navigator.serviceWorker.register('/sw.js', {
+                    scope: '/',
+                    updateViaCache: 'none',
+                  }).then(function(registration) {
+                    registration.update().catch(function(error) {
+                      console.log('No se pudo forzar update del Service Worker:', error);
+                    });
+                    console.log('Service Worker registrado con Ã©xito:', registration.scope);
                   }, function(err) {
                     console.log('Fallo al registrar Service Worker:', err);
                   });
@@ -36,3 +42,4 @@ export default function Root({ children }: PropsWithChildren) {
     </html>
   );
 }
+
