@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+﻿import { useState, useEffect, useCallback, useRef } from "react";
 import {
   uploadEvidence,
   createCheckedActivity,
@@ -62,7 +62,12 @@ export function useReportFlow() {
 
   const syncPendingUploads = useCallback(async () => {
       try {
-          if (!session.sessionUser) return;
+          if (!session.sessionUser || !session.isOnline) {
+              if (session.sessionUser && !session.isOnline) {
+                  console.info("[SYNC] Pendientes no procesados; conectividad real no disponible");
+              }
+              return;
+          }
           const count = await db.pendingUploads.count();
           if(count > 0) {
               showToast(`Subiendo ${count} pendientes...`, "info");
@@ -137,10 +142,10 @@ export function useReportFlow() {
                   } catch (err: any) { console.error(`[SYNC ERROR]`, err); }
               }
               await records.loadUserRecords();
-              showToast("Sincronización finalizada", "success");
+              showToast("SincronizaciÃ³n finalizada", "success");
           }
       } catch (e) { console.error("[SYNC FATAL]", e); }
-  }, [records.loadUserRecords, session.sessionUser]);
+  }, [records.loadUserRecords, session.isOnline, session.sessionUser]);
 
   useEffect(() => {
       if (session.isOnline) syncPendingUploads();
@@ -173,17 +178,26 @@ export function useReportFlow() {
       session.setAuthLoadingLabel(session.isOnline ? "SINCRONIZANDO DATOS..." : "RESTAURANDO SESION...");
 
       try {
-        if (session.isOnline) {
-          await catalog.performScopedSync();
+        const syncStatus = session.isOnline ? await catalog.performScopedSync() : "skipped_offline";
+
+        if (syncStatus === "success") {
           await syncHistoryToLocal(user.id);
           await syncPendingUploads();
         } else {
-          console.info("[AUTH FLOW] Restaurando sesion offline con datos locales", { userId: user.id });
+          console.info("[AUTH FLOW] Restaurando sesion offline con datos locales", { userId: user.id, syncStatus });
         }
 
         await catalog.loadProjectsLocal();
         bootstrappedSessionUserIdRef.current = user.id;
         setStep("project");
+
+        if (syncStatus !== "success") {
+          console.info("[AUTH FLOW] Entrada completada con cache local preservado", {
+            origin,
+            userId: user.id,
+            syncStatus,
+          });
+        }
       } catch (error) {
         console.error("[AUTH FLOW] Bootstrap autenticado fallo; usando cache local si existe", error);
         try {
@@ -192,17 +206,17 @@ export function useReportFlow() {
           setStep("project");
           showToast(
             session.isOnline
-              ? "Se restaur� la sesi�n con datos locales tras un fallo de sincronizaci�n."
-              : "Sesi�n restaurada con datos locales sin conexi�n.",
+              ? "Se restauró la sesión con datos locales tras un fallo de sincronización."
+              : "Sesión restaurada con datos locales sin conexión.",
             "info"
           );
         } catch (localError) {
           console.error("[AUTH FLOW] Tampoco se pudo restaurar la cache local", localError);
           session.setAuthMessage({
             type: "error",
-            text: "No se pudo cargar la informaci�n necesaria para ingresar. Intenta nuevamente.",
+            text: "No se pudo cargar la información necesaria para ingresar. Intenta nuevamente.",
           });
-          showToast("No se pudo cargar la informaci�n necesaria para ingresar. Intenta nuevamente.", "error");
+          showToast("No se pudo cargar la información necesaria para ingresar. Intenta nuevamente.", "error");
         }
       } finally {
         session.setAuthLoadingLabel("AUTENTICANDO...");
@@ -451,11 +465,11 @@ export function useReportFlow() {
     setConfirmModal({
       open: true,
       title: "Eliminar mi cuenta",
-      message: "La eliminación total de la cuenta requiere validación de administración.",
+      message: "La eliminaciÃ³n total de la cuenta requiere validaciÃ³n de administraciÃ³n.",
       onConfirm: async () => {
         try {
           await handleLogoutBridge();
-          showToast("Sesión cerrada.", "info");
+          showToast("SesiÃ³n cerrada.", "info");
         } catch {
           showToast("No se pudo completar", "error");
         } finally {
@@ -538,3 +552,6 @@ export function useReportFlow() {
     isAlreadyRegistered
   };
 }
+
+
+

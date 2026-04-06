@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase, clearAllLocalData } from "../../services/dataService";
+import { supabase, clearAllLocalData, hasSupabaseConnectivity } from "../../services/dataService";
 import { ConfirmModalState } from "../../features/reportFlow/types";
 import { hasRecoveryContextInUrl } from "./authRouting";
 
@@ -32,6 +32,20 @@ export function useSessionFlow(
   const [profileEmail, setProfileEmail] = useState("");
   const [isProfileSaving, setIsProfileSaving] = useState(false);
   const initialSessionCheckStartedRef = useRef(false);
+
+  const refreshConnectivityStatus = useCallback(async (origin: string) => {
+    if (typeof navigator === "undefined") return;
+
+    if (!navigator.onLine) {
+      console.info("[AUTH] Estado de conectividad confirmado como offline", { origin, source: "navigator" });
+      setIsOnline(false);
+      return;
+    }
+
+    const hasConnectivity = await hasSupabaseConnectivity(`session:${origin}`);
+    console.info("[AUTH] Estado de conectividad confirmado", { origin, hasConnectivity });
+    setIsOnline(hasConnectivity);
+  }, []);
 
   const applySession = useCallback((nextUser: SessionUser | null, origin: string) => {
     console.info("[AUTH] Aplicando sesion", {
@@ -72,13 +86,10 @@ export function useSessionFlow(
   useEffect(() => {
     void setConfirmModal;
 
-    const handleStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener("online", handleStatus);
-    window.addEventListener("offline", handleStatus);
-
     if (!initialSessionCheckStartedRef.current) {
       initialSessionCheckStartedRef.current = true;
       void readStoredSession("mount");
+      void refreshConnectivityStatus("mount");
     }
 
     const {
@@ -99,11 +110,28 @@ export function useSessionFlow(
     });
 
     return () => {
-      window.removeEventListener("online", handleStatus);
-      window.removeEventListener("offline", handleStatus);
       subscription.unsubscribe();
     };
-  }, [applySession, readStoredSession, setConfirmModal]);
+  }, [applySession, readStoredSession, refreshConnectivityStatus, setConfirmModal]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      void refreshConnectivityStatus("online-event");
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.info("[AUTH] Evento offline recibido; conectividad marcada como false");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [refreshConnectivityStatus]);
 
   const checkSession = async () => readStoredSession("checkSession");
 

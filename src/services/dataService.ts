@@ -4,6 +4,8 @@ import type { UserRecord } from "../features/reportFlow/types";
 
 export { supabase };
 
+export type RemoteSyncStatus = "success" | "skipped_offline" | "preserved_cache";
+
 export type ProjectRecord = {
   ID_Proyectos: number;
   Proyecto_Nombre: string;
@@ -43,6 +45,60 @@ type ProjectAssignmentRecord = {
 };
 
 const IN_FILTER_CHUNK_SIZE = 200;
+
+export const isNetworkUnavailableError = (error: any) => {
+  const rawMessage = String(error?.message || error?.code || error?.details || "").toLowerCase();
+
+  return (
+    rawMessage.includes("failed to fetch") ||
+    rawMessage.includes("network request failed") ||
+    rawMessage.includes("err_internet_disconnected") ||
+    rawMessage.includes("internet_disconnected") ||
+    rawMessage.includes("load failed") ||
+    rawMessage.includes("networkerror") ||
+    rawMessage.includes("fetch")
+  );
+};
+
+export const hasSupabaseConnectivity = async (context: string) => {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    console.info("[NETWORK] Sin conectividad real; navigator reporta offline", { context });
+    return false;
+  }
+
+  try {
+    const { error } = await supabase.auth.getUser();
+    if (error) {
+      if (isNetworkUnavailableError(error)) {
+        console.warn("[NETWORK] Sonda de conectividad fallo por red", { context, message: error.message });
+        return false;
+      }
+
+      console.info("[NETWORK] Supabase accesible durante la sonda", {
+        context,
+        authError: error.message,
+      });
+      return true;
+    }
+
+    console.info("[NETWORK] Supabase accesible durante la sonda", { context, authenticated: true });
+    return true;
+  } catch (error) {
+    if (isNetworkUnavailableError(error)) {
+      console.warn("[NETWORK] Sonda de conectividad fallo por red", {
+        context,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+
+    console.warn("[NETWORK] Sonda de conectividad devolvio error no concluyente; se asume online", {
+      context,
+      error,
+    });
+    return true;
+  }
+};
 
 const fetchCatalog = async <T>(
   table: string,
@@ -387,9 +443,14 @@ export const getActivityProperties = async () => [];
 export const syncHistoryToLocal = async (userId: string) => {
   try {
     if (!userId) return;
+    if (!(await hasSupabaseConnectivity("syncHistoryToLocal"))) {
+      console.info("[SYNC] Historial remoto omitido por falta de conectividad; cache local preservado", {
+        userId,
+      });
+      return;
+    }
 
     const allowedDetailIds = new Set((await db.catalog_details.toArray()).map((detail) => detail.ID_DetallesActividad));
-    await db.history_cache.clear();
 
     const { data, error } = await supabase
       .from("Registros")
@@ -407,6 +468,8 @@ export const syncHistoryToLocal = async (userId: string) => {
 
     if (error) throw error;
 
+    await db.history_cache.clear();
+
     if (data && data.length > 0) {
       const recordsToCache = data
         .map((record: any) => ({
@@ -423,7 +486,12 @@ export const syncHistoryToLocal = async (userId: string) => {
         await db.history_cache.bulkPut(recordsToCache);
       }
       console.log(`[SYNC] ${recordsToCache.length} registros historicos cacheados.`);
+      return;
     }
+
+    console.info("[SYNC] Historial remoto consultado sin registros; cache local reemplazado por resultado valido", {
+      userId,
+    });
   } catch (err) {
     console.error("Error sincronizando historial:", err);
   }

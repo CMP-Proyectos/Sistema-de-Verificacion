@@ -7,6 +7,9 @@ import {
   getDetailsByLocalityIds,
   getActivitiesByIds,
   clearCatalogCache,
+  hasSupabaseConnectivity,
+  isNetworkUnavailableError,
+  RemoteSyncStatus,
   ProjectRecord,
   FrontRecord,
   LocalityRecord,
@@ -53,8 +56,19 @@ export function useCatalogFlow(isOnline: boolean) {
     void loadInitialData();
   }, []);
 
-  const performScopedSync = async () => {
-    if (!isOnline) return;
+  const performScopedSync = async (): Promise<RemoteSyncStatus> => {
+    if (!isOnline) {
+      console.info("[SYNC] Sync remoto omitido; app en modo offline y cache local preservado");
+      return "skipped_offline";
+    }
+
+    const hasConnectivity = await hasSupabaseConnectivity("performScopedSync");
+    if (!hasConnectivity) {
+      setSyncStatus("Offline cache");
+      console.info("[SYNC] Sync remoto abortado por red; cache local preservado");
+      return "preserved_cache";
+    }
+
     setSyncStatus("Sincronizando...");
 
     try {
@@ -92,6 +106,7 @@ export function useCatalogFlow(isOnline: boolean) {
         });
       }
 
+      console.log("[SYNC] Sync remoto exitoso; reemplazando cache local con alcance valido");
       console.log("[SYNC] Reemplazando cache local por el alcance autorizado");
       await clearCatalogCache();
 
@@ -107,7 +122,14 @@ export function useCatalogFlow(isOnline: boolean) {
       setDetails([]);
       setActivities(scopedActivities);
       setSyncStatus("");
+      return "success";
     } catch (e) {
+      if (isNetworkUnavailableError(e)) {
+        console.warn("[SYNC] Sync remoto abortado por red; cache local no reemplazado", e);
+        setSyncStatus("Offline cache");
+        return "preserved_cache";
+      }
+
       console.error("Sync error", e);
       setSyncStatus("Error Sync");
       throw e;
