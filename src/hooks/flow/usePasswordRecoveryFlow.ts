@@ -9,6 +9,7 @@ type RecoveryMessage = {
 } | null;
 
 const RECOVERY_SESSION_STORAGE_KEY = "password_recovery_active";
+const DEFAULT_APP_URL = "https://sistema-de-verificacion.vercel.app";
 
 const getFriendlyAuthErrorMessage = (error: any) => {
   const rawMessage = String(error?.message || error?.code || "").toLowerCase();
@@ -35,8 +36,9 @@ const getFriendlyAuthErrorMessage = (error: any) => {
 };
 
 const buildRecoveryRedirectTo = () => {
-  if (typeof window === "undefined") return "https://sistema-de-verificacion.vercel.app/?recovery=1";
-  return `${window.location.origin}${window.location.pathname}?recovery=1`;
+  const configuredAppUrl = process.env.EXPO_PUBLIC_APP_URL?.trim() || DEFAULT_APP_URL;
+  const normalizedAppUrl = configuredAppUrl.replace(/\/+$/, "");
+  return `${normalizedAppUrl}/?recovery=1`;
 };
 
 const getStoredRecoveryFlag = () => {
