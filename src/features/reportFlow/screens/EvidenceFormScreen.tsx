@@ -38,6 +38,12 @@ export const EvidenceFormScreen = ({
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [geoMode, setGeoMode] = useState<'gps' | 'utm'>('gps');
+  const formCardStyle = {
+    ...styles.card,
+    maxHeight: 'none' as const,
+    overflow: 'visible' as const,
+    flex: '0 0 auto'
+  };
 
   const ensureFieldVisibility = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const target = event.currentTarget;
@@ -62,11 +68,11 @@ export const EvidenceFormScreen = ({
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: '32px' }}>
         {previousRecord && (
         <div style={{
-          ...styles.card,
+          ...formCardStyle,
           backgroundColor: '#FFFFFF',
           borderLeft: '5px solid #F59E0B',
           padding: '16px',
@@ -110,7 +116,7 @@ export const EvidenceFormScreen = ({
         </div>
         )}
 
-        <div style={styles.card}>
+        <div style={formCardStyle}>
         <div style={{ ...styles.flexBetween, ...styles.mb16 }}>
           <h3 style={es.headerClean}>1. Ubicacion Geodesica</h3>
           <span style={getBadgeStyle()}>
@@ -176,7 +182,7 @@ export const EvidenceFormScreen = ({
         )}
         </div>
 
-        <div style={styles.card}>
+        <div style={formCardStyle}>
           <h3 style={styles.heading}>2. Evidencia de Campo</h3>
 
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
