@@ -39,6 +39,13 @@ export const EvidenceFormScreen = ({
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [geoMode, setGeoMode] = useState<'gps' | 'utm'>('gps');
 
+  const ensureFieldVisibility = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const target = event.currentTarget;
+    window.setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  };
+
   const getToggleStyle = (mode: 'gps' | 'utm') => ({
     ...es.toggleBtn,
     ...(geoMode === mode ? es.toggleBtnActive : {})
@@ -55,8 +62,9 @@ export const EvidenceFormScreen = ({
   });
 
   return (
-    <div style={styles.scrollableY}>
-      {previousRecord && (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', height: '100%' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: '32px' }}>
+        {previousRecord && (
         <div style={{
           ...styles.card,
           backgroundColor: '#FFFFFF',
@@ -100,9 +108,9 @@ export const EvidenceFormScreen = ({
             </div>
           </div>
         </div>
-      )}
+        )}
 
-      <div style={styles.card}>
+        <div style={styles.card}>
         <div style={{ ...styles.flexBetween, ...styles.mb16 }}>
           <h3 style={es.headerClean}>1. Ubicacion Geodesica</h3>
           <span style={getBadgeStyle()}>
@@ -155,106 +163,117 @@ export const EvidenceFormScreen = ({
             </div>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>ESTE (X)</label>
-              <input type="number" value={utmEast} onChange={e => setUtmEast(e.target.value)} placeholder="Ej: 280500" style={es.inputNoMargin} />
+              <input type="number" value={utmEast} onChange={e => setUtmEast(e.target.value)} onFocus={ensureFieldVisibility} placeholder="Ej: 280500" style={es.inputNoMargin} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>NORTE (Y)</label>
-              <input type="number" value={utmNorth} onChange={e => setUtmNorth(e.target.value)} placeholder="Ej: 8665000" style={es.inputNoMargin} />
+              <input type="number" value={utmNorth} onChange={e => setUtmNorth(e.target.value)} onFocus={ensureFieldVisibility} placeholder="Ej: 8665000" style={es.inputNoMargin} />
             </div>
             <button onClick={onUpdateUtm} style={es.btnSquare}>
               <RefreshCw size={18} />
             </button>
           </div>
         )}
-      </div>
+        </div>
 
-      <div style={styles.card}>
-        <h3 style={styles.heading}>2. Evidencia de Campo</h3>
+        <div style={styles.card}>
+          <h3 style={styles.heading}>2. Evidencia de Campo</h3>
 
-        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
-        <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={onCaptureFile} style={{ display: 'none' }} />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
+          <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={onCaptureFile} style={{ display: 'none' }} />
 
-        {!evidencePreview ? (
-          <div style={es.uploadRow}>
-            <button onClick={() => cameraInputRef.current?.click()} style={getCameraBtnStyle()}>
-              <Camera size={32} style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '12px', fontWeight: '700' }}>CAMARA</span>
-            </button>
+          {!evidencePreview ? (
+            <div style={es.uploadRow}>
+              <button onClick={() => cameraInputRef.current?.click()} style={getCameraBtnStyle()}>
+                <Camera size={32} style={{ marginBottom: '8px' }} />
+                <span style={{ fontSize: '12px', fontWeight: '700' }}>CAMARA</span>
+              </button>
 
-            <button onClick={() => galleryInputRef.current?.click()} style={es.uploadBtnLarge}>
-              <ImageIcon size={32} style={{ marginBottom: '8px' }} />
-              <span style={{ fontSize: '12px', fontWeight: '700' }}>GALERIA</span>
-            </button>
-          </div>
-        ) : (
-          <div style={{ marginBottom: '16px' }}>
-            <div style={es.previewContainer}>
-              <img src={evidencePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Evidencia" />
+              <button onClick={() => galleryInputRef.current?.click()} style={es.uploadBtnLarge}>
+                <ImageIcon size={32} style={{ marginBottom: '8px' }} />
+                <span style={{ fontSize: '12px', fontWeight: '700' }}>GALERIA</span>
+              </button>
             </div>
-            <div style={es.helperText}>
-              Idealmente usa 3 imagenes utiles y complementarias. Evita fotos redundantes. Maximo 5 por registro.
-            </div>
-            <div style={es.imageCounter}>{evidenceImages.length} / 5 imagenes</div>
-            <div style={es.thumbnailGrid}>
-              {evidenceImages.map((image, index) => (
-                <div key={image.id} style={es.thumbnailCard}>
-                  <img src={image.previewUrl} style={es.thumbnailImage} alt={`Evidencia ${index + 1}`} />
-                  <div style={es.thumbnailMeta}>
-                    <span>{index === 0 ? 'Principal' : `Imagen ${index + 1}`}</span>
-                    <button type="button" onClick={() => onRemoveImage(image.id)} style={es.thumbnailDeleteBtn}>
-                      <Trash2 size={14} />
-                    </button>
+          ) : (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={es.previewContainer}>
+                <img src={evidencePreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Evidencia" />
+              </div>
+              <div style={es.helperText}>
+                Idealmente usa 3 imagenes utiles y complementarias. Evita fotos redundantes. Maximo 5 por registro.
+              </div>
+              <div style={es.imageCounter}>{evidenceImages.length} / 5 imagenes</div>
+              <div style={es.thumbnailGrid}>
+                {evidenceImages.map((image, index) => (
+                  <div key={image.id} style={es.thumbnailCard}>
+                    <img src={image.previewUrl} style={es.thumbnailImage} alt={`Evidencia ${index + 1}`} />
+                    <div style={es.thumbnailMeta}>
+                      <span>{index === 0 ? 'Principal' : `Imagen ${index + 1}`}</span>
+                      <button type="button" onClick={() => onRemoveImage(image.id)} style={es.thumbnailDeleteBtn}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div style={es.actionsRow}>
+                <button onClick={() => cameraInputRef.current?.click()} style={es.btnSmall} disabled={evidenceImages.length >= 5}>
+                  <Camera size={14} /> AGREGAR CAMARA
+                </button>
+                <button onClick={() => galleryInputRef.current?.click()} style={es.btnSmall} disabled={evidenceImages.length >= 5}>
+                  <UploadCloud size={14} /> AGREGAR GALERIA
+                </button>
+              </div>
             </div>
-            <div style={es.actionsRow}>
-              <button onClick={() => cameraInputRef.current?.click()} style={es.btnSmall} disabled={evidenceImages.length >= 5}>
-                <Camera size={14} /> AGREGAR CAMARA
-              </button>
-              <button onClick={() => galleryInputRef.current?.click()} style={es.btnSmall} disabled={evidenceImages.length >= 5}>
-                <UploadCloud size={14} /> AGREGAR GALERIA
-              </button>
+          )}
+
+          {(isAnalyzing || aiFeedback) && (
+            <div style={{ ...es.console, borderLeft: `4px solid ${aiFeedback?.type === 'warning' ? '#EF4444' : '#10B981'}` }}>
+              {isAnalyzing && <div>&gt; SYSTEM: VALIDANDO IMAGEN...</div>}
+              {aiFeedback && (
+                <>
+                  <div>&gt; STATUS: {aiFeedback.type === 'warning' ? 'REVIEW_REQUIRED' : 'APPROVED'}</div>
+                  <div style={{ color: '#E2E8F0' }}>&gt; MSG: {aiFeedback.message}</div>
+                </>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {(isAnalyzing || aiFeedback) && (
-          <div style={{ ...es.console, borderLeft: `4px solid ${aiFeedback?.type === 'warning' ? '#EF4444' : '#10B981'}` }}>
-            {isAnalyzing && <div>&gt; SYSTEM: VALIDANDO IMAGEN...</div>}
-            {aiFeedback && (
-              <>
-                <div>&gt; STATUS: {aiFeedback.type === 'warning' ? 'REVIEW_REQUIRED' : 'APPROVED'}</div>
-                <div style={{ color: '#E2E8F0' }}>&gt; MSG: {aiFeedback.message}</div>
-              </>
-            )}
-          </div>
-        )}
-
-        <label style={styles.label}>Observaciones Tecnicas</label>
-        <textarea
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          style={{ ...styles.input, height: '140px', fontFamily: 'sans-serif', resize: 'vertical' }}
-          placeholder={`ejemplo:
+          <label style={styles.label}>Observaciones Tecnicas</label>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            onFocus={ensureFieldVisibility}
+            style={{
+              ...styles.input,
+              height: '140px',
+              minHeight: '140px',
+              maxHeight: '160px',
+              overflowY: 'auto',
+              fontFamily: 'sans-serif',
+              resize: 'vertical'
+            }}
+            placeholder={`ejemplo:
 - poste CAC 8/300 con fisura longitudinal
 - vano 36 m. con flecha excedida
 - suelo arenoso inestable, requiere encofrado para cimentacion`}
-        />
-      </div>
+          />
 
-      <div style={{ marginBottom: '24px' }}>
-        <button
-          onClick={onSave}
-          disabled={isLoading || evidenceImages.length === 0}
-          style={{
-            ...styles.btnPrimary,
-            opacity: (isLoading || evidenceImages.length === 0) ? 0.6 : 1,
-            cursor: (isLoading || evidenceImages.length === 0) ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {isLoading ? "GUARDANDO..." : "GUARDAR Y FINALIZAR"}
-        </button>
+          <div style={{ marginTop: '8px', paddingBottom: '8px' }}>
+            <button
+              onClick={onSave}
+              disabled={isLoading || evidenceImages.length === 0}
+              style={{
+                ...styles.btnPrimary,
+                marginTop: 0,
+                opacity: (isLoading || evidenceImages.length === 0) ? 0.6 : 1,
+                cursor: (isLoading || evidenceImages.length === 0) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isLoading ? "GUARDANDO..." : "GUARDAR Y FINALIZAR"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
