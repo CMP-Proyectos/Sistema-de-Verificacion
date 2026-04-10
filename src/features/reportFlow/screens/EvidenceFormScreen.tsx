@@ -221,7 +221,7 @@ export const EvidenceFormScreen = ({
 
         {(isAnalyzing || aiFeedback) && (
           <div style={{ ...es.console, borderLeft: `4px solid ${aiFeedback?.type === 'warning' ? '#EF4444' : '#10B981'}` }}>
-            {isAnalyzing && <div>&gt; SYSTEM: ANALYZING IMAGE DATA...</div>}
+            {isAnalyzing && <div>&gt; SYSTEM: VALIDANDO IMAGEN...</div>}
             {aiFeedback && (
               <>
                 <div>&gt; STATUS: {aiFeedback.type === 'warning' ? 'REVIEW_REQUIRED' : 'APPROVED'}</div>
@@ -246,7 +246,7 @@ export const EvidenceFormScreen = ({
       <div style={{ marginBottom: '24px' }}>
         <button
           onClick={onSave}
-          disabled={isLoading || evidenceImages.length === 0 || isAnalyzing}
+          disabled={isLoading || evidenceImages.length === 0}
           style={{
             ...styles.btnPrimary,
             opacity: (isLoading || evidenceImages.length === 0) ? 0.6 : 1,

@@ -26,6 +26,7 @@ export function useEvidenceFlow(
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiFeedback, setAiFeedback] = useState<{ type: "warning" | "info" | "success"; message: string } | null>(null);
   const evidenceImagesRef = useRef<EvidenceImage[]>([]);
+  const activeAnalysisIdRef = useRef(0);
 
   useEffect(() => {
     evidenceImagesRef.current = evidenceImages;
@@ -66,17 +67,23 @@ export function useEvidenceFlow(
   };
 
   const analyzeImage = async (file: File) => {
+    const analysisId = ++activeAnalysisIdRef.current;
     setAiFeedback(null);
     setIsAnalyzing(true);
     try {
       const res = await validarFotoConIA(file, selectedActivity?.Nombre_Actividad || "Obra");
+      if (analysisId !== activeAnalysisIdRef.current) return;
+
       if (res.esErrorTecnico) setAiFeedback({ type: "info", message: "Offline: Validar manual." });
       else if (!res.aprobado) setAiFeedback({ type: "warning", message: `IA: ${res.mensaje}` });
       else setAiFeedback({ type: "success", message: "Validado por IA." });
     } catch {
+      if (analysisId !== activeAnalysisIdRef.current) return;
       setAiFeedback({ type: "info", message: "Error IA." });
     } finally {
-      setIsAnalyzing(false);
+      if (analysisId === activeAnalysisIdRef.current) {
+        setIsAnalyzing(false);
+      }
     }
   };
 
@@ -103,7 +110,7 @@ export function useEvidenceFlow(
     }));
 
     setEvidenceImages((current) => [...current, ...nextImages]);
-    await analyzeImage(nextImages[0].file);
+    void analyzeImage(nextImages[0].file);
     e.target.value = "";
   };
 
@@ -116,10 +123,12 @@ export function useEvidenceFlow(
   };
 
   const resetEvidence = () => {
+    activeAnalysisIdRef.current += 1;
     evidenceImages.forEach((image) => URL.revokeObjectURL(image.previewUrl));
     setEvidenceImages([]);
     setNote("");
     setAiFeedback(null);
+    setIsAnalyzing(false);
     setGpsLocation(null);
     setUtmEast("");
     setUtmNorth("");

@@ -40,11 +40,6 @@ export const SaveReportSchema = z.object({
 }, {
   message: "Se requieren coordenadas GPS validas",
   path: ["gpsLocation"],
-}).refine((data: any) => {
-  return !data.isAnalyzing;
-}, {
-  message: "No se puede guardar mientras se analiza la imagen",
-  path: ["isAnalyzing"],
 });
 
 export const SaveReportResponseSchema = z.object({

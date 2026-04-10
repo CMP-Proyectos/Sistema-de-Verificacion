@@ -7,6 +7,7 @@ import {
   fetchHistoryForDetail,
   syncHistoryToLocal,
   isNetworkUnavailableError,
+  joinProjectWithCode,
 } from "../services/dataService";
 import { db, PendingRecord } from "../services/db_local";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
@@ -27,6 +28,8 @@ export function useReportFlow() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [projectAccessCode, setProjectAccessCode] = useState("");
+  const [isJoiningProject, setIsJoiningProject] = useState(false);
 
   const [previousRecord, setPreviousRecord] = useState<any>(null);
 
@@ -143,7 +146,7 @@ export function useReportFlow() {
                   } catch (err: any) { console.error(`[SYNC ERROR]`, err); }
               }
               await records.loadUserRecords();
-              showToast("SincronizaciÃ³n finalizada", "success");
+              showToast("Sincronización finalizada", "success");
           }
       } catch (e) { console.error("[SYNC FATAL]", e); }
   }, [records.loadUserRecords, session.isOnline, session.sessionUser]);
@@ -289,8 +292,64 @@ export function useReportFlow() {
       setIsMenuOpen(false);
   };
 
+  const handleJoinProjectWithCode = useCallback(async () => {
+    const normalizedCode = projectAccessCode.trim();
+
+    if (!/^\d{8}$/.test(normalizedCode)) {
+      showToast("Código inválido. Verifique los 8 dígitos", "error");
+      return;
+    }
+
+    setIsJoiningProject(true);
+
+    let shouldRefreshProjects = false;
+
+    try {
+      const result = await joinProjectWithCode(normalizedCode);
+
+      if (result.status === "invalid_code") {
+        showToast("Código inválido. Verifique los 8 dígitos", "error");
+        return;
+      }
+
+      if (result.status === "not_authenticated") {
+        showToast("Sesión inválida. Inicie sesión nuevamente", "error");
+        return;
+      }
+
+      if (result.status === "already_joined") {
+        showToast("Este proyecto ya está en tu cuenta", "info");
+      }
+
+      if (result.status === "joined") {
+        showToast(`Proyecto '${result.projectName || normalizedCode}' agregado`, "success");
+      }
+
+      shouldRefreshProjects = true;
+      const syncStatus = await catalog.performScopedSync();
+      await catalog.loadProjectsLocal();
+
+      if (result.status === "joined") {
+        setProjectAccessCode("");
+      }
+
+      if (syncStatus !== "success") {
+        showToast("El proyecto fue agregado, pero no se pudo refrescar la lista en este momento.", "info");
+      }
+    } catch (error) {
+      console.error("[PROJECT ACCESS] Error agregando proyecto por código", error);
+      if (shouldRefreshProjects) {
+        await catalog.loadProjectsLocal();
+        showToast("El proyecto fue agregado, pero no se pudo refrescar la lista en este momento.", "info");
+      } else {
+        showToast("No se pudo agregar el proyecto en este momento.", "error");
+      }
+    } finally {
+      setIsJoiningProject(false);
+    }
+  }, [catalog, projectAccessCode]);
+
   const saveReport = async () => {
-    if (evidence.isAnalyzing) return showToast("Analizando imagen...", "info");
     if (evidence.evidenceFiles.length === 0 || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error");
     if (evidence.evidenceFiles.length > MAX_EVIDENCE_IMAGES) return showToast("Maximo 5 imagenes", "error");
 
@@ -492,12 +551,13 @@ export function useReportFlow() {
   const requestDeleteAccount = () => {
     setConfirmModal({
       open: true,
-      title: "Eliminar mi cuenta",
-      message: "La eliminaciÃ³n total de la cuenta requiere validaciÃ³n de administraciÃ³n.",
+      title: "Eliminar cuenta",
+      message: "¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar",
       onConfirm: async () => {
         try {
           await handleLogoutBridge();
-          showToast("SesiÃ³n cerrada.", "info");
+          showToast("Tu solicitud de eliminación fue registrada", "info");
         } catch {
           showToast("No se pudo completar", "error");
         } finally {
@@ -533,6 +593,7 @@ export function useReportFlow() {
     submitRecoveryPassword: recovery.handleUpdatePassword,
     profileName: session.profileName, setProfileName: session.setProfileName, profileLastName: session.profileLastName, setProfileLastName: session.setProfileLastName, profileEmail: session.profileEmail, isProfileSaving: session.isProfileSaving,
     handleLogin: handleLoginBridge, handleLogout: handleLogoutBridge, saveProfile: session.saveProfile, requestDeleteAccount,
+    projectAccessCode, setProjectAccessCode, isJoiningProject, handleJoinProjectWithCode,
 
     projects: catalog.projects,
     fronts: catalog.fronts,

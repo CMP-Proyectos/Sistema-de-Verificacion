@@ -63,4 +63,5 @@ export interface ConfirmModalState {
     title: string;
     message: string;
     onConfirm: () => void;
+    confirmLabel?: string;
 }

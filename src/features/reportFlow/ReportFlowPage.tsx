@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useReportFlow } from "../../hooks/useReportFlow";
 import { styles } from "../../theme/styles";
@@ -31,10 +31,21 @@ const selectionCardStyle = {
 
 export default function ReportFlowPage() {
   const flow = useReportFlow();
+  const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
+  const previousProjectCountRef = useRef(flow.projects.length);
 
   const mapUrl = flow.getMapUrl();
   const displayLat = flow.gpsLocation?.latitude ?? flow.selectedDetail?.Latitud ?? 0;
   const displayLng = flow.gpsLocation?.longitude ?? flow.selectedDetail?.Longitud ?? 0;
+  const hasProjects = flow.projects.length > 0;
+
+  useEffect(() => {
+    if (flow.projects.length > previousProjectCountRef.current && flow.projects.length > 0) {
+      setIsAddProjectOpen(false);
+    }
+
+    previousProjectCountRef.current = flow.projects.length;
+  }, [flow.projects.length]);
 
   const selectedProjectName = useMemo(
     () => flow.projects?.find((project) => project.ID_Proyectos === flow.selectedProjectId)?.Proyecto_Nombre,
@@ -98,40 +109,76 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "project" && (
-          <SelectionScreen
-            title="Seleccionar Proyecto"
-            items={flow.projects.map((project) => ({
-              id: project.ID_Proyectos,
-              label: project.Proyecto_Nombre,
-            }))}
-            onSelect={flow.selectProject}
-            emptyState={
+          <>
+            {hasProjects && (
               <>
-                <div style={{ fontWeight: "700", color: "#334155", marginBottom: "8px" }}>
-                  Su cuenta fue creada correctamente, pero aun no tiene proyectos asignados.
-                </div>
-                <div>
-                  Si el acceso no se habilita en unos minutos, comuniquese con soporte al{" "}
-                  <a
-                    href="mailto:cmpproyectos027@gmail.com"
-                    style={{ color: "#003366", fontWeight: "600", textDecoration: "underline" }}
+                <SelectionScreen
+                  title="Seleccionar Proyecto"
+                  items={flow.projects.map((project) => ({
+                    id: project.ID_Proyectos,
+                    label: project.Proyecto_Nombre,
+                  }))}
+                  onSelect={flow.selectProject}
+                />
+
+                <div style={styles.card}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddProjectOpen((current) => !current)}
+                    style={{ ...styles.btnSecondary, marginTop: 0 }}
                   >
-                    cmpproyectos027@gmail.com
-                  </a>{" "}
-                  o al{" "}
-                  <a
-                    href="https://wa.me/51932588233"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "#003366", fontWeight: "600", textDecoration: "underline" }}
-                  >
-                    +51 932 588 233
-                  </a>{" "}
-                  .
+                    + Agregar otro proyecto
+                  </button>
+
+                  {isAddProjectOpen && (
+                    <div style={{ marginTop: "16px" }}>
+                      <label style={styles.label}>Código de acceso</label>
+                      <input
+                        value={flow.projectAccessCode}
+                        onChange={(event) => flow.setProjectAccessCode(event.target.value)}
+                        placeholder="Ingrese 8 dígitos"
+                        style={styles.input}
+                        inputMode="numeric"
+                        maxLength={8}
+                      />
+                      <button
+                        onClick={flow.handleJoinProjectWithCode}
+                        disabled={flow.isJoiningProject}
+                        style={styles.btnPrimary}
+                      >
+                        {flow.isJoiningProject ? "Agregando..." : "Agregar proyecto"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
-            }
-          />
+            )}
+
+            {!hasProjects && (
+              <div style={styles.card}>
+                <h2 style={styles.heading}>Agregar proyecto</h2>
+                <label style={styles.label}>Código de acceso</label>
+                <input
+                  value={flow.projectAccessCode}
+                  onChange={(event) => flow.setProjectAccessCode(event.target.value)}
+                  placeholder="Ingrese 8 dígitos"
+                  style={styles.input}
+                  inputMode="numeric"
+                  maxLength={8}
+                />
+                <button
+                  onClick={flow.handleJoinProjectWithCode}
+                  disabled={flow.isJoiningProject}
+                  style={styles.btnPrimary}
+                >
+                  {flow.isJoiningProject ? "Agregando..." : "Agregar proyecto"}
+                </button>
+                <div style={{ fontSize: "12px", color: "#64748B", marginTop: "12px" }}>
+                  Solicita el código al responsable del proyecto.
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {flow.step === "front" && (
@@ -153,7 +200,6 @@ export default function ReportFlowPage() {
               value={flow.localitySearch}
               onChange={(event) => flow.setLocalitySearch(event.target.value)}
               style={styles.input}
-              autoFocus
             />
 
             <div style={styles.scrollableY}>
@@ -186,7 +232,6 @@ export default function ReportFlowPage() {
               value={flow.itemSearch}
               onChange={(event) => flow.setItemSearch(event.target.value)}
               style={styles.input}
-              autoFocus
             />
 
             <div style={styles.scrollableY}>
@@ -224,7 +269,6 @@ export default function ReportFlowPage() {
               value={flow.groupSearch}
               onChange={(event) => flow.setGroupSearch(event.target.value)}
               style={styles.input}
-              autoFocus
             />
 
             <div style={styles.scrollableY}>
@@ -355,7 +399,6 @@ export default function ReportFlowPage() {
               value={flow.detailSearch}
               onChange={(event) => flow.setDetailSearch(event.target.value)}
               style={styles.input}
-              autoFocus
             />
             <div style={styles.scrollableY}>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -459,6 +502,9 @@ export default function ReportFlowPage() {
             </button>
             <button onClick={flow.handleLogout} style={{ ...styles.btnSecondary, width: "100%", marginTop: "20px" }}>
               Cerrar Sesión
+            </button>
+            <button onClick={flow.requestDeleteAccount} style={{ ...styles.btnDanger, width: "100%", marginTop: "20px" }}>
+              Eliminar cuenta
             </button>
           </div>
         )}

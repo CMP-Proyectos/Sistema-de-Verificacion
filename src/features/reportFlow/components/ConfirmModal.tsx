@@ -10,6 +10,8 @@ interface Props {
 export const ConfirmModal = ({ modal, onClose }: Props) => {
   if (!modal?.open) return null;
 
+  const confirmLabel = modal.confirmLabel || "Confirmar";
+
   return (
     <div style={styles.modalOverlay}>
         <div style={styles.modalCard}>
@@ -17,7 +19,7 @@ export const ConfirmModal = ({ modal, onClose }: Props) => {
             <p style={{fontSize: '14px', color: '#475569', marginBottom: '20px'}}>{modal.message}</p>
             <div style={{display: 'flex', gap: '10px'}}>
                 <button onClick={onClose} style={{...styles.btnSecondary, width: '100%'}}>Cancelar</button>
-                <button onClick={modal.onConfirm} style={styles.btnDanger}>Confirmar</button>
+                <button onClick={modal.onConfirm} style={styles.btnDanger}>{confirmLabel}</button>
             </div>
         </div>
     </div>

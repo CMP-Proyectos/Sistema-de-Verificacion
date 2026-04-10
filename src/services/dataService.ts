@@ -40,8 +40,26 @@ export type ActivityRecord = {
   Categoria: string | null;
 };
 
+export type JoinProjectResultStatus =
+  | "joined"
+  | "already_joined"
+  | "invalid_code"
+  | "not_authenticated";
+
+export type JoinProjectResult = {
+  status: JoinProjectResultStatus;
+  projectId: number | null;
+  projectName: string | null;
+};
+
 type ProjectAssignmentRecord = {
   id_proyecto: number;
+};
+
+type JoinProjectRpcRow = {
+  status: JoinProjectResultStatus;
+  project_id: number | null;
+  project_name: string | null;
 };
 
 const IN_FILTER_CHUNK_SIZE = 200;
@@ -192,6 +210,21 @@ export const getAllowedProjects = async (userId?: string) => {
   const assignedProjectIds = await getAssignedProjectIds(userId);
   const projects = await getProjectsByIds(assignedProjectIds);
   return { assignedProjectIds, projects };
+};
+
+export const joinProjectWithCode = async (code: string): Promise<JoinProjectResult> => {
+  const normalizedCode = code.trim();
+  const { data, error } = await supabase.rpc("join_project_by_code", { p_code: normalizedCode });
+
+  if (error) throw error;
+
+  const row = (Array.isArray(data) ? data[0] : data) as JoinProjectRpcRow | null | undefined;
+
+  return {
+    status: row?.status ?? "invalid_code",
+    projectId: row?.project_id ?? null,
+    projectName: row?.project_name ?? null,
+  };
 };
 
 export const getFrontsByProjectIds = (projectIds: number[]) => {
