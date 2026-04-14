@@ -1,6 +1,6 @@
 {
   "name": "Sistema de Verificación",
-  "short_name": "Verificación",
+  "short_name": "SIVEO",
   "description": "Aplicación para verificación y subida de imágenes geolocalizadas.",
   "start_url": "/",
   "display": "standalone",
