@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/iconos/escudo-dim.jpg",
-      "type": "image/jpeg",
+      "src": "/iconos/escudo-dim.png",
+      "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "/iconos/escudo-dim.jpg",
-      "type": "image/jpeg",
+      "src": "/iconos/escudo-dim.png",
+      "type": "image/png",
       "sizes": "512x512"
     }
   ]
