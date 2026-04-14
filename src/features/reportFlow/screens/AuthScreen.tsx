@@ -80,6 +80,32 @@ const warningPanelStyle: React.CSSProperties = {
   lineHeight: 1.5,
 };
 
+const brandingRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "12px",
+  width: "100%",
+  maxWidth: "100%",
+  margin: "0 auto 12px",
+};
+
+const brandingShieldStyle = {
+  width: "100px",
+  maxWidth: "28%",
+  height: "auto",
+  objectFit: "contain",
+};
+
+const brandingSloganStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "260px",
+  height: "auto",
+  objectFit: "contain",
+  flex: "1 1 auto",
+  minWidth: 0,
+};
+
 export const AuthScreen = ({
   authEmail,
   setAuthEmail,
@@ -118,12 +144,12 @@ export const AuthScreen = ({
         onRequestRecovery();
       }}
     >
-        <div style={{ ...infoPanelStyle, marginBottom: "16px" }}>
-          <div style={sectionTitleStyle}>Recuperación de contraseña</div>
-          <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
-            Ingrese su usuario (email) para recibir un enlace de recuperación.
-          </div>
+      <div style={{ ...infoPanelStyle, marginBottom: "16px" }}>
+        <div style={sectionTitleStyle}>Recuperación de contraseña</div>
+        <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
+          Ingrese su usuario (email) para recibir un enlace de recuperación.
         </div>
+      </div>
 
       <div>
         <label style={styles.label}>Usuario (email)</label>
@@ -164,12 +190,12 @@ export const AuthScreen = ({
         onSubmitRecoveryPassword();
       }}
     >
-        <div style={{ ...infoPanelStyle, marginBottom: "16px" }}>
-          <div style={sectionTitleStyle}>Restablecer contraseña</div>
-          <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
-            Cree una nueva contraseña para su cuenta.
-          </div>
+      <div style={{ ...infoPanelStyle, marginBottom: "16px" }}>
+        <div style={sectionTitleStyle}>Restablecer contraseña</div>
+        <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.6 }}>
+          Cree una nueva contraseña para su cuenta.
         </div>
+      </div>
 
       <div>
         <label style={styles.label}>Nueva contraseña</label>
@@ -219,14 +245,16 @@ export const AuthScreen = ({
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
       <div style={{ ...styles.card, width: "100%", maxWidth: "560px", padding: "32px", maxHeight: "none" }}>
         <div style={{ marginBottom: "24px", textAlign: "center" }}>
-          <div style={sectionTitleStyle}>{isRecoveryFlow ? "Recuperación de contraseña" : "Acceso"}</div>
-          <h1 style={{ ...styles.heading, borderBottom: "none", fontSize: "24px", marginBottom: "8px" }}>
-            {recoveryView === "request"
-              ? "Recuperación de contraseña"
-              : recoveryView === "update"
-                ? "Restablecer contraseña"
-                : "Sistema de Verificación de Reportes de Campo"}
-          </h1>
+          {isRecoveryFlow ? (
+            <h1 style={{ ...styles.heading, borderBottom: "none", fontSize: "24px", marginBottom: "8px" }}>
+              {recoveryView === "request" ? "Recuperación de contraseña" : "Restablecer contraseña"}
+            </h1>
+          ) : (
+            <div style={brandingRowStyle}>
+              <img src="/iconos/escudo.jpg" alt="Escudo CMP" style={brandingShieldStyle} />
+              <img src="/iconos/slogan.jpg" alt="SIVEO" style={brandingSloganStyle} />
+            </div>
+          )}
           <p style={{ ...styles.text, color: "#64748B", fontSize: "14px", margin: 0 }}>
             {recoveryView === "request"
               ? "Ingrese su usuario (email) para recibir un enlace de recuperación."
