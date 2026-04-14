@@ -1,4 +1,4 @@
-const CACHE_VERSION = "reportflow-v3";
+const CACHE_VERSION = "reportflow-v5";
 const APP_SHELL_CACHE = `${CACHE_VERSION}-app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_HTML_URL = "/index.html";
