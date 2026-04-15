@@ -1,9 +1,17 @@
-const CACHE_VERSION = "reportflow-v5";
+const CACHE_VERSION = "reportflow-v6";
 const APP_SHELL_CACHE = `${CACHE_VERSION}-app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_HTML_URL = "/index.html";
 
-const PRECACHE_URLS = ["/", "/index.html", "/manifest.json", "/favicon.ico"];
+const PRECACHE_URLS = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/favicon.ico",
+  "/favicon.png",
+  "/iconos/escudo-dim.png",
+  "/iconos/escudo-dim2.png",
+];
 
 const isSameOrigin = (requestUrl) => {
   const url = new URL(requestUrl);
