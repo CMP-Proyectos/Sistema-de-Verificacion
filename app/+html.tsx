@@ -10,10 +10,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="google-site-verification" content="0cyCWEMy_FexMpfBARoI48z4Bddzzy6dkRsg0blmWD8" />
 
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/iconos/escudo-dim.png" />
+        <title>SIVEO</title>
 
-        <link rel="apple-touch-icon" href="/iconos/escudo-dim.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/iconos/escudo-dim.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/iconos/escudo-dim2.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/iconos/escudo-dim.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="SIVEO" />

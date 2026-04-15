@@ -2,7 +2,9 @@
   "name": "Sistema de Verificación",
   "short_name": "SIVEO",
   "description": "Aplicación para verificación y subida de imágenes geolocalizadas.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
@@ -16,7 +18,8 @@
     {
       "src": "/iconos/escudo-dim2.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ]
 }
