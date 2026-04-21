@@ -2,34 +2,28 @@ import React, { useState, useEffect } from "react";
 import { styles } from "../../../theme/styles";
 import { fetchHistoryForDetail, ActivityRecord } from "../../../services/dataService";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { DetailWithActivity } from "../../../hooks/flow/useCatalogFlow";
+import { DetailWithActivity } from "../../../hooks/flow/catalogHierarchy";
 
 interface Props {
   selectedProjectName: string | null;
+  selectedItem: string | null;
   selectedFrontName: string | null;
   selectedLocalityName: string | null;
-  selectedItem: string | null;
+  selectedSubstation: string | null;
+  selectedStructureName: string | null;
   selectedGroup: string | null;
   selectedActivity: ActivityRecord | null;
   selectedDetail: DetailWithActivity | null;
   onContinue: () => void;
 }
 
-const selectionRows = [
-  { key: "Proyecto", valueKey: "selectedProjectName" },
-  { key: "Frente", valueKey: "selectedFrontName" },
-  { key: "Localidad", valueKey: "selectedLocalityName" },
-  { key: "Item", valueKey: "selectedItem" },
-  { key: "Grupo", valueKey: "selectedGroup" },
-  { key: "Actividad", valueKey: "selectedActivityName" },
-  { key: "Detalle", valueKey: "selectedDetailName" },
-] as const;
-
 export const ActivityConfirmationScreen: React.FC<Props> = ({
   selectedProjectName,
+  selectedItem,
   selectedFrontName,
   selectedLocalityName,
-  selectedItem,
+  selectedSubstation,
+  selectedStructureName,
   selectedGroup,
   selectedActivity,
   selectedDetail,
@@ -50,20 +44,21 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
         .then((records) => {
           setEvidenceHistory(records || []);
         })
-        .catch((err) => console.error("Error cargando historial:", err))
+        .catch((error) => console.error("Error cargando historial:", error))
         .finally(() => setLoadingEvidence(false));
     }
   }, [selectedDetail]);
 
-  const selectionSummary = {
-    selectedProjectName,
-    selectedFrontName,
-    selectedLocalityName,
-    selectedItem,
-    selectedGroup,
-    selectedActivityName: selectedActivity?.Nombre_Actividad || null,
-    selectedDetailName: selectedDetail?.Nombre_Detalle || null,
-  };
+  const selectionRows = [
+    { key: "Proyecto", value: selectedProjectName },
+    { key: "Seccion", value: selectedItem },
+    { key: "Frente", value: selectedFrontName },
+    { key: "Localidad", value: selectedLocalityName },
+    ...(selectedSubstation ? [{ key: "Subestacion", value: selectedSubstation }] : []),
+    { key: "Estructura", value: selectedStructureName || selectedDetail?.Nombre_Detalle || null },
+    { key: "Grupo", value: selectedGroup },
+    { key: "Actividad", value: selectedActivity?.Nombre_Actividad || null },
+  ];
 
   return (
     <div
@@ -75,7 +70,7 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
         overflow: "hidden",
       }}
     >
-      <h2 style={{ ...styles.heading, flexShrink: 0 }}>CONFIRMAR SELECCIÓN</h2>
+      <h2 style={{ ...styles.heading, flexShrink: 0 }}>CONFIRMAR SELECCION</h2>
 
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingRight: "4px" }}>
         <div
@@ -94,34 +89,31 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
             <div>
               <label style={{ ...styles.label, marginBottom: "2px" }}>CADENA SELECCIONADA</label>
               <p style={{ fontSize: "15px", fontWeight: "700", color: "#1E293B", margin: 0, lineHeight: 1.2 }}>
-                {selectedDetail?.Nombre_Detalle || "Sin detalle seleccionado"}
+                {selectedStructureName || selectedDetail?.Nombre_Detalle || "Sin estructura seleccionada"}
               </p>
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {selectionRows.map((row) => {
-              const value = selectionSummary[row.valueKey];
-              return (
-                <div
-                  key={row.key}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                    padding: "10px 12px",
-                    borderRadius: "8px",
-                    backgroundColor: "#FFFFFF",
-                    border: "1px solid #E2E8F0",
-                  }}
-                >
-                  <span style={{ fontSize: "12px", fontWeight: "700", color: "#475569", textTransform: "uppercase" }}>
-                    {row.key}
-                  </span>
-                  <span style={{ fontSize: "13px", color: "#1E293B", textAlign: "right" }}>{value || "No definido"}</span>
-                </div>
-              );
-            })}
+            {selectionRows.map((row) => (
+              <div
+                key={row.key}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  backgroundColor: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                }}
+              >
+                <span style={{ fontSize: "12px", fontWeight: "700", color: "#475569", textTransform: "uppercase" }}>
+                  {row.key}
+                </span>
+                <span style={{ fontSize: "13px", color: "#1E293B", textAlign: "right" }}>{row.value || "No definido"}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -156,7 +148,7 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
                   letterSpacing: "0.5px",
                 }}
               >
-                Historial del detalle
+                Historial de la estructura
               </span>
             </div>
             {evidenceHistory.length > 0 && (
@@ -215,7 +207,7 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
                         {showEvidencePreview ? "Ocultar evidencias" : "Ver evidencias previas"}
                       </div>
                       <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-                        Último registro: {new Date(evidenceHistory[0].Fecha_Subida).toLocaleDateString()}
+                        Ultimo registro: {new Date(evidenceHistory[0].Fecha_Subida).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
@@ -345,7 +337,7 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
             }}
             onClick={(event) => event.stopPropagation()}
-            alt="Detalle"
+            alt="Estructura"
           />
           <div
             style={{

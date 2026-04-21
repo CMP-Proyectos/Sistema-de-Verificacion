@@ -4,6 +4,7 @@
 export type Step =
     | "auth"
     | "project"
+    | "substation"
     | "front"
     | "locality"
     | "item"
@@ -21,6 +22,7 @@ export type Step =
 export interface UserRecord { 
     id_registro: number; 
     id_verificada?: number | null;
+    user_id?: string | null;
     fecha_subida: string; 
     url_foto: string | null; 
     nombre_actividad: string; 
@@ -28,13 +30,19 @@ export interface UserRecord {
     nombre_detalle: string; 
     nombre_grupo?: string | null;
     nombre_item?: string | null;
+    nombre_subestacion?: string | null;
     comentario: string | null; 
     ruta_archivo: string | null; 
     bucket: string | null; 
     latitud: number | null; 
     longitud: number | null;
-    nombre_proyecto?: string;
-    nombre_frente?: string;
+    id_proyecto?: number | null;
+    id_frente?: number | null;
+    id_localidad?: number | null;
+    id_detalle?: number | null;
+    id_actividad?: number | null;
+    nombre_proyecto?: string | null;
+    nombre_frente?: string | null;
     total_imagenes?: number;
     cantidad: number;
 }

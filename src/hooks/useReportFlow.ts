@@ -18,6 +18,7 @@ import { usePasswordRecoveryFlow } from "./flow/usePasswordRecoveryFlow";
 import { useCatalogFlow } from "./flow/useCatalogFlow";
 import { useEvidenceFlow } from "./flow/useEvidenceFlow";
 import { useRecordsFlow } from "./flow/useRecordsFlow";
+import { useMapFlow } from "./flow/useMapFlow";
 
 const MASTER_BUCKET = "user-assets";
 const MAX_EVIDENCE_IMAGES = 5;
@@ -42,6 +43,17 @@ export function useReportFlow() {
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
+  const map = useMapFlow({
+    isActive: step === "map",
+    isOnline: session.isOnline,
+    sessionUserId: session.sessionUser?.id,
+    projects: catalog.projects,
+    activities: catalog.activities,
+    userRecords: records.userRecords,
+    isLoadingUserRecords: records.isLoadingRecords,
+    loadUserRecords: records.loadUserRecords,
+    showToast,
+  });
 
   const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
 
@@ -470,32 +482,33 @@ export function useReportFlow() {
   };
 
   const selectProject = (id: number) => {
-    catalog.setSelectedProjectId(id);
-    catalog.loadFrontsLocal(id);
-    setStep("front");
-  };
-
-  const selectFront = (id: number) => {
-    catalog.setSelectedFrontId(id);
-    catalog.loadLocalitiesLocal(id);
-    setStep("locality");
-  };
-
-  const selectLocality = (id: number) => {
-    catalog.setSelectedLocalityId(id);
-    catalog.setSelectedItem(null);
-    catalog.setSelectedGroup(null);
-    catalog.setSelectedActivity(null);
-    catalog.setSelectedDetail(null);
-    catalog.setItemSearch("");
-    catalog.setGroupSearch("");
-    catalog.setDetailSearch("");
-    catalog.loadDetailsLocal(id);
-    setStep("item");
+    void catalog.selectProject(id).then(() => {
+      setStep("item");
+    });
   };
 
   const selectItem = (item: string) => {
     catalog.selectItem(item);
+    setStep("front");
+  };
+
+  const selectFront = (id: number) => {
+    catalog.selectFront(id);
+    setStep("locality");
+  };
+
+  const selectLocality = (id: number) => {
+    catalog.selectLocality(id);
+    setStep(catalog.hasSubstationsForLocality(id) ? "substation" : "detail");
+  };
+
+  const selectSubstation = (substation: string) => {
+    catalog.selectSubstation(substation);
+    setStep("detail");
+  };
+
+  const selectStructure = (structure: string) => {
+    catalog.selectStructure(structure);
     setStep("group");
   };
 
@@ -505,34 +518,28 @@ export function useReportFlow() {
   };
 
   const selectActivity = (activityId: number) => {
-    const activity = catalog.filteredActivities.find((item) => item.ID_Actividad === activityId);
-    if (!activity) return;
-
-    catalog.selectActivity(activity);
-    setStep("detail");
-  };
-
-  const selectDetail = (detail: any) => {
-    catalog.selectDetail(detail);
+    const resolvedSelection = catalog.selectActivity(activityId);
+    if (!resolvedSelection) return;
     setStep("confirm");
   };
 
   const goBack = () => {
-      const stepMap: Record<string, Step> = {
-        "front": "project",
-        "locality": "front",
-        "item": "locality",
-        "group": "item",
-        "activity": "group",
-        "detail": "activity",
-        "confirm": "detail",
-        "map": "confirm",
-        "form": "map",
-        "profile": "project",
-        "user_records": "profile",
-        "files": "profile"
-      };
-      setStep(stepMap[step] || "project");
+    const previousStep: Step =
+      step === "front" ? "item"
+      : step === "locality" ? "front"
+      : step === "substation" ? "locality"
+      : step === "detail" ? (catalog.hasSubstationsForCurrentSelection ? "substation" : "locality")
+      : step === "group" ? "detail"
+      : step === "activity" ? "group"
+      : step === "confirm" ? "activity"
+      : step === "map" ? "project"
+      : step === "form" ? "confirm"
+      : step === "profile" ? "project"
+      : step === "user_records" ? "profile"
+      : step === "files" ? "profile"
+      : "project";
+
+    setStep(previousStep);
   };
 
   const handleLoginBridge = () => {
@@ -598,6 +605,7 @@ export function useReportFlow() {
     projects: catalog.projects,
     fronts: catalog.fronts,
     localities: catalog.localities,
+    filteredFronts: catalog.filteredFronts,
     filteredLocalities: catalog.filteredLocalities,
     localitySearch: catalog.localitySearch,
     setLocalitySearch: catalog.setLocalitySearch,
@@ -606,6 +614,15 @@ export function useReportFlow() {
     itemSearch: catalog.itemSearch,
     setItemSearch: catalog.setItemSearch,
     selectedItem: catalog.selectedItem,
+    substationsForCurrentSelection: catalog.substationsForCurrentSelection,
+    filteredSubstations: catalog.filteredSubstations,
+    hasSubstationsForCurrentSelection: catalog.hasSubstationsForCurrentSelection,
+    substationSearch: catalog.substationSearch,
+    setSubstationSearch: catalog.setSubstationSearch,
+    selectedSubstation: catalog.selectedSubstation,
+    structures: catalog.structures,
+    filteredStructures: catalog.filteredStructures,
+    selectedStructure: catalog.selectedStructure,
     groups: catalog.groups,
     filteredGroups: catalog.filteredGroups,
     groupSearch: catalog.groupSearch,
@@ -615,7 +632,6 @@ export function useReportFlow() {
     groupActivityPreviewMap: catalog.groupActivityPreviewMap,
     toggleGroupExpanded: catalog.toggleGroupExpanded,
 
-    filteredDetails: catalog.filteredDetails,
     selectedDetail: catalog.selectedDetail,
     selectedActivity: catalog.selectedActivity,
     filteredActivities: catalog.filteredActivities,
@@ -623,11 +639,12 @@ export function useReportFlow() {
     setDetailSearch: catalog.setDetailSearch,
 
     selectedProjectId: catalog.selectedProjectId, selectedFrontId: catalog.selectedFrontId, selectedLocalityId: catalog.selectedLocalityId,
-    selectProject, selectFront, selectLocality, selectItem, selectGroup, selectActivity, selectDetail,
+    selectProject, selectItem, selectFront, selectLocality, selectSubstation, selectStructure, selectGroup, selectActivity,
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
     utmZone: evidence.utmZone, setUtmZone: evidence.setUtmZone, utmEast: evidence.utmEast, setUtmEast: evidence.setUtmEast, utmNorth: evidence.utmNorth, setUtmNorth: evidence.setUtmNorth, handleUpdateFromUtm: evidence.handleUpdateFromUtm,
     evidenceImages: evidence.evidenceImages, evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, removeEvidenceImage: evidence.removeEvidenceImage, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
     saveReport, getMapUrl,
+    map,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
     requestDeleteRecord: records.requestDeleteRecord,
     handleDownloadCSV: records.handleCreateCSV,

@@ -1,10 +1,7 @@
-import React from 'react';
-import { styles } from '../../../theme/styles';
-import { Step } from '../types';
-// Importamos iconos técnicos
-import { ChevronLeft, Wifi, WifiOff } from 'lucide-react';
-// IMPORTA TU LOGO AQUÍ (Asegúrate de tener la imagen en esa ruta)
-// import logoImg from '../../../assets/logo_cenepa.png'; 
+import React from "react";
+import { ChevronLeft, Wifi, WifiOff } from "lucide-react";
+import { styles } from "../../../theme/styles";
+import { Step } from "../types";
 
 interface Props {
   step: Step;
@@ -12,62 +9,115 @@ interface Props {
   onBack: () => void;
   breadcrumbNames: {
     project?: string;
+    item?: string;
     front?: string;
     locality?: string;
-    item?: string;
+    substation?: string;
+    detail?: string;
     group?: string;
     activity?: string;
-    detail?: string;
   };
 }
 
 export const TopNav = ({ step, isOnline, onBack, breadcrumbNames }: Props) => {
   if (step === "auth") return null;
 
-  const isRootScreen = step === 'project' || step === 'profile' || step === 'user_records' || step === 'files';
+  const isRootScreen =
+    step === "project" ||
+    step === "map" ||
+    step === "profile" ||
+    step === "user_records" ||
+    step === "files";
 
   return (
     <>
-        <div style={styles.navbar}>
-             {/* Opción A: Texto estilizado */}
-             <div style={styles.navbarBrand}>CMP CONTRATISTAS SAC.</div>
-             
-             {/* Opción B: Logo Imagen (Descomentar si tienes la imagen) */}
-             {/* <img src={logoImg} alt="Logo" style={{ height: '32px', objectFit: 'contain' }} /> */}
-        </div>
+      <div style={styles.navbar}>
+        <div style={styles.navbarBrand}>CMP CONTRATISTAS SAC.</div>
+      </div>
 
-        <div style={styles.statusBar}>
-            <div style={{
-                color: isOnline ? '#10B981' : '#64748B', // Verde o Gris
-                fontWeight: '600', display:'flex', alignItems:'center', gap:'6px'
-            }}>
-                {/* Icono de Wifi condicional */}
-                {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-                <span>{isOnline ? "CONECTADO" : "OFFLINE"}</span>
-            </div>
-
-            {!isRootScreen && (
-                <button onClick={onBack} style={{
-                    background: 'none', border: '1px solid #CBD5E1', borderRadius: '4px',
-                    padding: '4px 8px', fontSize: '11px', fontWeight: '600', color: '#334155', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '4px'
-                }}>
-                    <ChevronLeft size={14} /> ATRÁS
-                </button>
-            )}
+      <div style={styles.statusBar}>
+        <div
+          style={{
+            color: isOnline ? "#10B981" : "#64748B",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+          <span>{isOnline ? "CONECTADO" : "OFFLINE"}</span>
         </div>
 
         {!isRootScreen && (
-             <div style={styles.breadcrumbs}>
-                {breadcrumbNames.project && <span style={styles.breadcrumbItem}>{breadcrumbNames.project}</span>}
-                {breadcrumbNames.front && <><span>/</span><span>{breadcrumbNames.front}</span></>}
-                {breadcrumbNames.locality && <><span>/</span><span>{breadcrumbNames.locality}</span></>}
-                {breadcrumbNames.item && <><span>/</span><span>{breadcrumbNames.item}</span></>}
-                {breadcrumbNames.group && <><span>/</span><span>{breadcrumbNames.group}</span></>}
-                {breadcrumbNames.activity && <><span>/</span><span>{breadcrumbNames.activity}</span></>}
-                {breadcrumbNames.detail && <><span>/</span><span>{breadcrumbNames.detail}</span></>}
-             </div>
+          <button
+            onClick={onBack}
+            style={{
+              background: "none",
+              border: "1px solid #CBD5E1",
+              borderRadius: "4px",
+              padding: "4px 8px",
+              fontSize: "11px",
+              fontWeight: "600",
+              color: "#334155",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <ChevronLeft size={14} /> Atras
+          </button>
         )}
+      </div>
+
+      {!isRootScreen && (
+        <div style={styles.breadcrumbs}>
+          {breadcrumbNames.project && <span style={styles.breadcrumbItem}>{breadcrumbNames.project}</span>}
+          {breadcrumbNames.item && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.item}</span>
+            </>
+          )}
+          {breadcrumbNames.front && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.front}</span>
+            </>
+          )}
+          {breadcrumbNames.locality && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.locality}</span>
+            </>
+          )}
+          {breadcrumbNames.substation && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.substation}</span>
+            </>
+          )}
+          {breadcrumbNames.detail && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.detail}</span>
+            </>
+          )}
+          {breadcrumbNames.group && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.group}</span>
+            </>
+          )}
+          {breadcrumbNames.activity && (
+            <>
+              <span>/</span>
+              <span>{breadcrumbNames.activity}</span>
+            </>
+          )}
+        </div>
+      )}
     </>
   );
 };

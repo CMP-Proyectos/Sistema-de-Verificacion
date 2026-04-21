@@ -90,7 +90,7 @@ const brandingRowStyle: React.CSSProperties = {
   margin: "0 auto 12px",
 };
 
-const brandingShieldStyle = {
+const brandingShieldStyle: React.CSSProperties = {
   width: "100px",
   maxWidth: "28%",
   height: "auto",

@@ -30,6 +30,7 @@ export type DetailRecord = {
   Latitud: number;
   Longitud: number;
   Nombre_Detalle: string;
+  Subestacion?: string | null;
 };
 
 export type ActivityRecord = {
@@ -38,6 +39,17 @@ export type ActivityRecord = {
   Grupo: string | null;
   Item: string | null;
   Categoria: string | null;
+};
+
+export type MapRecordSource = "mine" | "global";
+
+export type MapRecord = UserRecord & {
+  source: MapRecordSource;
+  latitud: number;
+  longitud: number;
+  nombre_proyecto: string | null;
+  nombre_frente: string | null;
+  nombre_subestacion: string | null;
 };
 
 export type JoinProjectResultStatus =
@@ -62,7 +74,12 @@ type JoinProjectRpcRow = {
   project_name: string | null;
 };
 
+type GlobalMapRpcRow = Record<string, unknown>;
+
 const IN_FILTER_CHUNK_SIZE = 200;
+
+const MAP_REQUIRED_FIELDS_ERROR =
+  "La RPC get_mapa_global no devolvio latitud/longitud o metadatos minimos esperados.";
 
 export const isNetworkUnavailableError = (error: any) => {
   const rawMessage = String(error?.message || error?.code || error?.details || "").toLowerCase();
@@ -183,6 +200,50 @@ const fetchCatalogByIds = async <T>(
   return rows.flat();
 };
 
+const normalizeLookupKey = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const getValueByAliases = (row: GlobalMapRpcRow, aliases: string[]) => {
+  const directMatch = aliases.find((alias) => row[alias] !== undefined && row[alias] !== null);
+  if (directMatch) return row[directMatch];
+
+  const normalizedEntries = Object.entries(row).map(([key, value]) => [normalizeLookupKey(key), value] as const);
+  const normalizedMap = new Map(normalizedEntries);
+
+  for (const alias of aliases) {
+    const value = normalizedMap.get(normalizeLookupKey(alias));
+    if (value !== undefined && value !== null) {
+      return value;
+    }
+  }
+
+  return null;
+};
+
+const toNullableNumber = (value: unknown) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toNullableString = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text ? text : null;
+};
+
+export const isValidCoordinate = (lat: number | null | undefined, lng: number | null | undefined) =>
+  typeof lat === "number" &&
+  typeof lng === "number" &&
+  Number.isFinite(lat) &&
+  Number.isFinite(lng) &&
+  Math.abs(lat) <= 90 &&
+  Math.abs(lng) <= 180;
+
 export const getAssignedProjectIds = async (userId?: string) => {
   const resolvedUserId = userId ?? (await supabase.auth.getUser()).data.user?.id;
   if (!resolvedUserId) return [];
@@ -250,7 +311,7 @@ export const getLocalitiesByFrontIds = (frontIds: number[]) => {
 export const getDetailsByLocalityIds = (localityIds: number[]) => {
   return fetchCatalogByIds<DetailRecord>(
     "Detalles Actividad",
-    "ID_DetallesActividad, ID_Actividad, ID_Localidad, Latitud, Longitud, Nombre_Detalle",
+    "ID_DetallesActividad, ID_Actividad, ID_Localidad, Latitud, Longitud, Nombre_Detalle, Subestacion",
     "Nombre_Detalle",
     "ID_Localidad",
     localityIds
@@ -359,6 +420,8 @@ type RegistroRow = {
   Ruta_Archivo: string | null;
   Bucket: string | null;
   ID_Verificada: number | null;
+  user_id: string | null;
+  id_proyecto: number | null;
 };
 
 type CheckedActivityRow = {
@@ -374,7 +437,7 @@ export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> =>
 
   const { data: registros, error: registrosError } = await supabase
     .from("Registros")
-    .select("ID_Registros, Fecha_Subida, URL_Archivo, Comentario, Ruta_Archivo, Bucket, ID_Verificada")
+    .select("ID_Registros, Fecha_Subida, URL_Archivo, Comentario, Ruta_Archivo, Bucket, ID_Verificada, user_id, id_proyecto")
     .eq("user_id", userId)
     .order("Fecha_Subida", { ascending: false });
 
@@ -443,6 +506,7 @@ export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> =>
     return {
       id_registro: record.ID_Registros,
       id_verificada: record.ID_Verificada,
+      user_id: record.user_id,
       fecha_subida: record.Fecha_Subida,
       url_foto: record.URL_Archivo,
       nombre_actividad: activity?.Nombre_Actividad || "Actividad sin catalogo",
@@ -450,11 +514,17 @@ export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> =>
       nombre_detalle: detail?.Nombre_Detalle || "",
       nombre_grupo: activity?.Grupo || null,
       nombre_item: activity?.Item || null,
+      nombre_subestacion: detail?.Subestacion || null,
       comentario: record.Comentario,
       ruta_archivo: record.Ruta_Archivo,
       bucket: record.Bucket,
       latitud: checked?.Latitud ?? detail?.Latitud ?? null,
       longitud: checked?.Longitud ?? detail?.Longitud ?? null,
+      id_proyecto: record.id_proyecto ?? front?.ID_Proyecto ?? null,
+      id_frente: front?.ID_Frente ?? null,
+      id_localidad: locality?.ID_Localidad ?? null,
+      id_detalle: detail?.ID_DetallesActividad ?? null,
+      id_actividad: activity?.ID_Actividad ?? null,
       nombre_proyecto: project?.Proyecto_Nombre,
       nombre_frente: front?.Nombre_Frente,
       total_imagenes: imageCountByRecordId.get(record.ID_Registros) || (record.URL_Archivo ? 1 : 0),
@@ -469,6 +539,129 @@ export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> =>
   });
 
   return mappedRecords;
+};
+
+export const getUserMapRecords = (records: UserRecord[]): MapRecord[] => {
+  return records
+    .filter((record) => isValidCoordinate(record.latitud, record.longitud))
+    .map((record) => ({
+      ...record,
+      latitud: record.latitud as number,
+      longitud: record.longitud as number,
+      nombre_proyecto: record.nombre_proyecto || null,
+      nombre_frente: record.nombre_frente || null,
+      nombre_subestacion: record.nombre_subestacion || null,
+      source: "mine" as const,
+    }));
+};
+
+const normalizeGlobalMapRow = (row: GlobalMapRpcRow): MapRecord | null => {
+  const latitud = toNullableNumber(getValueByAliases(row, ["latitud", "latitude"]));
+  const longitud = toNullableNumber(getValueByAliases(row, ["longitud", "longitude", "lng", "lon"]));
+
+  if (!isValidCoordinate(latitud, longitud)) {
+    return null;
+  }
+
+  const idRegistro = toNullableNumber(
+    getValueByAliases(row, ["id_registro", "ID_Registros", "ID_Registro", "registro_id"])
+  );
+  const fechaSubida = toNullableString(
+    getValueByAliases(row, ["fecha_subida", "Fecha_Subida", "created_at", "fecha"])
+  );
+  const idProyecto = toNullableNumber(
+    getValueByAliases(row, ["id_proyecto", "ID_Proyecto", "ID_Proyectos", "proyecto_id"])
+  );
+  const nombreProyecto = toNullableString(
+    getValueByAliases(row, ["nombre_proyecto", "Proyecto_Nombre", "proyecto_nombre"])
+  );
+  const idFrente = toNullableNumber(getValueByAliases(row, ["id_frente", "ID_Frente", "frente_id"]));
+  const nombreFrente = toNullableString(
+    getValueByAliases(row, ["nombre_frente", "Nombre_Frente", "frente_nombre"])
+  );
+  const idLocalidad = toNullableNumber(
+    getValueByAliases(row, ["id_localidad", "ID_Localidad", "localidad_id"])
+  );
+  const nombreLocalidad = toNullableString(
+    getValueByAliases(row, ["nombre_localidad", "Nombre_Localidad", "localidad_nombre"])
+  );
+  const idDetalle = toNullableNumber(
+    getValueByAliases(row, ["id_detalle", "ID_DetallesActividad", "id_detallesactividad", "detalle_id"])
+  );
+  const nombreDetalle = toNullableString(
+    getValueByAliases(row, ["nombre_detalle", "Nombre_Detalle", "detalle_nombre", "estructura"])
+  );
+  const idActividad = toNullableNumber(
+    getValueByAliases(row, ["id_actividad", "ID_Actividad", "actividad_id"])
+  );
+  const nombreActividad = toNullableString(
+    getValueByAliases(row, ["nombre_actividad", "Nombre_Actividad", "actividad_nombre"])
+  );
+  const nombreGrupo = toNullableString(getValueByAliases(row, ["nombre_grupo", "grupo", "Grupo"]));
+  const nombreItem = toNullableString(getValueByAliases(row, ["nombre_item", "item", "Item", "seccion"]));
+  const nombreSubestacion = toNullableString(
+    getValueByAliases(row, ["nombre_subestacion", "subestacion", "Subestacion"])
+  );
+
+  if (!idRegistro || !fechaSubida || !nombreLocalidad || !nombreDetalle || !nombreActividad) {
+    return null;
+  }
+
+  return {
+    id_registro: idRegistro,
+    id_verificada: toNullableNumber(
+      getValueByAliases(row, ["id_verificada", "ID_Verificada", "verificada_id"])
+    ),
+    user_id: toNullableString(getValueByAliases(row, ["user_id", "usuario_id"])),
+    fecha_subida: fechaSubida,
+    url_foto: toNullableString(
+      getValueByAliases(row, ["url_foto", "URL_Archivo", "url_archivo", "foto_url"])
+    ),
+    nombre_actividad: nombreActividad as string,
+    nombre_localidad: nombreLocalidad as string,
+    nombre_detalle: nombreDetalle as string,
+    nombre_grupo: nombreGrupo,
+    nombre_item: nombreItem,
+    nombre_subestacion: nombreSubestacion,
+    comentario: toNullableString(getValueByAliases(row, ["comentario", "Comentario", "observacion"])),
+    ruta_archivo: toNullableString(
+      getValueByAliases(row, ["ruta_archivo", "Ruta_Archivo", "path_archivo"])
+    ),
+    bucket: toNullableString(getValueByAliases(row, ["bucket", "Bucket"])),
+    latitud: latitud as number,
+    longitud: longitud as number,
+    id_proyecto: idProyecto,
+    id_frente: idFrente,
+    id_localidad: idLocalidad,
+    id_detalle: idDetalle,
+    id_actividad: idActividad,
+    nombre_proyecto: nombreProyecto,
+    nombre_frente: nombreFrente,
+    total_imagenes: toNullableNumber(
+      getValueByAliases(row, ["total_imagenes", "imagenes", "cantidad_imagenes"])
+    ) || 0,
+    cantidad: toNullableNumber(getValueByAliases(row, ["cantidad", "Cantidad"])) || 0,
+    source: "global",
+  };
+};
+
+export const fetchGlobalMapRecords = async (projectId: number): Promise<MapRecord[]> => {
+  const { data, error } = await supabase.rpc("get_mapa_global", {
+    p_id_proyecto: projectId,
+  });
+
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+
+  const normalizedRecords = data
+    .map((row) => normalizeGlobalMapRow((row || {}) as GlobalMapRpcRow))
+    .filter((record): record is MapRecord => Boolean(record));
+
+  if (data.length > 0 && normalizedRecords.length === 0) {
+    throw new Error(MAP_REQUIRED_FIELDS_ERROR);
+  }
+
+  return normalizedRecords;
 };
 
 export const getActivityProperties = async () => [];

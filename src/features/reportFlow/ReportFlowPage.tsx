@@ -14,6 +14,7 @@ import { SelectionScreen } from "./screens/SelectionScreen";
 import { EvidenceFormScreen } from "./screens/EvidenceFormScreen";
 import { UserGalleryScreen } from "./screens/UserGalleryScreen";
 import { ActivityConfirmationScreen } from "./screens/ActivityConfirmationScreen";
+import { MapScreen } from "./screens/MapScreen";
 
 const selectionCardStyle = {
   ...styles.gridItem,
@@ -68,12 +69,13 @@ export default function ReportFlowPage() {
         onBack={flow.goBack}
         breadcrumbNames={{
           project: selectedProjectName,
+          item: flow.selectedItem ?? undefined,
           front: selectedFrontName,
           locality: selectedLocalityName,
-          item: flow.selectedItem ?? undefined,
+          substation: flow.selectedSubstation ?? undefined,
+          detail: flow.selectedStructure ?? flow.selectedDetail?.Nombre_Detalle,
           group: flow.selectedGroup ?? undefined,
           activity: flow.selectedActivity?.Nombre_Actividad,
-          detail: flow.selectedDetail?.Nombre_Detalle,
         }}
       />
 
@@ -181,14 +183,52 @@ export default function ReportFlowPage() {
           </>
         )}
 
+        {flow.step === "item" && (
+          <div style={styles.card}>
+            <h2 style={styles.heading}>SELECCIONAR SECCIÓN</h2>
+            <input
+              placeholder="Buscar sección..."
+              value={flow.itemSearch}
+              onChange={(event) => flow.setItemSearch(event.target.value)}
+              style={styles.input}
+            />
+
+            <div style={styles.scrollableY}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {flow.filteredItems.length > 0 ? (
+                  flow.filteredItems.map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => flow.selectItem(item)}
+                      style={selectionCardStyle}
+                    >
+                      <div style={{ flex: 1, paddingRight: "12px" }}>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "#1E293B" }}>{item}</div>
+                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
+                          {selectedProjectName || "Proyecto"}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div style={{ padding: "30px", textAlign: "center", color: "#94A3B8" }}>
+                    No se encontraron secciones para este proyecto
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {flow.step === "front" && (
           <SelectionScreen
             title="Seleccionar Frente"
-            items={flow.fronts.map((front) => ({
+            items={flow.filteredFronts.map((front) => ({
               id: front.ID_Frente,
               label: front.Nombre_Frente,
             }))}
             onSelect={flow.selectFront}
+            emptyState="No se encontraron frentes para esta sección."
           />
         )}
 
@@ -224,27 +264,27 @@ export default function ReportFlowPage() {
           </div>
         )}
 
-        {flow.step === "item" && (
+        {flow.step === "substation" && (
           <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR ITEM</h2>
+            <h2 style={styles.heading}>SELECCIONAR SUBESTACIÓN</h2>
             <input
-              placeholder="Buscar item..."
-              value={flow.itemSearch}
-              onChange={(event) => flow.setItemSearch(event.target.value)}
+              placeholder="Buscar subestación..."
+              value={flow.substationSearch}
+              onChange={(event) => flow.setSubstationSearch(event.target.value)}
               style={styles.input}
             />
 
             <div style={styles.scrollableY}>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {flow.filteredItems.length > 0 ? (
-                  flow.filteredItems.map((item) => (
+                {flow.filteredSubstations.length > 0 ? (
+                  flow.filteredSubstations.map((substation) => (
                     <button
-                      key={item}
-                      onClick={() => flow.selectItem(item)}
+                      key={substation}
+                      onClick={() => flow.selectSubstation(substation)}
                       style={selectionCardStyle}
                     >
                       <div style={{ flex: 1, paddingRight: "12px" }}>
-                        <div style={{ fontSize: "14px", fontWeight: "700", color: "#1E293B" }}>{item}</div>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "#1E293B" }}>{substation}</div>
                         <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
                           {selectedLocalityName || "Localidad"}
                         </div>
@@ -253,7 +293,62 @@ export default function ReportFlowPage() {
                   ))
                 ) : (
                   <div style={{ padding: "30px", textAlign: "center", color: "#94A3B8" }}>
-                    No se encontraron items para esta localidad
+                    No se encontraron subestaciones para esta localidad
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {flow.step === "detail" && (
+          <div style={styles.card}>
+            <h2 style={styles.heading}>SELECCIONAR ESTRUCTURA</h2>
+            <input
+              placeholder="Filtrar por estructura..."
+              value={flow.detailSearch}
+              onChange={(event) => flow.setDetailSearch(event.target.value)}
+              style={styles.input}
+            />
+            <div style={styles.scrollableY}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {flow.filteredStructures.length > 0 ? (
+                  flow.filteredStructures.map((structure) => (
+                    <button
+                      key={structure}
+                      onClick={() => flow.selectStructure(structure)}
+                      style={{
+                        ...selectionCardStyle,
+                        padding: "16px",
+                      }}
+                    >
+                      <div style={{ flex: 1, paddingRight: "10px" }}>
+                        <div style={{ fontSize: "13px", fontWeight: "700", color: "#1E293B" }}>
+                          {structure}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
+                          {flow.selectedSubstation || selectedLocalityName || "Localidad"}
+                        </div>
+                      </div>
+                      {flow.selectedItem && (
+                        <div style={{ backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px" }}>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: "700",
+                              color: "#003366",
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            {flow.selectedItem}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div style={{ padding: "30px", textAlign: "center", color: "#94A3B8" }}>
+                    No se encontraron estructuras
                   </div>
                 )}
               </div>
@@ -293,7 +388,7 @@ export default function ReportFlowPage() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: "14px", fontWeight: "700", color: "#1E293B" }}>{group}</div>
                             <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
-                              {flow.selectedItem || "Item"}
+                              {flow.selectedStructure || "Estructura"}
                             </div>
                           </div>
 
@@ -348,7 +443,7 @@ export default function ReportFlowPage() {
                   })
                 ) : (
                   <div style={{ padding: "30px", textAlign: "center", color: "#94A3B8" }}>
-                    No se encontraron grupos para este item
+                    No se encontraron grupos para esta estructura
                   </div>
                 )}
               </div>
@@ -360,7 +455,7 @@ export default function ReportFlowPage() {
           <div style={styles.card}>
             <h2 style={styles.heading}>SELECCIONAR ACTIVIDAD</h2>
             <p style={{ fontSize: "12px", color: "#64748B", margin: "-6px 0 16px" }}>
-              Los conductores mostrarán la longitud en metros (m.) del vano.
+              Los conductores mostraran la longitud en metros (m.) del vano.
             </p>
             <div style={styles.scrollableY}>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -376,7 +471,7 @@ export default function ReportFlowPage() {
                           {activity.Nombre_Actividad}
                         </div>
                         <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
-                          {activity.Grupo || "Sin grupo"} / {activity.Item || "Sin item"}
+                          {activity.Grupo || "Sin grupo"} / {flow.selectedStructure || "Sin estructura"}
                         </div>
                       </div>
                     </button>
@@ -391,74 +486,26 @@ export default function ReportFlowPage() {
           </div>
         )}
 
-        {flow.step === "detail" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>Seleccionar N° Estructura</h2>
-            <input
-              placeholder="Filtrar por detalle..."
-              value={flow.detailSearch}
-              onChange={(event) => flow.setDetailSearch(event.target.value)}
-              style={styles.input}
-            />
-            <div style={styles.scrollableY}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {flow.filteredDetails.length > 0 ? (
-                  flow.filteredDetails.map((detail) => (
-                    <button
-                      key={detail.ID_DetallesActividad}
-                      onClick={() => flow.selectDetail(detail)}
-                      style={{
-                        ...selectionCardStyle,
-                        padding: "16px",
-                      }}
-                    >
-                      <div style={{ flex: 1, paddingRight: "10px" }}>
-                        <div style={{ fontSize: "13px", fontWeight: "700", color: "#1E293B" }}>
-                          {detail.Nombre_Detalle}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
-                          {detail.activityName}
-                          {detail.activityGroup ? ` / ${detail.activityGroup}` : ""}
-                        </div>
-                      </div>
-                      {detail.activityItem && (
-                        <div style={{ backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px" }}>
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: "700",
-                              color: "#003366",
-                              fontFamily: "monospace",
-                            }}
-                          >
-                            {detail.activityItem}
-                          </span>
-                        </div>
-                      )}
-                    </button>
-                  ))
-                ) : (
-                  <div style={{ padding: "30px", textAlign: "center", color: "#94A3B8" }}>Sin resultados</div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {flow.step === "confirm" && (
           <ActivityConfirmationScreen
             selectedProjectName={selectedProjectName ?? null}
+            selectedItem={flow.selectedItem}
             selectedFrontName={selectedFrontName ?? null}
             selectedLocalityName={selectedLocalityName ?? null}
-            selectedItem={flow.selectedItem}
+            selectedSubstation={flow.selectedSubstation}
+            selectedStructureName={flow.selectedStructure ?? flow.selectedDetail?.Nombre_Detalle ?? null}
             selectedGroup={flow.selectedGroup}
             selectedActivity={flow.selectedActivity}
             selectedDetail={flow.selectedDetail}
-            onContinue={() => flow.setStep("map")}
+            onContinue={() => flow.setStep("form")}
           />
         )}
 
-        {(flow.step === "map" || flow.step === "form") && (
+        {flow.step === "map" && (
+          <MapScreen isOnline={flow.isOnline} map={flow.map} />
+        )}
+
+        {flow.step === "form" && (
           <EvidenceFormScreen
             isOnline={flow.isOnline}
             mapUrl={mapUrl}
@@ -501,7 +548,7 @@ export default function ReportFlowPage() {
               Actualizar Datos
             </button>
             <button onClick={flow.handleLogout} style={{ ...styles.btnSecondary, width: "100%", marginTop: "20px" }}>
-              Cerrar Sesión
+              Cerrar Sesion
             </button>
             <button onClick={flow.requestDeleteAccount} style={{ ...styles.btnDanger, width: "100%", marginTop: "20px" }}>
               Eliminar cuenta
@@ -579,6 +626,7 @@ export default function ReportFlowPage() {
         <BottomNav
           step={flow.step}
           onNavHome={flow.handleGoHome}
+          onNavMap={() => flow.setStep("map")}
           onNavRecords={() => flow.setStep("user_records")}
           onNavFiles={() => flow.setStep("files")}
           onNavProfile={() => flow.setStep("profile")}
