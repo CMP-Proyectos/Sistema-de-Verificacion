@@ -30,6 +30,23 @@ const selectionCardStyle = {
   boxSizing: "border-box" as const,
 };
 
+const previousRecordDotStyle: React.CSSProperties = {
+  width: "7px",
+  height: "7px",
+  borderRadius: "999px",
+  backgroundColor: "#22C55E",
+  boxShadow: "0 0 0 1px #DCFCE7",
+  flexShrink: 0,
+};
+
+const PreviousRecordDot = () => (
+  <span
+    aria-hidden="true"
+    title="Tiene registros previos"
+    style={previousRecordDotStyle}
+  />
+);
+
 export default function ReportFlowPage() {
   const flow = useReportFlow();
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
@@ -372,6 +389,7 @@ export default function ReportFlowPage() {
                   flow.filteredGroups.map((group) => {
                     const isExpanded = Boolean(flow.expandedGroups[group]);
                     const previewActivities = flow.groupActivityPreviewMap[group] || [];
+                    const hasPreviousRecords = flow.groupsWithPreviousRecords.has(group);
 
                     return (
                       <button
@@ -392,28 +410,32 @@ export default function ReportFlowPage() {
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              flow.toggleGroupExpanded(group);
-                            }}
-                            style={{
-                              border: "1px solid #CBD5E1",
-                              backgroundColor: "#F8FAFC",
-                              color: "#334155",
-                              borderRadius: "6px",
-                              width: "34px",
-                              height: "34px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer",
-                              flexShrink: 0,
-                            }}
-                          >
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                            {hasPreviousRecords && <PreviousRecordDot />}
+
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                flow.toggleGroupExpanded(group);
+                              }}
+                              style={{
+                                border: "1px solid #CBD5E1",
+                                backgroundColor: "#F8FAFC",
+                                color: "#334155",
+                                borderRadius: "6px",
+                                width: "34px",
+                                height: "34px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          </div>
                         </div>
 
                         {isExpanded && (
@@ -460,22 +482,28 @@ export default function ReportFlowPage() {
             <div style={styles.scrollableY}>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {flow.filteredActivities.length > 0 ? (
-                  flow.filteredActivities.map((activity) => (
-                    <button
-                      key={activity.ID_Actividad}
-                      onClick={() => flow.selectActivity(activity.ID_Actividad)}
-                      style={selectionCardStyle}
-                    >
-                      <div style={{ flex: 1, paddingRight: "10px" }}>
-                        <div style={{ fontSize: "13px", fontWeight: "700", color: "#1E293B" }}>
-                          {activity.Nombre_Actividad}
+                  flow.filteredActivities.map((activity) => {
+                    const hasPreviousRecords = flow.activitiesWithPreviousRecords.has(activity.ID_Actividad);
+
+                    return (
+                      <button
+                        key={activity.ID_Actividad}
+                        onClick={() => flow.selectActivity(activity.ID_Actividad)}
+                        style={selectionCardStyle}
+                      >
+                        <div style={{ flex: 1, paddingRight: "10px" }}>
+                          <div style={{ fontSize: "13px", fontWeight: "700", color: "#1E293B" }}>
+                            {activity.Nombre_Actividad}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
+                            {activity.Grupo || "Sin grupo"} / {flow.selectedStructure || "Sin estructura"}
+                          </div>
                         </div>
-                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px" }}>
-                          {activity.Grupo || "Sin grupo"} / {flow.selectedStructure || "Sin estructura"}
-                        </div>
-                      </div>
-                    </button>
-                  ))
+
+                        {hasPreviousRecords && <PreviousRecordDot />}
+                      </button>
+                    );
+                  })
                 ) : (
                   <div style={{ padding: "30px", textAlign: "center", color: "#94A3B8" }}>
                     No se encontraron actividades para este grupo

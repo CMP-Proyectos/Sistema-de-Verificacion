@@ -56,6 +56,7 @@ export function useReportFlow() {
   });
 
   const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
+  const [cachedHistoryDetailIds, setCachedHistoryDetailIds] = useState<number[]>([]);
 
   useEffect(() => {
     const checkPreviousRecord = async () => {
@@ -75,6 +76,47 @@ export function useReportFlow() {
   }, [catalog.selectedDetail, session.isOnline]);
 
   const isAlreadyRegistered = !!previousRecord;
+  const loadCachedHistoryDetailIds = useCallback(async () => {
+    try {
+      const cachedRecords = await db.history_cache.toArray();
+      const detailIds = Array.from(
+        new Set(
+          cachedRecords
+            .map((record) => record.id_detalle)
+            .filter((detailId) => Number.isFinite(detailId) && detailId > 0)
+        )
+      );
+      setCachedHistoryDetailIds(detailIds);
+    } catch (error) {
+      console.error("Error leyendo history_cache:", error);
+      setCachedHistoryDetailIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session.sessionUser) {
+      setCachedHistoryDetailIds([]);
+    }
+  }, [session.sessionUser]);
+
+  const historyDetailIdSet = records.hasLoadedUserRecords
+    ? new Set(
+        records.userRecords
+          .map((record) => record.id_detalle)
+          .filter((detailId): detailId is number => Number.isFinite(detailId))
+      )
+    : new Set(cachedHistoryDetailIds);
+
+  const groupsWithPreviousRecords = new Set<string>();
+  const activitiesWithPreviousRecords = new Set<number>();
+  catalog.detailsForCurrentStructure.forEach((detail) => {
+    if (!historyDetailIdSet.has(detail.ID_DetallesActividad)) return;
+
+    activitiesWithPreviousRecords.add(detail.ID_Actividad);
+    if (detail.activityGroup) {
+      groupsWithPreviousRecords.add(detail.activityGroup);
+    }
+  });
 
   const syncPendingUploads = useCallback(async () => {
       try {
@@ -204,8 +246,12 @@ export function useReportFlow() {
         }
 
         await catalog.loadProjectsLocal();
+        await loadCachedHistoryDetailIds();
         bootstrappedSessionUserIdRef.current = user.id;
         setStep("project");
+        if (session.isOnline) {
+          void records.loadUserRecords();
+        }
 
         if (syncStatus !== "success") {
           console.info("[AUTH FLOW] Entrada completada con cache local preservado", {
@@ -218,6 +264,7 @@ export function useReportFlow() {
         console.error("[AUTH FLOW] Bootstrap autenticado fallo; usando cache local si existe", error);
         try {
           await catalog.loadProjectsLocal();
+          await loadCachedHistoryDetailIds();
           bootstrappedSessionUserIdRef.current = user.id;
           setStep("project");
           showToast(
@@ -243,7 +290,7 @@ export function useReportFlow() {
 
     bootstrapInFlightRef.current = runBootstrap();
     await bootstrapInFlightRef.current;
-  }, [catalog, recovery.isRecoveryContextActive, session, syncPendingUploads]);
+  }, [catalog, loadCachedHistoryDetailIds, records.loadUserRecords, recovery.isRecoveryContextActive, session, syncPendingUploads]);
 
   useEffect(() => {
     if (!recovery.hasResolvedInitialCheck || !session.hasResolvedInitialSession) {
@@ -630,11 +677,13 @@ export function useReportFlow() {
     selectedGroup: catalog.selectedGroup,
     expandedGroups: catalog.expandedGroups,
     groupActivityPreviewMap: catalog.groupActivityPreviewMap,
+    groupsWithPreviousRecords,
     toggleGroupExpanded: catalog.toggleGroupExpanded,
 
     selectedDetail: catalog.selectedDetail,
     selectedActivity: catalog.selectedActivity,
     filteredActivities: catalog.filteredActivities,
+    activitiesWithPreviousRecords,
     detailSearch: catalog.detailSearch,
     setDetailSearch: catalog.setDetailSearch,
 

@@ -72,14 +72,78 @@ const buildRecordMeta = (label: string, value: string | null | undefined) => (
       border: "1px solid #E2E8F0",
       borderRadius: "8px",
       padding: "12px",
+      minWidth: 0,
     }}
   >
     <div style={{ ...styles.label, marginBottom: "4px" }}>{label}</div>
-    <div style={{ ...styles.text, fontSize: "13px" }}>{value || "---"}</div>
+    <div style={{ ...styles.text, fontSize: "13px", overflowWrap: "anywhere" }}>{value || "---"}</div>
   </div>
 );
 
 export const MapScreen = ({ isOnline, map }: Props) => {
+  const mapCardStyle: React.CSSProperties = {
+    ...styles.card,
+    maxHeight: "none",
+    overflow: "visible",
+    minHeight: 0,
+  };
+
+  const mapDetailCardStyle: React.CSSProperties = {
+    ...mapCardStyle,
+    padding: "16px",
+    gap: "14px",
+  };
+
+  const selectedRecordCardStyle: React.CSSProperties = {
+    border: "1px solid #E2E8F0",
+    borderRadius: "12px",
+    backgroundColor: "#FFFFFF",
+    padding: "16px",
+    boxSizing: "border-box",
+    width: "100%",
+    minWidth: 0,
+  };
+
+  const selectedRecordGridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: "16px",
+    alignItems: "start",
+    minWidth: 0,
+  };
+
+  const selectedRecordImageCardStyle: React.CSSProperties = {
+    borderRadius: "12px",
+    overflow: "hidden",
+    backgroundColor: "#F8FAFC",
+    border: "1px solid #E2E8F0",
+    minHeight: "220px",
+    maxHeight: "360px",
+    aspectRatio: "4 / 3",
+    minWidth: 0,
+  };
+
+  const selectedRecordImageStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
+  };
+
+  const selectedRecordContentStyle: React.CSSProperties = {
+    display: "grid",
+    gap: "12px",
+    minWidth: 0,
+    alignContent: "start",
+  };
+
+  const selectedRecordMetaGridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "12px",
+    minWidth: 0,
+  };
+
   const projectOptions = map.projects.map((project) => ({
     value: String(project.ID_Proyectos),
     label: project.Proyecto_Nombre,
@@ -118,7 +182,7 @@ export const MapScreen = ({ isOnline, map }: Props) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      <div style={styles.card}>
+      <div style={mapCardStyle}>
         <div style={{ ...styles.flexBetween, gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
           <div>
             <h2 style={{ ...styles.heading, marginBottom: "6px", borderBottom: "none", paddingBottom: 0 }}>
@@ -276,7 +340,7 @@ export const MapScreen = ({ isOnline, map }: Props) => {
         </div>
       </div>
 
-      <div style={{ ...styles.card, padding: "16px", gap: "14px" }}>
+      <div style={mapDetailCardStyle}>
         <div style={{ ...styles.flexBetween, flexWrap: "wrap", gap: "10px" }}>
           <div>
             <div style={{ fontSize: "13px", fontWeight: "700", color: "#0F172A" }}>
@@ -323,14 +387,7 @@ export const MapScreen = ({ isOnline, map }: Props) => {
         </div>
 
         {map.selectedRecord && (
-          <div
-            style={{
-              border: "1px solid #E2E8F0",
-              borderRadius: "12px",
-              backgroundColor: "#FFFFFF",
-              padding: "16px",
-            }}
-          >
+          <div style={selectedRecordCardStyle}>
             <div style={{ ...styles.flexBetween, gap: "12px", alignItems: "flex-start", marginBottom: "16px" }}>
               <div>
                 <div style={{ ...styles.label, marginBottom: "4px" }}>Registro seleccionado</div>
@@ -351,58 +408,56 @@ export const MapScreen = ({ isOnline, map }: Props) => {
               </button>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: "16px",
-              }}
-            >
-              <div
-                style={{
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  backgroundColor: "#F8FAFC",
-                  border: "1px solid #E2E8F0",
-                  minHeight: "220px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+            <div style={selectedRecordGridStyle}>
+              <div style={selectedRecordImageCardStyle}>
                 {map.selectedRecord.url_foto ? (
                   <img
                     src={map.selectedRecord.url_foto}
                     alt="Evidencia del registro"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={selectedRecordImageStyle}
                   />
                 ) : (
-                  <div style={{ fontSize: "12px", color: "#94A3B8", fontWeight: "700" }}>SIN IMAGEN</div>
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      color: "#94A3B8",
+                      fontWeight: "700",
+                    }}
+                  >
+                    SIN IMAGEN
+                  </div>
                 )}
               </div>
 
-              <div style={{ display: "grid", gap: "12px" }}>
+              <div style={selectedRecordContentStyle}>
                 <div
                   style={{
                     backgroundColor: "#F8FAFC",
                     border: "1px solid #E2E8F0",
                     borderRadius: "8px",
                     padding: "12px",
+                    minWidth: 0,
                   }}
                 >
                   <div style={styles.label}>Comentario</div>
-                  <div style={{ ...styles.text, fontSize: "13px", color: map.selectedRecord.comentario ? "#334155" : "#94A3B8" }}>
+                  <div
+                    style={{
+                      ...styles.text,
+                      fontSize: "13px",
+                      color: map.selectedRecord.comentario ? "#334155" : "#94A3B8",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
                     {map.selectedRecord.comentario || "Sin observaciones registradas."}
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                    gap: "12px",
-                  }}
-                >
+                <div style={selectedRecordMetaGridStyle}>
                   {buildRecordMeta("Proyecto", map.selectedRecord.nombre_proyecto)}
                   {buildRecordMeta("Seccion", map.selectedRecord.nombre_item)}
                   {buildRecordMeta("Frente", map.selectedRecord.nombre_frente)}

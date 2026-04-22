@@ -390,6 +390,7 @@ export function useCatalogFlow(isOnline: boolean) {
     hasSubstationsForCurrentSelection,
     structures,
     filteredStructures,
+    detailsForCurrentStructure,
     groups,
     filteredGroups,
     filteredActivities,
