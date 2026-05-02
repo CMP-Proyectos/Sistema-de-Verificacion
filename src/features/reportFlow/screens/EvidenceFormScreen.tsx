@@ -86,7 +86,7 @@ export const EvidenceFormScreen = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: '32px' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', ...styles.scrollSafeBottom }}>
         {previousRecord && (
         <div style={{
           ...formCardStyle,

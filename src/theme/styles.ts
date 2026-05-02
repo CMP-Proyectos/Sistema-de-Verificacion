@@ -39,19 +39,25 @@ const baseInput: React.CSSProperties = {
     backgroundColor: palette.white, // Fondo siempre blanco (#FFFFFF)
 };
 
+export const BOTTOM_TAB_HEIGHT = 84;
+export const BOTTOM_TAB_SAFE_PADDING = `calc(${BOTTOM_TAB_HEIGHT}px + env(safe-area-inset-bottom, 0px) + 24px)`;
+export const SELECTION_HEADER_RESERVED_SPACE = 44;
+
 // =============================================================================
 // BLOQUE A: ESTILOS GLOBALES
 // =============================================================================
 export const styles: Record<string, React.CSSProperties> = {
   // --- LAYOUT ---
   page: { minHeight: "100vh", backgroundColor: palette.background, fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: palette.slateDark, display: "flex", flexDirection: "column", overflow: "hidden" },
-  container: { maxWidth: "960px", width: "100%", margin: "0 auto", padding: "24px 20px 96px 20px", flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
-  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "66vh", paddingRight: "6px", scrollbarWidth: "thin", paddingBottom: "100px" },
+  container: { maxWidth: "960px", width: "100%", margin: "0 auto", padding: `24px 20px ${BOTTOM_TAB_SAFE_PADDING} 20px`, flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
+  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "66vh", paddingRight: "6px", scrollbarWidth: "thin", paddingBottom: BOTTOM_TAB_SAFE_PADDING },
+  scrollSafeBottom: { paddingBottom: BOTTOM_TAB_SAFE_PADDING },
 
   // --- COMPONENTES BASE ---
   card: { backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "22px", padding: "24px", boxShadow: "0 1px 2px rgba(15,23,42,0.04)", marginBottom: "20px", display: "flex", flexDirection: "column", maxHeight: "85vh" },
   section: { marginBottom: "28px", display: "flex", flexDirection: "column", gap: "16px" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "12px", flexWrap: "wrap" },
+  selectionHeaderSpacer: { height: `${SELECTION_HEADER_RESERVED_SPACE}px`, flexShrink: 0 },
   panel: { backgroundColor: "rgba(255,255,255,0.72)", border: `1px solid ${palette.border}`, borderRadius: "22px", padding: "20px", boxShadow: "none" },
 
   // --- NAV ---
@@ -101,7 +107,7 @@ export const styles: Record<string, React.CSSProperties> = {
   modalCard: { backgroundColor: palette.white, width: "90%", maxWidth: "400px", padding: "24px", borderRadius: "6px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" },
   detailOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#F4F7F9", zIndex: 3000, display: "flex", flexDirection: "column", overflow: "hidden" },
   detailHeader: { padding: "16px 20px", backgroundColor: "#FFFFFF", borderBottom: "1px solid #CBD5E1", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", zIndex: 10 },
-  detailContent: { flex: 1, overflowY: "auto", padding: "20px 20px 100px 20px", maxWidth: "800px", width: "100%", margin: "0 auto", boxSizing: "border-box" },
+  detailContent: { flex: 1, overflowY: "auto", padding: `20px 20px ${BOTTOM_TAB_SAFE_PADDING} 20px`, maxWidth: "800px", width: "100%", margin: "0 auto", boxSizing: "border-box" },
   backArrowBtn: { background: "transparent", border: "1px solid #CBD5E1", borderRadius: "4px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "#334155", cursor: "pointer", transition: "background 0.2s" }
 };
 

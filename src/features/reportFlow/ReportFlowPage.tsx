@@ -126,6 +126,8 @@ export default function ReportFlowPage() {
 
         {flow.step === "project" && (
           <>
+            <div aria-hidden="true" style={styles.selectionHeaderSpacer} />
+
             {hasProjects && (
               <>
                 <SelectionScreen
@@ -200,12 +202,6 @@ export default function ReportFlowPage() {
         {flow.step === "item" && (
           <div style={styles.section}>
             <h2 style={styles.heading}>Seleccionar sección</h2>
-            <input
-              placeholder="Buscar sección..."
-              value={flow.itemSearch}
-              onChange={(event) => flow.setItemSearch(event.target.value)}
-              style={styles.input}
-            />
 
             <div style={styles.scrollableY}>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

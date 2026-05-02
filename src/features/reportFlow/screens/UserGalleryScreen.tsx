@@ -149,7 +149,7 @@ export const UserGalleryScreen = ({
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
                     gap: '16px',
-                    paddingBottom: '40px',
+                    ...styles.scrollSafeBottom,
                     marginTop: '20px'
                 }}>
                     <button

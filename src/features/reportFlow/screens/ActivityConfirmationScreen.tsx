@@ -72,7 +72,7 @@ export const ActivityConfirmationScreen: React.FC<Props> = ({
     >
       <h2 style={{ ...styles.heading, flexShrink: 0 }}>CONFIRMAR SELECCION</h2>
 
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingRight: "4px" }}>
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingRight: "4px", ...styles.scrollSafeBottom }}>
         <div
           style={{
             padding: "20px",
