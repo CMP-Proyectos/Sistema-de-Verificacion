@@ -1,6 +1,6 @@
 import React from 'react';
 import { styles } from '../../../theme/styles';
-import { UserRecord } from '../types';
+import type { UserRecord } from '../../../types/records.types';
 
 interface Props {
   records: UserRecord[];
@@ -14,7 +14,7 @@ interface Props {
 export const UserGalleryScreen = ({
     records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit
 }: Props) => {
-  const buildCombinedLabel = (...values: Array<string | null | undefined>) => {
+  const buildCombinedLabel = (...values: (string | null | undefined)[]) => {
     const filteredValues = values.map((value) => value?.trim()).filter(Boolean);
     return filteredValues.length > 0 ? filteredValues.join(" - ") : "Sin información";
   };

@@ -1,6 +1,13 @@
 import { supabase } from "./supabaseClient";
 import { db } from "./db_local";
-import type { UserRecord } from "../features/reportFlow/types";
+import type {
+  CheckedActivityRow,
+  CreateRegistroPayload,
+  RecordImageCountRow,
+  RegistroImagenPayload,
+  RegistroRow,
+  UserRecord,
+} from "../types/records.types";
 
 export { supabase };
 
@@ -382,28 +389,10 @@ export const createCheckedActivity = async (payload: {
   };
 };
 
-export const createRegistro = async (payload: {
-  Nombre_Archivo: string;
-  URL_Archivo: string;
-  user_id: string;
-  ID_Verificada?: number | null;
-  Comentario: string | null;
-  Ruta_Archivo: string;
-  Bucket: string;
-}) => {
+export const createRegistro = async (payload: CreateRegistroPayload) => {
   const { data, error } = await supabase.from("Registros").insert(payload).select();
   if (error) throw error;
   return { data, error };
-};
-
-export type RegistroImagenPayload = {
-  ID_Registro: number;
-  Orden: number;
-  Nombre_Archivo: string;
-  URL_Archivo: string;
-  Ruta_Archivo: string;
-  Bucket: string;
-  Es_Principal: boolean;
 };
 
 export const createRegistroImagenes = async (payload: RegistroImagenPayload[]) => {
@@ -412,32 +401,12 @@ export const createRegistroImagenes = async (payload: RegistroImagenPayload[]) =
   return { data, error };
 };
 
-type RegistroRow = {
-  ID_Registros: number;
-  Fecha_Subida: string;
-  URL_Archivo: string | null;
-  Comentario: string | null;
-  Ruta_Archivo: string | null;
-  Bucket: string | null;
-  ID_Verificada: number | null;
-  user_id: string | null;
-  id_proyecto: number | null;
-};
-
-type CheckedActivityRow = {
-  ID_Verificada: number;
-  ID_DetallesActividad: number | null;
-  Latitud: number | null;
-  Longitud: number | null;
-  Cantidad: number | null;
-};
-
 export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> => {
   if (!userId) return [];
 
   const { data: registros, error: registrosError } = await supabase
     .from("Registros")
-    .select("ID_Registros, Fecha_Subida, URL_Archivo, Comentario, Ruta_Archivo, Bucket, ID_Verificada, user_id, id_proyecto")
+    .select("ID_Registros, Fecha_Subida, URL_Archivo, Comentario, Ruta_Archivo, Bucket, ID_Verificada, user_id, id_proyecto, Ohms")
     .eq("user_id", userId)
     .order("Fecha_Subida", { ascending: false });
 
@@ -474,8 +443,8 @@ export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> =>
 
     if (imageError) throw imageError;
 
-    for (const row of imageRows || []) {
-      const recordId = row.ID_Registro as number | null | undefined;
+    for (const row of (imageRows || []) as RecordImageCountRow[]) {
+      const recordId = row.ID_Registro;
       if (!recordId) continue;
       imageCountByRecordId.set(recordId, (imageCountByRecordId.get(recordId) || 0) + 1);
     }
@@ -529,6 +498,7 @@ export const fetchUserRecords = async (userId: string): Promise<UserRecord[]> =>
       nombre_frente: front?.Nombre_Frente,
       total_imagenes: imageCountByRecordId.get(record.ID_Registros) || (record.URL_Archivo ? 1 : 0),
       cantidad: checked?.Cantidad ?? 0,
+      ohms: record.Ohms ?? null,
     };
   });
 
@@ -602,6 +572,7 @@ const normalizeGlobalMapRow = (row: GlobalMapRpcRow): MapRecord | null => {
   const nombreSubestacion = toNullableString(
     getValueByAliases(row, ["nombre_subestacion", "subestacion", "Subestacion"])
   );
+  const ohms = toNullableNumber(getValueByAliases(row, ["ohms", "Ohms", "OHMS"]));
 
   if (!idRegistro || !fechaSubida || !nombreLocalidad || !nombreDetalle || !nombreActividad) {
     return null;
@@ -641,6 +612,7 @@ const normalizeGlobalMapRow = (row: GlobalMapRpcRow): MapRecord | null => {
       getValueByAliases(row, ["total_imagenes", "imagenes", "cantidad_imagenes"])
     ) || 0,
     cantidad: toNullableNumber(getValueByAliases(row, ["cantidad", "Cantidad"])) || 0,
+    ohms,
     source: "global",
   };
 };
@@ -742,7 +714,7 @@ export const fetchHistoryForDetail = async (detailId: number) => {
         return data;
       }
     }
-  } catch (e) {
+  } catch {
     console.warn("Fallo red buscando historial, intentando local...");
   }
 

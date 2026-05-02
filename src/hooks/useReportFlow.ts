@@ -1,16 +1,20 @@
-﻿import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  uploadEvidence,
-  createCheckedActivity,
-  createRegistro,
-  createRegistroImagenes,
   fetchHistoryForDetail,
   syncHistoryToLocal,
   isNetworkUnavailableError,
   joinProjectWithCode,
 } from "../services/dataService";
-import { db, PendingRecord } from "../services/db_local";
+import { db } from "../services/db_local";
+import {
+  createPendingReportPayload,
+  getPendingReports,
+  savePendingReport,
+  syncPendingReports,
+} from "../services/offlineSyncService";
+import { saveReportOnline } from "../repositories/reports.repository";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
+import { isPuestaTierra, parseOhmsValue } from "../utils/activity";
 
 import { useSessionFlow } from "./flow/useSessionFlow";
 import type { SessionUser } from "./flow/useSessionFlow";
@@ -43,24 +47,31 @@ export function useReportFlow() {
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
   const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
+  const { isOnline, sessionUser, hasResolvedInitialSession } = session;
+  const { loadProfileData } = session;
+  const { loadUserRecords } = records;
+  const {
+    isRecoveryContextActive,
+    hasResolvedInitialCheck,
+  } = recovery;
   const map = useMapFlow({
     isActive: step === "map",
-    isOnline: session.isOnline,
-    sessionUserId: session.sessionUser?.id,
+    isOnline,
+    sessionUserId: sessionUser?.id,
     projects: catalog.projects,
     activities: catalog.activities,
     userRecords: records.userRecords,
     isLoadingUserRecords: records.isLoadingRecords,
-    loadUserRecords: records.loadUserRecords,
+    loadUserRecords,
     showToast,
   });
 
-  const syncStatus = session.isOnline ? "ONLINE" : "OFFLINE";
+  const syncStatus = isOnline ? "ONLINE" : "OFFLINE";
   const [cachedHistoryDetailIds, setCachedHistoryDetailIds] = useState<number[]>([]);
 
   useEffect(() => {
     const checkPreviousRecord = async () => {
-      if (!catalog.selectedDetail || !session.isOnline) {
+      if (!catalog.selectedDetail || !isOnline) {
         setPreviousRecord(null);
         return;
       }
@@ -73,7 +84,7 @@ export function useReportFlow() {
       }
     };
     checkPreviousRecord();
-  }, [catalog.selectedDetail, session.isOnline]);
+  }, [catalog.selectedDetail, isOnline]);
 
   const isAlreadyRegistered = !!previousRecord;
   const loadCachedHistoryDetailIds = useCallback(async () => {
@@ -94,10 +105,10 @@ export function useReportFlow() {
   }, []);
 
   useEffect(() => {
-    if (!session.sessionUser) {
+    if (!sessionUser) {
       setCachedHistoryDetailIds([]);
     }
-  }, [session.sessionUser]);
+  }, [sessionUser]);
 
   const historyDetailIdSet = records.hasLoadedUserRecords
     ? new Set(
@@ -120,94 +131,26 @@ export function useReportFlow() {
 
   const syncPendingUploads = useCallback(async () => {
       try {
-          if (!session.sessionUser || !session.isOnline) {
-              if (session.sessionUser && !session.isOnline) {
+          if (!sessionUser || !isOnline) {
+              if (sessionUser && !isOnline) {
                   console.info("[SYNC] Pendientes no procesados; conectividad real no disponible");
               }
               return;
           }
-          const count = await db.pendingUploads.count();
+          const pendingReports = await getPendingReports();
+          const count = pendingReports.length;
           if(count > 0) {
               showToast(`Subiendo ${count} pendientes...`, "info");
-              const recs = await db.pendingUploads.toArray();
-
-               for(const r of recs) {
-                   try {
-                       console.log("[SYNC] Procesando:", r.meta.fileName || r.meta.fileNames?.[0]);
-                       const targetBucket = MASTER_BUCKET;
-                       const offlineFiles = (r.evidenceBlobs && r.evidenceBlobs.length > 0)
-                         ? r.evidenceBlobs.map((blob, index) => ({
-                             blob,
-                             fileName: r.meta.fileNames?.[index] || `offline_${r.timestamp}_${index + 1}.jpg`,
-                             fullPath: r.meta.fullPaths?.[index] || r.meta.fullPath || `pendiente/${r.timestamp}_${index + 1}.jpg`,
-                             fileType: r.fileTypes?.[index] || "image/jpeg",
-                           }))
-                         : (r.evidenceBlob && r.meta.fileName && r.meta.fullPath)
-                           ? [{
-                               blob: r.evidenceBlob,
-                               fileName: r.meta.fileName,
-                               fullPath: r.meta.fullPath,
-                               fileType: r.fileType || "image/jpeg",
-                             }]
-                           : [];
-
-                       if (offlineFiles.length === 0) {
-                         throw new Error("Registro offline sin imagenes");
-                       }
-
-                       const uploadedImages = [];
-                       for (const [index, image] of offlineFiles.entries()) {
-                         const pub = await uploadEvidence(targetBucket, image.fullPath, image.blob, image.fileType);
-                         uploadedImages.push({
-                           Orden: index + 1,
-                           Nombre_Archivo: image.fileName,
-                           URL_Archivo: pub,
-                           Ruta_Archivo: image.fullPath,
-                           Bucket: targetBucket,
-                           Es_Principal: index === 0,
-                         });
-                       }
-
-                       const chk = await createCheckedActivity({
-                           ID_DetallesActividad: r.meta.detailId,
-                          Latitud: r.meta.lat,
-                          Longitud: r.meta.lng,
-                          Cantidad: 0
-                       });
-
-                       const mainImage = uploadedImages[0];
-                       const regData = await createRegistro({
-                           Nombre_Archivo: mainImage.Nombre_Archivo,
-                           URL_Archivo: mainImage.URL_Archivo,
-                            user_id: r.meta.userId,
-                            ID_Verificada: chk.ID_Verificada,
-                            Comentario: r.meta.comment,
-                            Ruta_Archivo: mainImage.Ruta_Archivo,
-                            Bucket: targetBucket
-                        });
-
-                       const registroId = regData.data?.[0]?.ID_Registros;
-                       if (registroId) {
-                         await createRegistroImagenes(
-                           uploadedImages.map((image) => ({
-                             ID_Registro: registroId,
-                             ...image,
-                           }))
-                         );
-                       }
-
-                      if(r.id) await db.pendingUploads.delete(r.id);
-                  } catch (err: any) { console.error(`[SYNC ERROR]`, err); }
-              }
-              await records.loadUserRecords();
+              await syncPendingReports(pendingReports, MASTER_BUCKET);
+              await loadUserRecords();
               showToast("Sincronización finalizada", "success");
           }
       } catch (e) { console.error("[SYNC FATAL]", e); }
-  }, [records.loadUserRecords, session.isOnline, session.sessionUser]);
+  }, [isOnline, loadUserRecords, sessionUser]);
 
   useEffect(() => {
-      if (session.isOnline) syncPendingUploads();
-  }, [session.isOnline, syncPendingUploads]);
+      if (isOnline) syncPendingUploads();
+  }, [isOnline, syncPendingUploads]);
 
   const bootstrappedSessionUserIdRef = useRef<string | null>(null);
   const bootstrapInFlightRef = useRef<Promise<void> | null>(null);
@@ -228,15 +171,15 @@ export function useReportFlow() {
       console.info("[AUTH FLOW] Iniciando bootstrap autenticado", {
         origin,
         userId: user.id,
-        isOnline: session.isOnline,
-        isRecoveryContextActive: recovery.isRecoveryContextActive,
+        isOnline,
+        isRecoveryContextActive,
       });
 
       session.setIsLoading(true);
-      session.setAuthLoadingLabel(session.isOnline ? "SINCRONIZANDO DATOS..." : "RESTAURANDO SESION...");
+      session.setAuthLoadingLabel(isOnline ? "SINCRONIZANDO DATOS..." : "RESTAURANDO SESION...");
 
       try {
-        const syncStatus = session.isOnline ? await catalog.performScopedSync() : "skipped_offline";
+        const syncStatus = isOnline ? await catalog.performScopedSync() : "skipped_offline";
 
         if (syncStatus === "success") {
           await syncHistoryToLocal(user.id);
@@ -249,8 +192,8 @@ export function useReportFlow() {
         await loadCachedHistoryDetailIds();
         bootstrappedSessionUserIdRef.current = user.id;
         setStep("project");
-        if (session.isOnline) {
-          void records.loadUserRecords();
+        if (isOnline) {
+          void loadUserRecords();
         }
 
         if (syncStatus !== "success") {
@@ -268,7 +211,7 @@ export function useReportFlow() {
           bootstrappedSessionUserIdRef.current = user.id;
           setStep("project");
           showToast(
-            session.isOnline
+            isOnline
               ? "Se restauró la sesión con datos locales tras un fallo de sincronización."
               : "Sesión restaurada con datos locales sin conexión.",
             "info"
@@ -290,14 +233,22 @@ export function useReportFlow() {
 
     bootstrapInFlightRef.current = runBootstrap();
     await bootstrapInFlightRef.current;
-  }, [catalog, loadCachedHistoryDetailIds, records.loadUserRecords, recovery.isRecoveryContextActive, session, syncPendingUploads]);
+  }, [
+    catalog,
+    isOnline,
+    isRecoveryContextActive,
+    loadCachedHistoryDetailIds,
+    loadUserRecords,
+    session,
+    syncPendingUploads,
+  ]);
 
   useEffect(() => {
-    if (!recovery.hasResolvedInitialCheck || !session.hasResolvedInitialSession) {
+    if (!hasResolvedInitialCheck || !hasResolvedInitialSession) {
       return;
     }
 
-    if (recovery.isRecoveryContextActive) {
+    if (isRecoveryContextActive) {
       if (step !== "auth") {
         console.info("[AUTH FLOW] Recovery tiene prioridad; manteniendo vista auth", { previousStep: step });
         setStep("auth");
@@ -305,44 +256,56 @@ export function useReportFlow() {
       return;
     }
 
-    if (!session.sessionUser) {
+    if (!sessionUser) {
       bootstrappedSessionUserIdRef.current = null;
       return;
     }
 
-    void bootstrapAuthenticatedUser(session.sessionUser, "session-restore");
+    void bootstrapAuthenticatedUser(sessionUser, "session-restore");
   }, [
     bootstrapAuthenticatedUser,
-    recovery.hasResolvedInitialCheck,
-    recovery.isRecoveryContextActive,
-    session.hasResolvedInitialSession,
-    session.sessionUser,
+    hasResolvedInitialCheck,
+    hasResolvedInitialSession,
+    isRecoveryContextActive,
+    sessionUser,
     step,
   ]);
 
   useEffect(() => {
-    if (!recovery.hasResolvedInitialCheck || !session.hasResolvedInitialSession || recovery.isRecoveryContextActive) {
+    if (!hasResolvedInitialCheck || !hasResolvedInitialSession || isRecoveryContextActive) {
       return;
     }
 
-    if (!session.sessionUser && step !== "auth") {
+    if (!sessionUser && step !== "auth") {
       console.info("[AUTH FLOW] No hay sesion activa; regresando a auth", { previousStep: step });
       setStep("auth");
     }
   }, [
-    recovery.hasResolvedInitialCheck,
-    recovery.isRecoveryContextActive,
-    session.hasResolvedInitialSession,
-    session.sessionUser,
+    hasResolvedInitialCheck,
+    hasResolvedInitialSession,
+    isRecoveryContextActive,
+    sessionUser,
     step,
   ]);
 
+  const previousStepRef = useRef<Step | null>(null);
   useEffect(() => {
-    if ((step === "profile" || step === "user_records" || step === "files") && session.sessionUser) {
-        if(step === "profile") session.loadProfileData();
-        else records.loadUserRecords();
+    const previousStep = previousStepRef.current;
+    previousStepRef.current = step;
+
+    if (!sessionUser || previousStep === step) {
+      return;
     }
-  }, [step, session.sessionUser, records.loadUserRecords]);
+
+    if (step === "profile") {
+      void loadProfileData();
+      return;
+    }
+
+    if (step === "user_records" || step === "files") {
+      void loadUserRecords();
+    }
+  }, [loadProfileData, loadUserRecords, sessionUser, step]);
 
   const handleGoHome = () => {
       catalog.resetSelection();
@@ -412,6 +375,17 @@ export function useReportFlow() {
     if (evidence.evidenceFiles.length === 0 || !session.sessionUser || !catalog.selectedDetail) return showToast("Faltan datos", "error");
     if (evidence.evidenceFiles.length > MAX_EVIDENCE_IMAGES) return showToast("Maximo 5 imagenes", "error");
 
+    const isPatActivity = isPuestaTierra(catalog.selectedActivity);
+    const parsedOhms = parseOhmsValue(evidence.ohms);
+    if (isPatActivity && parsedOhms === null) {
+      showToast("Ingrese una medicion Ohms valida para PAT", "error");
+      return;
+    }
+    if (isPatActivity && parsedOhms !== null && parsedOhms < 0) {
+      showToast("La medicion Ohms debe ser mayor o igual a 0", "error");
+      return;
+    }
+
     session.setIsLoading(true);
     const timestamp = Date.now();
 
@@ -438,27 +412,24 @@ export function useReportFlow() {
       };
     });
 
-    const buildPendingRecord = (): PendingRecord => ({
-      timestamp,
-      evidenceBlobs: evidenceFiles.map((image) => image.file),
-      fileTypes: evidenceFiles.map(() => "image/jpeg"),
-      meta: {
+    const persistPendingRecord = async (reason: string) => {
+      const pendingRecord = createPendingReportPayload({
+        timestamp,
         bucketName: MASTER_BUCKET,
-        fullPaths: evidenceFiles.map((image) => image.path),
-        fileNames: evidenceFiles.map((image) => image.fileName),
-        fullPath: evidenceFiles[0]?.path,
-        fileName: evidenceFiles[0]?.fileName,
+        evidenceFiles: evidenceFiles.map((image) => ({
+          file: image.file,
+          fileName: image.fileName,
+          path: image.path,
+          fileType: "image/jpeg",
+        })),
         userId: sessionUser.id,
         detailId: selectedDetail.ID_DetallesActividad,
         lat: evidence.gpsLocation?.latitude || selectedDetail.Latitud || 0,
         lng: evidence.gpsLocation?.longitude || selectedDetail.Longitud || 0,
         comment: evidence.note,
-      }
-    });
-
-    const persistPendingRecord = async (reason: string) => {
-      const pendingRecord = buildPendingRecord();
-      await db.pendingUploads.add(pendingRecord);
+        ohms: isPatActivity ? parsedOhms : null,
+      });
+      await savePendingReport(pendingRecord);
       console.info("[SAVE] Registro guardado localmente en pendingUploads", {
         reason,
         timestamp,
@@ -474,44 +445,25 @@ export function useReportFlow() {
         return;
       }
 
-      const checked = await createCheckedActivity({
-        ID_DetallesActividad: selectedDetail.ID_DetallesActividad,
-        Latitud: evidence.gpsLocation?.latitude || selectedDetail.Latitud,
-        Longitud: evidence.gpsLocation?.longitude || selectedDetail.Longitud,
-        Cantidad: 0
+      const saveResult = await saveReportOnline({
+        bucket: MASTER_BUCKET,
+        detailId: selectedDetail.ID_DetallesActividad,
+        lat: evidence.gpsLocation?.latitude || selectedDetail.Latitud,
+        lng: evidence.gpsLocation?.longitude || selectedDetail.Longitud,
+        userId: sessionUser.id,
+        comment: evidence.note,
+        ohms: isPatActivity ? parsedOhms : null,
+        evidenceFiles: evidenceFiles.map((image) => ({
+          file: image.file,
+          order: image.order,
+          fileName: image.fileName,
+          path: image.path,
+          fileType: "image/jpeg",
+        })),
       });
-
-      const uploadedImages = [];
-      for (const image of evidenceFiles) {
-        const pubUrl = await uploadEvidence(MASTER_BUCKET, image.path, image.file, "image/jpeg");
-        uploadedImages.push({
-          Orden: image.order,
-          Nombre_Archivo: image.fileName,
-          URL_Archivo: pubUrl,
-          Ruta_Archivo: image.path,
-          Bucket: MASTER_BUCKET,
-          Es_Principal: image.order === 1,
-        });
-      }
-
-      const mainImage = uploadedImages[0];
-      const regData = await createRegistro({
-          Nombre_Archivo: mainImage.Nombre_Archivo, URL_Archivo: mainImage.URL_Archivo, user_id: sessionUser.id,
-          ID_Verificada: checked.ID_Verificada, Comentario: evidence.note, Ruta_Archivo: mainImage.Ruta_Archivo, Bucket: MASTER_BUCKET
-      });
-
-      const registroId = regData.data?.[0]?.ID_Registros;
-      if (registroId) {
-        await createRegistroImagenes(
-          uploadedImages.map((image) => ({
-            ID_Registro: registroId,
-            ...image,
-          }))
-        );
-      }
       await records.loadUserRecords();
-      if (checked.excedido) {
-        showToast(`Guardado: Se ha superado el metrado (Total: ${checked.acumulado})`, "info");
+      if (saveResult.exceeded) {
+        showToast(`Guardado: Se ha superado el metrado (Total: ${saveResult.accumulated})`, "info");
       } else {
         showToast("Reporte guardado exitosamente", "success");
       }
@@ -692,6 +644,7 @@ export function useReportFlow() {
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
     utmZone: evidence.utmZone, setUtmZone: evidence.setUtmZone, utmEast: evidence.utmEast, setUtmEast: evidence.setUtmEast, utmNorth: evidence.utmNorth, setUtmNorth: evidence.setUtmNorth, handleUpdateFromUtm: evidence.handleUpdateFromUtm,
     evidenceImages: evidence.evidenceImages, evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, removeEvidenceImage: evidence.removeEvidenceImage, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
+    ohms: evidence.ohms, setOhms: evidence.setOhms, isPatActivity: isPuestaTierra(catalog.selectedActivity),
     saveReport, getMapUrl,
     map,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,

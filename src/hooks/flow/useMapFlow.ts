@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { UserRecord } from "../../features/reportFlow/types";
 import { db } from "../../services/db_local";
 import {
   ActivityRecord,
@@ -12,6 +11,7 @@ import {
   MapRecord,
   ProjectRecord,
 } from "../../services/dataService";
+import type { UserRecord } from "../../types/records.types";
 import { buildCatalogHierarchySnapshot, sortByLabel } from "./catalogHierarchy";
 
 export type MapMode = "mine" | "global";

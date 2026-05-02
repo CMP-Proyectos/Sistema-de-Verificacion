@@ -1,5 +1,7 @@
 // src/features/reportFlow/types.ts
 
+export type { UserRecord } from "../../types/records.types";
+
 // Estados de navegación
 export type Step =
     | "auth"
@@ -17,35 +19,6 @@ export type Step =
     | "profile"
     | "user_records"
     | "files";
-
-// Estructura de un registro de usuario (base de datos)
-export interface UserRecord { 
-    id_registro: number; 
-    id_verificada?: number | null;
-    user_id?: string | null;
-    fecha_subida: string; 
-    url_foto: string | null; 
-    nombre_actividad: string; 
-    nombre_localidad: string; 
-    nombre_detalle: string; 
-    nombre_grupo?: string | null;
-    nombre_item?: string | null;
-    nombre_subestacion?: string | null;
-    comentario: string | null; 
-    ruta_archivo: string | null; 
-    bucket: string | null; 
-    latitud: number | null; 
-    longitud: number | null;
-    id_proyecto?: number | null;
-    id_frente?: number | null;
-    id_localidad?: number | null;
-    id_detalle?: number | null;
-    id_actividad?: number | null;
-    nombre_proyecto?: string | null;
-    nombre_frente?: string | null;
-    total_imagenes?: number;
-    cantidad: number;
-}
 
 export interface EvidenceImage {
     id: string;

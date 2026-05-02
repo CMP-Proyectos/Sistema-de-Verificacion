@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import DexieBase, { type Table } from 'dexie';
 // Asegúrate de importar las interfaces correctas desde tu dataService
 import { ProjectRecord, FrontRecord, LocalityRecord, DetailRecord, ActivityRecord } from './dataService';
 
@@ -31,6 +31,7 @@ export interface PendingRecord {
     lat: number;
     lng: number;
     comment: string;
+    ohms?: number | null;
   };
 }
 
@@ -43,7 +44,7 @@ export interface CachedActivityProperty {
   Propiedad: string;
 }
 
-class MyDatabase extends Dexie {
+class MyDatabase extends DexieBase {
   // 1. Definimos las propiedades de la clase para que TypeScript las reconozca
   pendingUploads!: Table<PendingRecord>; 
   catalog_projects!: Table<ProjectRecord>;
