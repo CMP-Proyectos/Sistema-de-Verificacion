@@ -2,6 +2,7 @@ import React from "react";
 import { MapCanvas } from "../components/MapCanvas";
 import { styles } from "../../../theme/styles";
 import type { UseMapFlowResult } from "../../../hooks/flow/useMapFlow";
+import { isPuestaTierra } from "../../../utils/activity";
 
 type Option = {
   value: string;
@@ -25,12 +26,12 @@ type FilterSelectProps = {
 const toggleButtonStyle = (isActive: boolean): React.CSSProperties => ({
   flex: 1,
   height: "42px",
-  borderRadius: "8px",
-  border: isActive ? "1px solid #003366" : "1px solid #CBD5E1",
+  borderRadius: "14px",
+  border: isActive ? "1px solid #003366" : "1px solid rgba(15, 23, 42, 0.08)",
   backgroundColor: isActive ? "#003366" : "#FFFFFF",
   color: isActive ? "#FFFFFF" : "#334155",
   fontSize: "12px",
-  fontWeight: "700",
+  fontWeight: "600",
   cursor: "pointer",
 });
 
@@ -82,21 +83,21 @@ const buildRecordMeta = (label: string, value: string | null | undefined) => (
 
 export const MapScreen = ({ isOnline, map }: Props) => {
   const mapCardStyle: React.CSSProperties = {
-    ...styles.card,
+    ...styles.panel,
     maxHeight: "none",
     overflow: "visible",
     minHeight: 0,
   };
 
   const mapDetailCardStyle: React.CSSProperties = {
-    ...mapCardStyle,
-    padding: "16px",
+    ...styles.section,
+    marginBottom: 0,
     gap: "14px",
   };
 
   const selectedRecordCardStyle: React.CSSProperties = {
     border: "1px solid #E2E8F0",
-    borderRadius: "12px",
+    borderRadius: "22px",
     backgroundColor: "#FFFFFF",
     padding: "16px",
     boxSizing: "border-box",
@@ -170,6 +171,11 @@ export const MapScreen = ({ isOnline, map }: Props) => {
     value: String(activity.ID_Actividad),
     label: activity.Nombre_Actividad,
   }));
+  const selectedRecordIsPat = isPuestaTierra({
+    Grupo: map.selectedRecord?.nombre_grupo,
+    Nombre_Actividad: map.selectedRecord?.nombre_actividad,
+  });
+  const shouldShowOhms = selectedRecordIsPat && map.selectedRecord?.ohms != null;
 
   const emptyMessage =
     map.mode === "global" && !map.selectedProjectId
@@ -193,7 +199,7 @@ export const MapScreen = ({ isOnline, map }: Props) => {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "320px" }}>
+          <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "320px", backgroundColor: "#EEF2F7", borderRadius: "18px", padding: "4px" }}>
             <button type="button" onClick={() => map.setMode("mine")} style={toggleButtonStyle(map.mode === "mine")}>
               Mi mapa
             </button>
@@ -458,6 +464,22 @@ export const MapScreen = ({ isOnline, map }: Props) => {
                 </div>
 
                 <div style={selectedRecordMetaGridStyle}>
+                  {shouldShowOhms && (
+                    <div
+                      style={{
+                        backgroundColor: "#ECFDF5",
+                        border: "1px solid #A7F3D0",
+                        borderRadius: "8px",
+                        padding: "12px",
+                        minWidth: 0,
+                      }}
+                    >
+                      <div style={{ ...styles.label, marginBottom: "4px", color: "#047857" }}>Medición PAT</div>
+                      <div style={{ fontSize: "20px", fontWeight: "800", color: "#065F46" }}>
+                        {map.selectedRecord.ohms} Ω
+                      </div>
+                    </div>
+                  )}
                   {buildRecordMeta("Proyecto", map.selectedRecord.nombre_proyecto)}
                   {buildRecordMeta("Seccion", map.selectedRecord.nombre_item)}
                   {buildRecordMeta("Frente", map.selectedRecord.nombre_frente)}

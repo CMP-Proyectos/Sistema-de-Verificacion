@@ -1,4 +1,4 @@
-﻿import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
 
 export default function Root({ children }: PropsWithChildren) {
@@ -26,7 +26,18 @@ export default function Root({ children }: PropsWithChildren) {
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            html, body, #root {
+              font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: #F6F8FB;
+            }
+            input, textarea, select, button {
+              font-family: inherit;
+            }
+          `,
+        }} />
       </head>
       <body>
         {children}

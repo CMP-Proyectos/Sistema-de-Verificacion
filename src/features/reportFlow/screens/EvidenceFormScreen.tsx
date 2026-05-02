@@ -21,17 +21,21 @@ interface Props {
   onCaptureFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveImage: (imageId: string) => void;
   note: string; setNote: (v: string) => void;
+  ohms: string; setOhms: (v: string) => void;
+  isPatActivity: boolean;
   isLoading: boolean;
   onSave: () => void;
   previousRecord?: any;
 }
+
+type AiFeedbackType = Props['aiFeedback'] extends { type: infer Type } | null ? Type : never;
 
 export const EvidenceFormScreen = ({
   isOnline, mapUrl, displayLat, displayLng,
   isFetchingGps, onCaptureGps,
   utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, onUpdateUtm,
   evidenceImages, evidencePreview, isAnalyzing, aiFeedback, onCaptureFile, onRemoveImage,
-  note, setNote,
+  note, setNote, ohms, setOhms, isPatActivity,
   isLoading, onSave,
   previousRecord
 }: Props) => {
@@ -42,7 +46,8 @@ export const EvidenceFormScreen = ({
     ...styles.card,
     maxHeight: 'none' as const,
     overflow: 'visible' as const,
-    flex: '0 0 auto'
+    flex: '0 0 auto',
+    boxShadow: 'none'
   };
 
   const ensureFieldVisibility = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -66,6 +71,18 @@ export const EvidenceFormScreen = ({
     ...es.uploadBtnLarge,
     ...es.uploadBtnLargeActive
   });
+
+  const getAiStatusLabel = (type?: AiFeedbackType) => {
+    if (type === 'warning') return 'REVIEW_REQUIRED';
+    if (type === 'info') return 'MANUAL_REVIEW';
+    return 'APPROVED';
+  };
+
+  const getAiStatusColor = (type?: AiFeedbackType) => {
+    if (type === 'warning') return '#EF4444';
+    if (type === 'info') return '#F59E0B';
+    return '#10B981';
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -104,7 +121,7 @@ export const EvidenceFormScreen = ({
                 COMENTARIO ANTERIOR
               </label>
               <p style={{ fontSize: '13px', color: '#1E293B', fontWeight: '600', margin: 0, fontStyle: 'italic' }}>
-                "{previousRecord.comentario || 'Sin comentario registrado'}"
+                {previousRecord.comentario || 'Sin comentario registrado'}
               </p>
               <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
                 <p style={{ fontSize: '10px', color: '#94A3B8', margin: 0 }}>
@@ -183,7 +200,7 @@ export const EvidenceFormScreen = ({
         </div>
 
         <div style={formCardStyle}>
-          <h3 style={styles.heading}>2. Evidencia de Campo</h3>
+          <h3 style={styles.subheading}>2. Evidencia de Campo</h3>
 
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
           <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={onCaptureFile} style={{ display: 'none' }} />
@@ -234,11 +251,11 @@ export const EvidenceFormScreen = ({
           )}
 
           {(isAnalyzing || aiFeedback) && (
-            <div style={{ ...es.console, borderLeft: `4px solid ${aiFeedback?.type === 'warning' ? '#EF4444' : '#10B981'}` }}>
+            <div style={{ ...es.console, borderLeft: `4px solid ${getAiStatusColor(aiFeedback?.type)}` }}>
               {isAnalyzing && <div>&gt; SYSTEM: VALIDANDO IMAGEN...</div>}
               {aiFeedback && (
                 <>
-                  <div>&gt; STATUS: {aiFeedback.type === 'warning' ? 'REVIEW_REQUIRED' : 'APPROVED'}</div>
+                  <div>&gt; STATUS: {getAiStatusLabel(aiFeedback.type)}</div>
                   <div style={{ color: '#E2E8F0' }}>&gt; MSG: {aiFeedback.message}</div>
                 </>
               )}
@@ -256,7 +273,7 @@ export const EvidenceFormScreen = ({
               minHeight: '140px',
               maxHeight: '160px',
               overflowY: 'auto',
-              fontFamily: 'sans-serif',
+              fontFamily: 'inherit',
               resize: 'vertical'
             }}
             placeholder={`ejemplo:
@@ -264,6 +281,23 @@ export const EvidenceFormScreen = ({
 - vano 36 m. con flecha excedida
 - suelo arenoso inestable, requiere encofrado para cimentacion`}
           />
+
+          {isPatActivity && (
+            <div style={{ marginTop: "14px" }}>
+              <label style={styles.label}>Ohms (Ω)</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                value={ohms}
+                onChange={(event) => setOhms(event.target.value)}
+                onFocus={ensureFieldVisibility}
+                placeholder="Ingrese medición en ohms"
+                style={styles.input}
+              />
+            </div>
+          )}
 
           <div style={{ marginTop: '8px', paddingBottom: '8px' }}>
             <button

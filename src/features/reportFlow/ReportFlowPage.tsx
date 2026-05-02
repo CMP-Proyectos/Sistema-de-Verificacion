@@ -17,16 +17,13 @@ import { ActivityConfirmationScreen } from "./screens/ActivityConfirmationScreen
 import { MapScreen } from "./screens/MapScreen";
 
 const selectionCardStyle = {
-  ...styles.gridItem,
+  ...styles.listItem,
   display: "flex",
   flexDirection: "row" as const,
   justifyContent: "space-between",
   alignItems: "center",
   textAlign: "left" as const,
-  padding: "16px",
-  width: "100%",
   minHeight: "auto",
-  borderLeft: "4px solid #003366",
   boxSizing: "border-box" as const,
 };
 
@@ -140,7 +137,7 @@ export default function ReportFlowPage() {
                   onSelect={flow.selectProject}
                 />
 
-                <div style={styles.card}>
+                <div style={{ ...styles.panel, marginTop: "8px" }}>
                   <button
                     type="button"
                     onClick={() => setIsAddProjectOpen((current) => !current)}
@@ -201,8 +198,8 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "item" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR SECCIÓN</h2>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Seleccionar sección</h2>
             <input
               placeholder="Buscar sección..."
               value={flow.itemSearch}
@@ -250,8 +247,8 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "locality" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR LOCALIDAD</h2>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Seleccionar localidad</h2>
             <input
               placeholder="Buscar localidad..."
               value={flow.localitySearch}
@@ -282,8 +279,8 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "substation" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR SUBESTACIÓN</h2>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Seleccionar subestación</h2>
             <input
               placeholder="Buscar subestación..."
               value={flow.substationSearch}
@@ -319,8 +316,8 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "detail" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR ESTRUCTURA</h2>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Seleccionar estructura</h2>
             <input
               placeholder="Filtrar por estructura..."
               value={flow.detailSearch}
@@ -374,8 +371,8 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "group" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR GRUPO</h2>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Seleccionar grupo</h2>
             <input
               placeholder="Buscar grupo..."
               value={flow.groupSearch}
@@ -474,9 +471,9 @@ export default function ReportFlowPage() {
         )}
 
         {flow.step === "activity" && (
-          <div style={styles.card}>
-            <h2 style={styles.heading}>SELECCIONAR ACTIVIDAD</h2>
-            <p style={{ fontSize: "12px", color: "#64748B", margin: "-6px 0 16px" }}>
+          <div style={styles.section}>
+            <h2 style={styles.heading}>Seleccionar actividad</h2>
+            <p style={{ fontSize: "12px", color: "#667085", margin: "-6px 0 16px" }}>
               Los conductores mostraran la longitud en metros (m.) del vano.
             </p>
             <div style={styles.scrollableY}>
@@ -556,6 +553,9 @@ export default function ReportFlowPage() {
             onRemoveImage={flow.removeEvidenceImage}
             note={flow.note}
             setNote={flow.setNote}
+            ohms={flow.ohms}
+            setOhms={flow.setOhms}
+            isPatActivity={flow.isPatActivity}
             isLoading={flow.isLoading}
             onSave={() => {
               flow.saveReport();

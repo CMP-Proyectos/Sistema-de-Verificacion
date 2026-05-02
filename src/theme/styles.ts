@@ -4,12 +4,12 @@ import React from "react";
 const palette = {
   navy: "#003366",       // Azul Corporativo
   activeNavy: "#004080", // Azul Activo
-  background: "#F4F7F9", // Fondo Gris Claro
+  background: "#F6F8FB", // Fondo Gris Claro
   orange: "#FF6600",     // Naranja Seguridad
   white: "#FFFFFF",
-  slateDark: "#1E293B",  // Texto Principal (Oscuro)
-  slateLight: "#64748B", // Texto Secundario
-  border: "#CBD5E1",     // Bordes
+  slateDark: "#172033",  // Texto Principal (Oscuro)
+  slateLight: "#667085", // Texto Secundario
+  border: "rgba(15, 23, 42, 0.08)",     // Bordes
   success: "#10B981",    
   error: "#EF4444",      
   warning: "#F59E0B",    
@@ -20,8 +20,8 @@ const palette = {
 // --- 2. MIXINS (Estilos Base) ---
 const actionBtnBase: React.CSSProperties = {
     display: "flex", justifyContent: "center", alignItems: "center",
-    height: "48px", padding: "0 16px", borderRadius: "4px",
-    fontSize: "13px", fontWeight: "700", textTransform: "uppercase",
+    height: "48px", padding: "0 18px", borderRadius: "14px",
+    fontSize: "13px", fontWeight: "600", textTransform: "none",
     cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box",
     width: "100%", marginTop: 0, marginBottom: 0, lineHeight: "1",
     transition: "background 0.2s, opacity 0.2s"
@@ -29,10 +29,10 @@ const actionBtnBase: React.CSSProperties = {
 
 // [CORRECCIÓN AQUÍ] - Forzamos colores explícitos
 const baseInput: React.CSSProperties = {
-    width: "100%", padding: "12px", fontSize: "14px",
-    border: `1px solid ${palette.border}`, borderRadius: "4px",
+    width: "100%", padding: "13px 14px", fontSize: "14px",
+    border: `1px solid ${palette.border}`, borderRadius: "14px",
     boxSizing: "border-box", fontFamily: "inherit", outline: "none",
-    transition: "border-color 0.2s",
+    transition: "border-color 0.2s, box-shadow 0.2s, background 0.2s",
     
     // Agregados para evitar texto blanco fantasma:
     color: palette.slateDark,       // Texto siempre oscuro (#1E293B)
@@ -44,12 +44,15 @@ const baseInput: React.CSSProperties = {
 // =============================================================================
 export const styles: Record<string, React.CSSProperties> = {
   // --- LAYOUT ---
-  page: { minHeight: "100vh", backgroundColor: palette.background, fontFamily: "'Inter', sans-serif", color: palette.slateDark, display: "flex", flexDirection: "column", overflow: "hidden" },
-  container: { maxWidth: "900px", width: "100%", margin: "0 auto", padding: "20px 20px 90px 20px", flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
-  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "65vh", paddingRight: "6px", scrollbarWidth: "thin", paddingBottom: "100px" },
+  page: { minHeight: "100vh", backgroundColor: palette.background, fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: palette.slateDark, display: "flex", flexDirection: "column", overflow: "hidden" },
+  container: { maxWidth: "960px", width: "100%", margin: "0 auto", padding: "24px 20px 96px 20px", flex: 1, boxSizing: "border-box", overflowY: "auto", height: "100vh" },
+  scrollableY: { overflowY: "auto", flex: 1, minHeight: "0", maxHeight: "66vh", paddingRight: "6px", scrollbarWidth: "thin", paddingBottom: "100px" },
 
   // --- COMPONENTES BASE ---
-  card: { backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "6px", padding: "24px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", marginBottom: "20px", display: "flex", flexDirection: "column", maxHeight: "85vh" },
+  card: { backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "22px", padding: "24px", boxShadow: "0 1px 2px rgba(15,23,42,0.04)", marginBottom: "20px", display: "flex", flexDirection: "column", maxHeight: "85vh" },
+  section: { marginBottom: "28px", display: "flex", flexDirection: "column", gap: "16px" },
+  sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "12px", flexWrap: "wrap" },
+  panel: { backgroundColor: "rgba(255,255,255,0.72)", border: `1px solid ${palette.border}`, borderRadius: "22px", padding: "20px", boxShadow: "none" },
 
   // --- NAV ---
   navbar: { backgroundColor: palette.navy, color: palette.white, height: "50px", padding: "0 20px", display: "flex", justifyContent: "center", alignItems: "center", flexShrink: 0, boxShadow: "0 2px 4px rgba(0,0,0,0.1)", zIndex: 1000, position: 'relative' },
@@ -57,14 +60,15 @@ export const styles: Record<string, React.CSSProperties> = {
   
   statusBar: { backgroundColor: "#F8FAFC", padding: "4px 20px", borderBottom: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px", color: palette.slateLight, flexShrink: 0, height: "36px" },
 
-  bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, height: "64px", backgroundColor: palette.white, borderTop: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-around", alignItems: "center", zIndex: 2000, boxShadow: "0 -4px 20px rgba(0,0,0,0.03)", paddingBottom: "env(safe-area-inset-bottom)" },
+  bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, height: "64px", backgroundColor: "rgba(255,255,255,0.94)", borderTop: `1px solid ${palette.border}`, display: "flex", justifyContent: "space-around", alignItems: "center", zIndex: 2000, boxShadow: "0 -8px 24px rgba(15,23,42,0.04)", paddingBottom: "env(safe-area-inset-bottom)", backdropFilter: "blur(14px)" },
   bottomNavItem: { flex: 1, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", background: "none", border: "none", cursor: "pointer", color: palette.slateLight, transition: "color 0.2s", padding: "8px 0" },
   bottomNavItemActive: { color: palette.navy, fontWeight: "700" },
   navLabel: { fontSize: "10px", marginTop: "4px", textTransform: "uppercase", fontWeight: "inherit", letterSpacing: "0.5px" },
 
   // --- INPUTS & TYPO ---
-  heading: { fontSize: "15px", fontWeight: "700", color: palette.navy, textTransform: "uppercase", marginBottom: "16px", paddingBottom: "8px", borderBottom: `2px solid ${palette.background}`, flexShrink: 0 },
-  label: { display: "block", fontSize: "11px", fontWeight: "700", color: palette.slateLight, textTransform: "uppercase", marginBottom: "6px" },
+  heading: { fontSize: "22px", fontWeight: "700", color: "#111827", textTransform: "none", margin: "0 0 16px", paddingBottom: 0, borderBottom: "none", flexShrink: 0, letterSpacing: 0, lineHeight: 1.18 },
+  subheading: { fontSize: "16px", fontWeight: "600", color: "#172033", margin: "0 0 14px", lineHeight: 1.35 },
+  label: { display: "block", fontSize: "11px", fontWeight: "500", color: palette.slateLight, textTransform: "uppercase", marginBottom: "7px", letterSpacing: "0.04em" },
   
   // Usamos el baseInput corregido
   input: { ...baseInput, marginBottom: "16px" },
@@ -74,14 +78,15 @@ export const styles: Record<string, React.CSSProperties> = {
   monoText: { fontFamily: "'Roboto Mono', monospace", fontSize: "12px", color: palette.slateDark, backgroundColor: "#F1F5F9", padding: "4px 8px", borderRadius: "4px", display: "inline-block", border: "1px solid #E2E8F0" },
 
   // --- BOTONES ---
-  btnPrimary: { ...actionBtnBase, backgroundColor: palette.orange, color: palette.white, border: "none", marginTop: "10px", boxShadow: "0 2px 4px rgba(255, 102, 0, 0.2)" },
-  btnSecondary: { ...actionBtnBase, backgroundColor: palette.white, border: `1px solid ${palette.slateLight}`, color: palette.slateDark },
+  btnPrimary: { ...actionBtnBase, backgroundColor: palette.orange, color: palette.white, border: "none", marginTop: "10px", boxShadow: "0 8px 18px rgba(255, 102, 0, 0.14)" },
+  btnSecondary: { ...actionBtnBase, backgroundColor: palette.white, border: `1px solid ${palette.border}`, color: palette.slateDark, boxShadow: "none" },
   btnDanger: { ...actionBtnBase, backgroundColor: "#FEF2F2", border: "1px solid #EF4444", color: "#DC2626" },
   btnLink: { background: "none", border: "none", color: palette.navy, textDecoration: "underline", cursor: "pointer", fontSize: "13px", fontWeight: "600", fontFamily: "inherit", padding: "8px" },
 
   // --- UTILS ---
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" },
-  gridItem: { padding: "20px", backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "4px", textAlign: "center", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s" },
+  gridItem: { padding: "18px", backgroundColor: palette.white, border: `1px solid ${palette.border}`, borderRadius: "18px", textAlign: "center", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "border-color 0.2s, background 0.2s, transform 0.2s", boxShadow: "none" },
+  listItem: { padding: "16px 18px", backgroundColor: "rgba(255,255,255,0.82)", border: `1px solid ${palette.border}`, borderRadius: "18px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", textAlign: "left", width: "100%", boxSizing: "border-box", transition: "border-color 0.2s, background 0.2s" },
   galleryCard: { padding: 0, overflow: "hidden", border: "1px solid #E2E8F0", display: "grid", gridTemplateRows: "140px minmax(56px, auto)", minHeight: "196px", alignItems: "stretch" },
   galleryThumbWrap: { width: "100%", height: "140px", backgroundColor: "#F8FAFC", display: "flex", alignItems: "center", justifyContent: "center", borderBottom: "1px solid #E2E8F0", overflow: "hidden" },
   galleryThumbImage: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
@@ -105,20 +110,20 @@ export const styles: Record<string, React.CSSProperties> = {
 // =============================================================================
 export const evidenceStyles: Record<string, React.CSSProperties> = {
   // 1. Cabecera
-  headerClean: { fontSize: "15px", fontWeight: "700", color: palette.navy, textTransform: "uppercase", margin: 0, padding: 0, border: 'none' },
+  headerClean: { fontSize: "16px", fontWeight: "600", color: "#172033", textTransform: "none", margin: 0, padding: 0, border: 'none' },
   
   // 2. Badge
-  badgeBase: { display: "inline-block", padding: "4px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "700", textTransform: "uppercase" },
+  badgeBase: { display: "inline-block", padding: "5px 10px", borderRadius: "999px", fontSize: "10px", fontWeight: "600", textTransform: "uppercase" },
   badgeOnline: { backgroundColor: '#D1FAE5', color: '#065F46' },
   badgeOffline: { backgroundColor: '#F1F5F9', color: '#64748B' },
 
   // 3. Toggles
-  toggleContainer: { display: 'flex', width: '100%', backgroundColor: '#F1F5F9', borderRadius: '6px', padding: '4px', marginBottom: '16px', boxSizing: 'border-box' },
-  toggleBtn: { flex: 1, padding: '6px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: 'transparent', color: '#94A3B8' },
-  toggleBtnActive: { backgroundColor: palette.white, color: palette.navy, boxShadow: '0 1px 2px rgba(0,0,0,0.1)' },
+  toggleContainer: { display: 'flex', width: '100%', backgroundColor: '#EEF2F7', borderRadius: '16px', padding: '4px', marginBottom: '18px', boxSizing: 'border-box' },
+  toggleBtn: { flex: 1, padding: '8px', borderRadius: '12px', border: 'none', fontSize: '11px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: 'transparent', color: '#667085' },
+  toggleBtnActive: { backgroundColor: palette.white, color: palette.navy, boxShadow: '0 1px 2px rgba(15,23,42,0.06)' },
 
   // 4. Mapa
-  mapContainer: { width: '100%', height: '160px', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${palette.border}`, backgroundColor: '#E2E8F0', marginBottom: '16px', position: 'relative' },
+  mapContainer: { width: '100%', height: '170px', borderRadius: '18px', overflow: 'hidden', border: `1px solid ${palette.border}`, backgroundColor: '#E2E8F0', marginBottom: '18px', position: 'relative' },
   mapIframe: { width: '100%', height: '100%', border: 0, pointerEvents: 'none', display: 'block' },
   mapPlaceholder: { display:'flex', alignItems:'center', justifyContent:'center', height:'100%', flexDirection:'column', color:'#94A3B8' },
 
@@ -142,7 +147,7 @@ export const evidenceStyles: Record<string, React.CSSProperties> = {
   uploadBtnLarge: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: `2px dashed ${palette.border}`, borderRadius: '8px', backgroundColor: '#F8FAFC', cursor: 'pointer', color: palette.slateLight, transition: 'background 0.2s', padding: '10px' },
   uploadBtnLargeActive: { color: palette.navy, borderColor: palette.navy, backgroundColor: "#F0F9FF" },
 
-  previewContainer: { borderRadius: '6px', border: `1px solid ${palette.border}`, overflow: 'hidden', height: '240px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', marginBottom: '16px' },
+  previewContainer: { borderRadius: '18px', border: `1px solid ${palette.border}`, overflow: 'hidden', height: '240px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', marginBottom: '16px' },
   actionsRow: { display: 'flex', gap: '10px', marginTop: '12px' },
   helperText: { fontSize: '12px', color: palette.slateLight, marginBottom: '8px', lineHeight: '1.4' },
   imageCounter: { fontSize: '11px', fontWeight: '700', color: palette.navy, marginBottom: '12px', textTransform: 'uppercase' },
