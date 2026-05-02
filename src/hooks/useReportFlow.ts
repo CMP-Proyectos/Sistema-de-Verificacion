@@ -155,6 +155,40 @@ export function useReportFlow() {
   const bootstrappedSessionUserIdRef = useRef<string | null>(null);
   const bootstrapInFlightRef = useRef<Promise<void> | null>(null);
 
+  const runCatalogSyncInBackground = useCallback(
+    async (user: SessionUser, options: { showStartToast?: boolean } = {}) => {
+      if (!isOnline) return;
+
+      if (!catalog.shouldRunAutomaticCatalogSync()) {
+        console.info("[AUTH FLOW] Sync de catalogo omitida por frecuencia reciente", { userId: user.id });
+        return;
+      }
+
+      try {
+        if (options.showStartToast) {
+          showToast("Sincronizando en segundo plano...", "info");
+        }
+
+        const syncResult = await catalog.performScopedSync();
+
+        if (syncResult === "success") {
+          await catalog.loadProjectsLocal();
+          await syncHistoryToLocal(user.id);
+          await loadCachedHistoryDetailIds();
+          await syncPendingUploads();
+          showToast("Datos actualizados", "success");
+          return;
+        }
+
+        showToast("Usando datos locales", "info");
+      } catch (error) {
+        console.error("[AUTH FLOW] Sync de catalogo en segundo plano fallo; cache preservada", error);
+        showToast("Usando datos locales", "info");
+      }
+    },
+    [catalog, isOnline, loadCachedHistoryDetailIds, syncPendingUploads]
+  );
+
   const bootstrapAuthenticatedUser = useCallback(async (user: SessionUser, origin: string) => {
     if (bootstrappedSessionUserIdRef.current === user.id) {
       console.info("[AUTH FLOW] Bootstrap omitido: usuario ya inicializado", { origin, userId: user.id });
@@ -176,37 +210,67 @@ export function useReportFlow() {
       });
 
       session.setIsLoading(true);
-      session.setAuthLoadingLabel(isOnline ? "SINCRONIZANDO DATOS..." : "RESTAURANDO SESION...");
+      session.setAuthLoadingLabel(isOnline ? "CARGANDO DATOS LOCALES..." : "RESTAURANDO SESION...");
 
       try {
-        const syncStatus = isOnline ? await catalog.performScopedSync() : "skipped_offline";
+        const localCatalog = await catalog.loadProjectsLocal();
+        await loadCachedHistoryDetailIds();
+        const hasLocalCache = localCatalog.projects.length > 0;
 
-        if (syncStatus === "success") {
-          await syncHistoryToLocal(user.id);
-          await syncPendingUploads();
-        } else {
-          console.info("[AUTH FLOW] Restaurando sesion offline con datos locales", { userId: user.id, syncStatus });
+        if (hasLocalCache) {
+          bootstrappedSessionUserIdRef.current = user.id;
+          setStep("project");
+          showToast("Datos locales cargados", "success");
+
+          if (isOnline) {
+            void loadUserRecords();
+            void runCatalogSyncInBackground(user, { showStartToast: true });
+          }
+
+          console.info("[AUTH FLOW] Entrada completada con cache local", {
+            origin,
+            userId: user.id,
+            projects: localCatalog.projects.length,
+          });
+          return;
+        }
+
+        if (!isOnline) {
+          session.setAuthMessage({
+            type: "error",
+            text: "No hay datos locales disponibles. Conéctate una vez para sincronizar.",
+          });
+          showToast("No hay datos locales disponibles. Conéctate una vez para sincronizar.", "error");
+          return;
+        }
+
+        session.setAuthLoadingLabel("SINCRONIZANDO DATOS...");
+        const syncStatus = await catalog.performScopedSync();
+
+        if (syncStatus !== "success") {
+          session.setAuthMessage({
+            type: "error",
+            text: "No se pudo sincronizar el catálogo inicial. Intenta nuevamente.",
+          });
+          showToast("No se pudo sincronizar el catálogo inicial. Intenta nuevamente.", "error");
+          return;
         }
 
         await catalog.loadProjectsLocal();
+        await syncHistoryToLocal(user.id);
         await loadCachedHistoryDetailIds();
+        await syncPendingUploads();
         bootstrappedSessionUserIdRef.current = user.id;
         setStep("project");
-        if (isOnline) {
-          void loadUserRecords();
-        }
-
-        if (syncStatus !== "success") {
-          console.info("[AUTH FLOW] Entrada completada con cache local preservado", {
-            origin,
-            userId: user.id,
-            syncStatus,
-          });
-        }
+        void loadUserRecords();
+        showToast("Datos actualizados", "success");
       } catch (error) {
         console.error("[AUTH FLOW] Bootstrap autenticado fallo; usando cache local si existe", error);
         try {
-          await catalog.loadProjectsLocal();
+          const localCatalog = await catalog.loadProjectsLocal();
+          if (localCatalog.projects.length === 0) {
+            throw new Error("No local catalog cache available");
+          }
           await loadCachedHistoryDetailIds();
           bootstrappedSessionUserIdRef.current = user.id;
           setStep("project");
@@ -239,6 +303,7 @@ export function useReportFlow() {
     isRecoveryContextActive,
     loadCachedHistoryDetailIds,
     loadUserRecords,
+    runCatalogSyncInBackground,
     session,
     syncPendingUploads,
   ]);

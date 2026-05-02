@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { db } from "../../services/db_local";
 import {
   getAllowedProjects,
@@ -23,8 +23,17 @@ import {
   sortByLabel,
 } from "./catalogHierarchy";
 
+const LAST_CATALOG_SYNC_AT_KEY = "lastCatalogSyncAt";
+const CATALOG_SYNC_TTL_MS = 6 * 60 * 60 * 1000;
+
+export type LocalCatalogSnapshot = {
+  projects: ProjectRecord[];
+  activities: ActivityRecord[];
+};
+
 export function useCatalogFlow(isOnline: boolean) {
   const [syncStatus, setSyncStatus] = useState("");
+  const scopedSyncInFlightRef = useRef<Promise<RemoteSyncStatus> | null>(null);
 
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [fronts, setFronts] = useState<FrontRecord[]>([]);
@@ -58,87 +67,125 @@ export function useCatalogFlow(isOnline: boolean) {
     void loadInitialData();
   }, []);
 
-  const performScopedSync = async (): Promise<RemoteSyncStatus> => {
-    if (!isOnline) {
-      console.info("[SYNC] Sync remoto omitido; app en modo offline y cache local preservado");
-      return "skipped_offline";
-    }
-
-    const hasConnectivity = await hasSupabaseConnectivity("performScopedSync");
-    if (!hasConnectivity) {
-      setSyncStatus("Offline cache");
-      console.info("[SYNC] Sync remoto abortado por red; cache local preservado");
-      return "preserved_cache";
-    }
-
-    setSyncStatus("Sincronizando...");
-
+  const getLastCatalogSyncAt = useCallback(() => {
     try {
-      console.log("[SYNC] Descargando catalogos remotos filtrados por alcance");
-      const { assignedProjectIds, projects: scopedProjects } = await getAllowedProjects();
-      const projectIds = scopedProjects.map((project) => project.ID_Proyectos);
+      if (typeof window === "undefined" || !window.localStorage) return null;
+      const rawValue = window.localStorage.getItem(LAST_CATALOG_SYNC_AT_KEY);
+      const timestamp = rawValue ? Number(rawValue) : NaN;
+      return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
-      const scopedFronts = await getFrontsByProjectIds(projectIds);
-      const frontIds = scopedFronts.map((front) => front.ID_Frente);
+  const shouldRunAutomaticCatalogSync = useCallback(() => {
+    const lastCatalogSyncAt = getLastCatalogSyncAt();
+    if (!lastCatalogSyncAt) return true;
+    return Date.now() - lastCatalogSyncAt >= CATALOG_SYNC_TTL_MS;
+  }, [getLastCatalogSyncAt]);
 
-      const scopedLocalities = await getLocalitiesByFrontIds(frontIds);
-      const localityIds = scopedLocalities.map((locality) => locality.ID_Localidad);
+  const markCatalogSyncSuccess = useCallback(() => {
+    try {
+      if (typeof window === "undefined" || !window.localStorage) return;
+      window.localStorage.setItem(LAST_CATALOG_SYNC_AT_KEY, String(Date.now()));
+    } catch {
+      console.warn("[SYNC] No se pudo guardar lastCatalogSyncAt");
+    }
+  }, []);
 
-      const scopedDetails = await getDetailsByLocalityIds(localityIds);
-      const activityIds = Array.from(new Set(scopedDetails.map((detail) => detail.ID_Actividad)));
+  const performScopedSync = async (): Promise<RemoteSyncStatus> => {
+    if (scopedSyncInFlightRef.current) {
+      console.info("[SYNC] Reutilizando sincronizacion de catalogo en curso");
+      return scopedSyncInFlightRef.current;
+    }
 
-      const scopedActivities = await getActivitiesByIds(activityIds);
-
-      console.log("[SYNC] Descarga filtrada completada", {
-        assignedProjects: assignedProjectIds.length,
-        visibleProjects: scopedProjects.length,
-        visibleProjectIds: projectIds,
-        assignedProjectIds,
-        projects: scopedProjects.length,
-        fronts: scopedFronts.length,
-        localities: scopedLocalities.length,
-        details: scopedDetails.length,
-        activities: scopedActivities.length,
-      });
-
-      if (assignedProjectIds.length !== scopedProjects.length) {
-        console.warn("[SYNC] Diferencia entre asignaciones y proyectos visibles", {
-          assignedProjectIds,
-          visibleProjectIds: projectIds,
-        });
+    const runSync = async (): Promise<RemoteSyncStatus> => {
+      if (!isOnline) {
+        console.info("[SYNC] Sync remoto omitido; app en modo offline y cache local preservado");
+        return "skipped_offline";
       }
 
-      console.log("[SYNC] Sync remoto exitoso; reemplazando cache local con alcance valido");
-      console.log("[SYNC] Reemplazando cache local por el alcance autorizado");
-      await clearCatalogCache();
-
-      await db.catalog_projects.bulkPut(scopedProjects);
-      await db.catalog_fronts.bulkPut(scopedFronts);
-      await db.catalog_localities.bulkPut(scopedLocalities);
-      await db.catalog_details.bulkPut(scopedDetails);
-      await db.catalog_activities.bulkPut(scopedActivities);
-
-      setProjects(scopedProjects);
-      setFronts([]);
-      setLocalities([]);
-      setDetails([]);
-      setActivities(scopedActivities);
-      setSyncStatus("");
-      return "success";
-    } catch (error) {
-      if (isNetworkUnavailableError(error)) {
-        console.warn("[SYNC] Sync remoto abortado por red; cache local no reemplazado", error);
+      const hasConnectivity = await hasSupabaseConnectivity("performScopedSync");
+      if (!hasConnectivity) {
         setSyncStatus("Offline cache");
+        console.info("[SYNC] Sync remoto abortado por red; cache local preservado");
         return "preserved_cache";
       }
 
-      console.error("Sync error", error);
-      setSyncStatus("Error Sync");
-      throw error;
-    }
+      setSyncStatus("Sincronizando...");
+
+      try {
+        console.log("[SYNC] Descargando catalogos remotos filtrados por alcance");
+        const { assignedProjectIds, projects: scopedProjects } = await getAllowedProjects();
+        const projectIds = scopedProjects.map((project) => project.ID_Proyectos);
+
+        const scopedFronts = await getFrontsByProjectIds(projectIds);
+        const frontIds = scopedFronts.map((front) => front.ID_Frente);
+
+        const scopedLocalities = await getLocalitiesByFrontIds(frontIds);
+        const localityIds = scopedLocalities.map((locality) => locality.ID_Localidad);
+
+        const scopedDetails = await getDetailsByLocalityIds(localityIds);
+        const activityIds = Array.from(new Set(scopedDetails.map((detail) => detail.ID_Actividad)));
+
+        const scopedActivities = await getActivitiesByIds(activityIds);
+
+        console.log("[SYNC] Descarga filtrada completada", {
+          assignedProjects: assignedProjectIds.length,
+          visibleProjects: scopedProjects.length,
+          assignedProjectIds,
+          visibleProjectIds: projectIds,
+          projects: scopedProjects.length,
+          fronts: scopedFronts.length,
+          localities: scopedLocalities.length,
+          details: scopedDetails.length,
+          activities: scopedActivities.length,
+        });
+
+        if (assignedProjectIds.length !== scopedProjects.length) {
+          console.warn("[SYNC] Diferencia entre asignaciones y proyectos visibles", {
+            assignedProjectIds,
+            visibleProjectIds: projectIds,
+          });
+        }
+
+        console.log("[SYNC] Sync remoto exitoso; reemplazando cache local con alcance valido");
+        console.log("[SYNC] Reemplazando cache local por el alcance autorizado");
+        await clearCatalogCache();
+
+        await db.catalog_projects.bulkPut(scopedProjects);
+        await db.catalog_fronts.bulkPut(scopedFronts);
+        await db.catalog_localities.bulkPut(scopedLocalities);
+        await db.catalog_details.bulkPut(scopedDetails);
+        await db.catalog_activities.bulkPut(scopedActivities);
+        markCatalogSyncSuccess();
+
+        setProjects(scopedProjects);
+        setActivities(scopedActivities);
+        setSyncStatus("");
+        return "success";
+      } catch (error) {
+        if (isNetworkUnavailableError(error)) {
+          console.warn("[SYNC] Sync remoto abortado por red; cache local no reemplazado", error);
+          setSyncStatus("Offline cache");
+          return "preserved_cache";
+        }
+
+        console.error("Sync error", error);
+        setSyncStatus("Error Sync");
+        throw error;
+      } finally {
+        scopedSyncInFlightRef.current = null;
+      }
+    };
+
+    scopedSyncInFlightRef.current = runSync().finally(() => {
+      scopedSyncInFlightRef.current = null;
+    });
+    return scopedSyncInFlightRef.current;
   };
 
-  const loadProjectsLocal = useCallback(async () => {
+  const loadProjectsLocal = useCallback(async (): Promise<LocalCatalogSnapshot> => {
     console.log("[SYNC] Leyendo proyectos y actividades locales");
     const [projectsLocal, activitiesLocal] = await Promise.all([
       db.catalog_projects.toArray(),
@@ -152,6 +199,7 @@ export function useCatalogFlow(isOnline: boolean) {
 
     setProjects(projectsLocal);
     setActivities(activitiesLocal);
+    return { projects: projectsLocal, activities: activitiesLocal };
   }, []);
 
   const loadProjectScope = useCallback(async (projectId: number) => {
@@ -427,6 +475,7 @@ export function useCatalogFlow(isOnline: boolean) {
     hasSubstationsForLocality,
     performScopedSync,
     loadProjectsLocal,
+    shouldRunAutomaticCatalogSync,
     resetSelection,
   };
 }
