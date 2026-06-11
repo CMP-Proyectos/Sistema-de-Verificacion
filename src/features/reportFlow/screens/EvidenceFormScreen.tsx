@@ -285,7 +285,11 @@ export const EvidenceFormScreen = ({
 
           {isPatActivity && (
             <div style={{ marginTop: "14px" }}>
-              <label style={styles.label}>Ohms (Ω)</label>
+              <label style={styles.label}>Especificación</label>
+              <label style={styles.label}>Instalación PAT: Ingresar Ohms</label>
+              <label style={styles.label}>Tendido de Conductor: Ingresar medicion (m) de conductor</label>
+              <label style={styles.label}>Conexión de acometida: Ingresar medicion (m) de conductor</label>
+              <label style={styles.label}>Instalación de medidor: Ingresar numero de serie</label>
               <input
                 type="number"
                 inputMode="decimal"
@@ -304,8 +308,8 @@ export const EvidenceFormScreen = ({
             <div style={{ marginTop: "14px" }}>
               <label style={styles.label}>Selección de detalle</label>
               <select
-                value={ohms} /* Mantenemos tu variable original intacta */
-                onChange={(event) => setOhms(event.target.value)} /* Mantenemos tu setter original */
+                value={ohms}
+                onChange={(event) => setOhms(event.target.value)}
                 onFocus={ensureFieldVisibility}
                 style={styles.input}
               >
@@ -313,7 +317,6 @@ export const EvidenceFormScreen = ({
                   Seleccione una opción
                 </option>
                 
-                {/* Mapeamos directamente el arreglo que viene en isSeleccion */}
                 {isSeleccion.map((opcion) => (
                   <option key={opcion.value} value={opcion.value}>
                     {opcion.label}
