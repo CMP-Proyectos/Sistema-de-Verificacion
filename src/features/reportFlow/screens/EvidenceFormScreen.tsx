@@ -298,7 +298,7 @@ export const EvidenceFormScreen = ({
                 value={ohms}
                 onChange={(event) => setOhms(event.target.value)}
                 onFocus={ensureFieldVisibility}
-                placeholder="Ingrese medición en ohms"
+                placeholder="Ingrese la especificación"
                 style={styles.input}
               />
             </div>
