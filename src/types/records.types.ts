@@ -25,6 +25,8 @@ export interface UserRecord {
   total_imagenes?: number;
   cantidad: number;
   ohms?: number | null;
+  supervisor: number | null;
+  especialista: number | null;
 }
 
 export type CreateRegistroPayload = {
@@ -36,6 +38,8 @@ export type CreateRegistroPayload = {
   Ruta_Archivo: string;
   Bucket: string;
   Ohms?: number | null | string;
+  supervisor: number | null;
+  especialista: number | null;
 };
 
 export type RegistroImagenPayload = {
@@ -59,6 +63,8 @@ export type RegistroRow = {
   user_id: string | null;
   id_proyecto: number | null;
   Ohms: number | null;
+  Supervisor: number | null;
+  Especialista: number | null;
 };
 
 export type CheckedActivityRow = {
@@ -84,6 +90,11 @@ export type RecordUpdatePayload = {
   Nombre_Archivo?: string;
 };
 
+export type UpdateCoordenadas = {
+  Latitud: number | null;
+  Longitud: number | null;
+}
+
 export type DeleteRecordParams = {
   recordId: number;
   checkedActivityId?: number | null;
@@ -95,6 +106,8 @@ export type DeleteRecordParams = {
 export type UpdateRecordWithImageParams = {
   recordId: number;
   comment: string;
+  latitud: number | null;
+  longitud: number | null;
   replacementFile?: File | null;
   bucket?: string | null;
   currentImagePath?: string | null;

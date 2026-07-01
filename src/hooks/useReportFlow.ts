@@ -6,6 +6,7 @@ import {
   joinProjectWithCode,
 } from "../services/dataService";
 import { db } from "../services/db_local";
+import { supabase } from "../services/dataService";
 import {
   createPendingReportPayload,
   getPendingReports,
@@ -14,7 +15,7 @@ import {
 } from "../services/offlineSyncService";
 import { saveReportOnline } from "../repositories/reports.repository";
 import { Step, ToastState, ConfirmModalState } from "../features/reportFlow/types";
-import { isCuadroTexto, parseOhmsValue, getOpcionesSeleccion } from "../utils/activity";
+import { isCuadroTexto, parseOhmsValue, getOpcionesSeleccion, requiereCoordenadas } from "../utils/activity";
 
 import { useSessionFlow } from "./flow/useSessionFlow";
 import type { SessionUser } from "./flow/useSessionFlow";
@@ -46,7 +47,7 @@ export function useReportFlow() {
   const recovery = usePasswordRecoveryFlow(showToast);
   const catalog = useCatalogFlow(session.isOnline);
   const evidence = useEvidenceFlow(showToast, catalog.selectedActivity, session.isOnline);
-  const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET);
+  const records = useRecordsFlow(session.sessionUser?.id, showToast, setConfirmModal, session.setIsLoading, MASTER_BUCKET, session.sessionUser?.app_metadata?.es_especialista, session.sessionUser?.app_metadata?.es_supervisor);
   const { isOnline, sessionUser, hasResolvedInitialSession } = session;
   const { loadProfileData } = session;
   const { loadUserRecords } = records;
@@ -65,6 +66,30 @@ export function useReportFlow() {
     loadUserRecords,
     showToast,
   });
+
+  const actualizarEstadoVerificacion = async (
+  idRegistro: number, 
+  tipoColumna: 'Supervisor' | 'Especialista', 
+  valorActual: number | null
+  ) => {
+    const nuevoValor = valorActual === 1 ? 0 : 1;
+
+    const { data, error } = await supabase
+      .from('Registros')
+      .update({ 
+        [tipoColumna]: nuevoValor
+      })
+      .eq('ID_Registros', idRegistro)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`Error actualizando verificación de ${tipoColumna}:`, error);
+      throw error;
+    }
+
+    return data;
+  };
 
   const syncStatus = isOnline ? "ONLINE" : "OFFLINE";
   const [cachedHistoryDetailIds, setCachedHistoryDetailIds] = useState<number[]>([]);
@@ -379,6 +404,13 @@ export function useReportFlow() {
       setIsMenuOpen(false);
   };
 
+    const handleFinRegistro = (idLocalidad: number | null) => {
+      catalog.resetFinRegistro(idLocalidad);
+      evidence.resetEvidence();
+      setStep("locality");
+      setIsMenuOpen(false);
+  };
+
   const handleJoinProjectWithCode = useCallback(async () => {
     const normalizedCode = projectAccessCode.trim();
 
@@ -441,6 +473,7 @@ export function useReportFlow() {
     if (evidence.evidenceFiles.length > MAX_EVIDENCE_IMAGES) return showToast("Maximo 5 imagenes", "error");
 
     const isPatActivity = isCuadroTexto(catalog.selectedActivity);
+    const isCoordenadas = requiereCoordenadas(catalog.selectedActivity);
     const isSelector = getOpcionesSeleccion(catalog.selectedActivity);
     const parsedOhms = parseOhmsValue(evidence.ohms);
     if (isPatActivity && parsedOhms === null) {
@@ -506,7 +539,7 @@ export function useReportFlow() {
         files: pendingRecord.meta.fileNames?.length || 0,
       });
       showToast("Guardado localmente (Pendiente)", "info");
-      handleGoHome();
+      handleFinRegistro(catalog.selectedLocalityId);
     };
 
     try {
@@ -537,7 +570,7 @@ export function useReportFlow() {
       } else {
         showToast("Reporte guardado exitosamente", "success");
       }
-      handleGoHome();
+      handleFinRegistro(catalog.selectedLocalityId);
     } catch (err) {
       if (isNetworkUnavailableError(err)) {
         console.warn("[SAVE] Error de red detectado; aplicando fallback a pendingUploads", err);
@@ -647,6 +680,7 @@ export function useReportFlow() {
 
 
   return {
+    actualizarEstadoVerificacion,
     step, setStep, isMenuOpen, setIsMenuOpen, toast, confirmModal, setConfirmModal,
     isOnline: session.isOnline, syncStatus,
     isLoading: session.isLoading, sessionUser: session.sessionUser,
@@ -714,7 +748,7 @@ export function useReportFlow() {
     gpsLocation: evidence.gpsLocation, handleCaptureGps: evidence.handleCaptureGps,
     utmZone: evidence.utmZone, setUtmZone: evidence.setUtmZone, utmEast: evidence.utmEast, setUtmEast: evidence.setUtmEast, utmNorth: evidence.utmNorth, setUtmNorth: evidence.setUtmNorth, handleUpdateFromUtm: evidence.handleUpdateFromUtm,
     evidenceImages: evidence.evidenceImages, evidencePreview: evidence.evidencePreview, handleCaptureFile: evidence.handleCaptureFile, removeEvidenceImage: evidence.removeEvidenceImage, note: evidence.note, setNote: evidence.setNote, isFetchingGps: evidence.isFetchingGps, isAnalyzing: evidence.isAnalyzing, aiFeedback: evidence.aiFeedback,
-    ohms: evidence.ohms, setOhms: evidence.setOhms, isPatActivity: isCuadroTexto(catalog.selectedActivity), isSelector : getOpcionesSeleccion(catalog.selectedActivity),
+    ohms: evidence.ohms, setOhms: evidence.setOhms, isPatActivity: isCuadroTexto(catalog.selectedActivity), isSelector : getOpcionesSeleccion(catalog.selectedActivity), isCoordenadas : requiereCoordenadas(catalog.selectedActivity),
     saveReport, getMapUrl,
     map,
     userRecords: records.userRecords, isLoadingRecords: records.isLoadingRecords, selectedRecordId: records.selectedRecordId, setSelectedRecordId: records.setSelectedRecordId,
@@ -723,6 +757,7 @@ export function useReportFlow() {
     isPhotoModalOpen: records.isPhotoModalOpen,
     openEditModal: records.openEditModal,
     closeEditModal: () => records.setIsPhotoModalOpen(false),
+    editLatitud: records.editLatitud, setEditLatitud: records.setEditLatitud, editLongitud : records.editLongitud, setEditLongitud: records.setEditLongitud,
     editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } },
     saveRecordEdits: records.saveRecordEdits,
     handleGoHome, goBack,

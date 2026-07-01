@@ -7,13 +7,16 @@ import {
   updateRecordWithOptionalImage,
 } from "../../repositories/records.repository";
 import type { UserRecord } from "../../types/records.types";
+import { number } from "zod";
 
 export function useRecordsFlow(
     sessionUserId: string | undefined,
     showToast: (msg: string, type: "success" | "error" | "info") => void,
     setConfirmModal: (modal: ConfirmModalState | null) => void,
     setIsLoading: (v: boolean) => void,
-    MASTER_BUCKET: string
+    MASTER_BUCKET: string,
+    esEspecialista: boolean | undefined,
+    esSupervisor: boolean | undefined
 ) {
   const [userRecords, setUserRecords] = useState<UserRecord[]>([]);
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
@@ -23,6 +26,8 @@ export function useRecordsFlow(
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [editEvidenceFile, setEditEvidenceFile] = useState<File | null>(null);
   const [editComment, setEditComment] = useState("");
+  const [editLatitud, setEditLatitud] = useState<number | null>(null);
+  const [editLongitud, setEditLongitud] = useState<number | null>(null);
   const [editPreviewUrl, setEditPreviewUrl] = useState("");
 
   useEffect(() => {
@@ -36,7 +41,7 @@ export function useRecordsFlow(
 
     setIsLoadingRecords(true);
     try {
-      const data = await fetchUserRecords(sessionUserId);
+      const data = await fetchUserRecords(sessionUserId, esEspecialista, esSupervisor);
       setUserRecords(data);
       setHasLoadedUserRecords(true);
     } catch (err) {
@@ -90,6 +95,8 @@ export function useRecordsFlow(
       await updateRecordWithOptionalImage({
         recordId: item.id_registro,
         comment: editComment,
+        latitud: editLatitud,
+        longitud: editLongitud,
         replacementFile: editEvidenceFile,
         bucket: item.bucket,
         currentImagePath: item.ruta_archivo,
@@ -118,6 +125,8 @@ export function useRecordsFlow(
       setEditEvidenceFile(null);
       setEditPreviewUrl(record.url_foto ?? "");
       setIsPhotoModalOpen(true);
+      setEditLatitud(record.latitud ?? null);
+      setEditLongitud(record.longitud ?? null);
     }
   };
 
@@ -137,6 +146,8 @@ export function useRecordsFlow(
       "Latitud",
       "Longitud",
       "Cantidad",
+      "Supervisor",
+      "Especialista",
     ];
 
     const rows = records.map((rec) => {
@@ -157,6 +168,8 @@ export function useRecordsFlow(
         rec.latitud,
         rec.longitud,
         rec.cantidad,
+        rec.supervisor,
+        rec.especialista,
       ].join(";");
     });
 
@@ -184,6 +197,10 @@ export function useRecordsFlow(
     setIsPhotoModalOpen,
     openEditModal,
     editComment,
+    editLatitud,
+    editLongitud,
+    setEditLatitud,
+    setEditLongitud,
     setEditComment,
     editPreviewUrl,
     setEditPreviewUrl,

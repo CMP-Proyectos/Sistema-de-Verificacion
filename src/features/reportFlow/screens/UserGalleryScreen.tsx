@@ -1,6 +1,7 @@
 import React from 'react';
 import { styles } from '../../../theme/styles';
 import type { UserRecord } from '../../../types/records.types';
+import { useReportFlow } from "../../../hooks/useReportFlow";
 
 interface Props {
   records: UserRecord[];
@@ -9,10 +10,15 @@ interface Props {
   onSelectRecord: (id: number | null) => void;
   onDelete: (rec: UserRecord) => void;
   onEdit: () => void;
+  actualizarEstado: (
+    idRegistro: number, 
+    tipoColumna: 'Supervisor' | 'Especialista', 
+    valorActual: number | null
+  ) => Promise<void>;
 }
 
 export const UserGalleryScreen = ({
-    records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit
+    records, isLoading, selectedRecordId, onSelectRecord, onDelete, onEdit, actualizarEstado
 }: Props) => {
   const buildCombinedLabel = (...values: (string | null | undefined)[]) => {
     const filteredValues = values.map((value) => value?.trim()).filter(Boolean);
@@ -21,6 +27,29 @@ export const UserGalleryScreen = ({
 
   const getPrimaryRecordLabel = (record: UserRecord) => buildCombinedLabel(record.nombre_grupo, record.nombre_detalle);
   const getActivityDetailLabel = (record: UserRecord) => buildCombinedLabel(record.nombre_actividad, record.nombre_detalle);
+  const getVerificado = (numero: number | null) => {
+    if (numero === 1) return "Verificado";
+    if (numero === 0) return "No verificado";
+    
+    return "Sin verificar";
+    };
+
+  const handleToggleVerificacion = async (
+    idRegistro: number, 
+    tipo: 'Supervisor' | 'Especialista', 
+    valorActual: number | null
+  ) => {
+    try {
+      await actualizarEstado(idRegistro, tipo, valorActual);
+      alert(`Estado de ${tipo} actualizado correctamente`); 
+    } catch (error) {
+      alert("Hubo un error al actualizar el estado");
+    }
+  };
+  
+  const flow = useReportFlow();
+  const isSupervisor = flow.sessionUser?.app_metadata?.es_supervisor === true;
+  const isEspecialista = flow.sessionUser?.app_metadata?.es_especialista === true;
 
   React.useEffect(() => {
     console.info("[records] UserGalleryScreen render", {
@@ -88,15 +117,29 @@ export const UserGalleryScreen = ({
                     )}
                 </div>
 
-                <div style={{...styles.card, padding: '20px', boxShadow: 'none', border: '1px solid #E2E8F0'}}>
+                <div style={{
+                    ...styles.card, 
+                    padding: '20px', 
+                    boxShadow: 'none', 
+                    border: '1px solid #E2E8F0',
+                    height: 'auto',             // Permite que la altura crezca
+                    minHeight: 'min-content',   // Obliga a que la tarjeta envuelva TODO
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
                     <h4 style={{...styles.heading, fontSize: '14px', borderBottom: '1px solid #F1F5F9'}}>
                         DATOS DEL REPORTE
                     </h4>
 
-                    <div style={{display:'grid', gap:'16px'}}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div>
                             <label style={styles.label}>PROYECTO</label>
                             <div style={styles.text}>{proyectoStr}</div>
+                        </div>
+
+                        <div>
+                            <label style={styles.label}>Enlace</label>
+                            <div style={styles.text}>{rec.url_foto}</div>
                         </div>
 
                         <div>
@@ -142,36 +185,55 @@ export const UserGalleryScreen = ({
                                 {rec.comentario || "Sin observaciones."}
                             </div>
                         </div>
+                        <div>
+                            <label style={styles.label}>Supervisor</label>
+                            <div style={styles.text}>{getVerificado(rec.supervisor)}</div>
+                            {isSupervisor && (
+                                <button 
+                                    onClick={() => handleToggleVerificacion(rec.id_registro, 'Supervisor', rec.supervisor)}
+                                    style={{
+                                        ...styles.btnSecondary,
+                                        margin: 0,
+                                        height: '40px',
+                                        width: '85%',
+                                        backgroundColor: rec.supervisor === 1 ? '#EF4444' : '#3B82F6',
+                                    }}
+                                >
+                                    {rec.supervisor === 1 ? 'Anular Verificación' : 'Verificar como Supervisor'}
+                                </button>
+                            )}
+                        </div>
+                        <div>
+                            <label style={styles.label}>Especialista</label>
+                            <div style={styles.text}>{getVerificado(rec.especialista)}</div>
+                            {isEspecialista && (
+                                <button 
+                                    onClick={() => handleToggleVerificacion(rec.id_registro, 'Especialista', rec.especialista)} 
+                                    style={{
+                                        ...styles.btnSecondary,
+                                        margin: 0,
+                                        height: '40px',
+                                        width: '85%',
+                                        backgroundColor: rec.especialista === 1 ? '#EF4444' : '#3B82F6',
+                                    }}
+                                >
+                                    {rec.especialista === 1 ? 'Anular Verificación' : 'Verificar como Especialista'}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
+                    display: 'flex',
                     gap: '16px',
-                    ...styles.scrollSafeBottom,
-                    marginTop: '20px'
+                    marginTop: '24px', // Da un buen respiro después de la tarjeta
+                    paddingBottom: '40px'
                 }}>
-                    <button
-                        onClick={() => onDelete(rec)}
-                        style={{
-                            ...styles.btnDanger,
-                            margin: 0,
-                            height: '48px',
-                            width: '100%'
-                        }}
-                    >
+                    <button onClick={() => onDelete(rec)} style={{ ...styles.btnDanger, margin: 0, flex: 1, height: '48px' }}>
                         ELIMINAR
                     </button>
-                    <button
-                        onClick={onEdit}
-                        style={{
-                            ...styles.btnSecondary,
-                            margin: 0,
-                            height: '48px',
-                            width: '100%'
-                        }}
-                    >
+                    <button onClick={onEdit} style={{ ...styles.btnSecondary, margin: 0, flex: 1, height: '48px' }}>
                         EDITAR
                     </button>
                 </div>

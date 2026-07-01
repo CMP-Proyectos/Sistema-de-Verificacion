@@ -553,6 +553,7 @@ export default function ReportFlowPage() {
             setOhms={flow.setOhms}
             isPatActivity={flow.isPatActivity}
             isSeleccion = {flow.isSelector}
+            isCoordenadas = {flow.isCoordenadas}
             isLoading={flow.isLoading}
             onSave={() => {
               flow.saveReport();
@@ -589,6 +590,7 @@ export default function ReportFlowPage() {
             onSelectRecord={flow.setSelectedRecordId}
             onDelete={(record) => flow.requestDeleteRecord(record)}
             onEdit={flow.openEditModal}
+            actualizarEstado={flow.actualizarEstadoVerificacion}
           />
         )}
 
@@ -662,6 +664,10 @@ export default function ReportFlowPage() {
         open={flow.isPhotoModalOpen}
         previewUrl={flow.editPreviewUrl}
         comment={flow.editComment}
+        latitud = {flow.editLatitud}
+        longitud = {flow.editLongitud}
+        onLatitudChange = {flow.setEditLatitud}
+        onLongitudChange = {flow.setEditLongitud}
         onCommentChange={flow.setEditComment}
         onFileSelect={flow.handleEditFileSelect}
         onClose={flow.closeEditModal}

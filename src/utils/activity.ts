@@ -46,6 +46,18 @@ export const getOpcionesSeleccion = (actividad?: {
   return null; 
 };
 
+export const requiereCoordenadas = (actividad?: {
+  Grupo?: string | null;
+  Nombre_Actividad?: string | null;
+} | null) => {
+  const nombre = normalizeText(actividad?.Nombre_Actividad);
+
+  const actividadesConCoordenadas = [
+    "poste"
+  ];
+  return actividadesConCoordenadas.some((palabra) => nombre.includes(palabra));
+};
+
 export const parseOhmsValue = (value: string) => {
   const normalized = value.trim().replace(",", ".");
   if (!normalized) return null;

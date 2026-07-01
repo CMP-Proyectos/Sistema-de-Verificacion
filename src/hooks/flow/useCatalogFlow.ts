@@ -423,6 +423,22 @@ export function useCatalogFlow(isOnline: boolean) {
     setDetails([]);
   };
 
+    const resetFinRegistro = useCallback((localityId: number | null) => {
+    setSelectedLocalityId(localityId);
+    setSelectedSubstation(null);
+    setSelectedStructure(null);
+    setSelectedGroup(null);
+    setSelectedActivity(null);
+    setSelectedDetail(null);
+    setSubstationSearch("");
+    setGroupSearch("");
+    setDetailSearch("");
+    setExpandedGroups({});
+    setFronts([]);
+    setLocalities([]);
+    setDetails([]);
+  }, []);
+
   return {
     syncStatus,
     projects,
@@ -477,5 +493,6 @@ export function useCatalogFlow(isOnline: boolean) {
     loadProjectsLocal,
     shouldRunAutomaticCatalogSync,
     resetSelection,
+    resetFinRegistro,
   };
 }

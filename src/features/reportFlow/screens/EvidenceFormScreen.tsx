@@ -23,6 +23,7 @@ interface Props {
   note: string; setNote: (v: string) => void;
   ohms: string; setOhms: (v: string) => void;
   isPatActivity: boolean;
+  isCoordenadas: boolean;
   isSeleccion: { value: string; label: string }[] | null;
   isLoading: boolean;
   onSave: () => void;
@@ -36,7 +37,7 @@ export const EvidenceFormScreen = ({
   isFetchingGps, onCaptureGps,
   utmZone, setUtmZone, utmEast, setUtmEast, utmNorth, setUtmNorth, onUpdateUtm,
   evidenceImages, evidencePreview, isAnalyzing, aiFeedback, onCaptureFile, onRemoveImage,
-  note, setNote, ohms, setOhms, isPatActivity, isSeleccion,
+  note, setNote, ohms, setOhms, isPatActivity, isSeleccion, isCoordenadas,
   isLoading, onSave,
   previousRecord
 }: Props) => {
@@ -134,74 +135,76 @@ export const EvidenceFormScreen = ({
         </div>
         )}
 
-        <div style={formCardStyle}>
-        <div style={{ ...styles.flexBetween, ...styles.mb16 }}>
-          <h3 style={es.headerClean}>1. Ubicacion Geodesica</h3>
-          <span style={getBadgeStyle()}>
-            {isOnline ? 'ONLINE' : 'OFFLINE'}
-          </span>
-        </div>
+        {isCoordenadas &&(
+          <div style={formCardStyle}>
+            <div style={{ ...styles.flexBetween, ...styles.mb16 }}>
+              <h3 style={es.headerClean}>Ubicacion Geodesica</h3>
+              <span style={getBadgeStyle()}>
+                {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+          </div>
 
-        <div style={es.toggleContainer}>
-          <button onClick={() => setGeoMode('gps')} style={getToggleStyle('gps')}>GPS AUTO</button>
-          <button onClick={() => setGeoMode('utm')} style={getToggleStyle('utm')}>UTM MANUAL</button>
-        </div>
+          <div style={es.toggleContainer}>
+            <button onClick={() => setGeoMode('gps')} style={getToggleStyle('gps')}>GPS AUTO</button>
+            <button onClick={() => setGeoMode('utm')} style={getToggleStyle('utm')}>UTM MANUAL</button>
+          </div>
 
-        <div style={es.mapContainer}>
-          {isOnline && mapUrl ? (
-            <iframe title="Mapa" src={mapUrl} style={es.mapIframe} loading="lazy" />
-          ) : (
-            <div style={es.mapPlaceholder}>
-              <MapPin size={24} />
-              <span style={{ fontSize: '11px', fontWeight: '600', marginTop: '4px' }}>SIN REFERENCIA VISUAL</span>
+          <div style={es.mapContainer}>
+            {isOnline && mapUrl ? (
+              <iframe title="Mapa" src={mapUrl} style={es.mapIframe} loading="lazy" />
+            ) : (
+              <div style={es.mapPlaceholder}>
+                <MapPin size={24} />
+                <span style={{ fontSize: '11px', fontWeight: '600', marginTop: '4px' }}>SIN REFERENCIA VISUAL</span>
+              </div>
+            )}
+          </div>
+
+          {geoMode === 'gps' && (
+            <>
+              <div style={es.grid2}>
+                <div>
+                  <label style={styles.label}>Latitud</label>
+                  <div style={es.inputReadOnly}>{displayLat.toFixed(6)}</div>
+                </div>
+                <div>
+                  <label style={styles.label}>Longitud</label>
+                  <div style={es.inputReadOnly}>{displayLng.toFixed(6)}</div>
+                </div>
+              </div>
+              <button onClick={onCaptureGps} disabled={isFetchingGps} style={styles.btnSecondary}>
+                {isFetchingGps ? <RefreshCw className="spin" size={16} /> : <Navigation size={16} />}
+                <span style={{ marginLeft: '8px' }}>{isFetchingGps ? "TRIANGULANDO..." : "ACTUALIZAR POSICION"}</span>
+              </button>
+            </>
+          )}
+
+          {geoMode === 'utm' && (
+            <div style={es.utmRow}>
+              <div style={{ width: 'auto', minWidth: '100px', marginRight: '10px' }}>
+                <label style={styles.label}>ZONA</label>
+                <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={styles.selects}>
+                  <option value="17">Zona 17S</option><option value="18">Zona 18S</option><option value="19">Zona 19S</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>ESTE (X)</label>
+                <input type="number" value={utmEast} onChange={e => setUtmEast(e.target.value)} onFocus={ensureFieldVisibility} placeholder="Ej: 280500" style={es.inputNoMargin} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>NORTE (Y)</label>
+                <input type="number" value={utmNorth} onChange={e => setUtmNorth(e.target.value)} onFocus={ensureFieldVisibility} placeholder="Ej: 8665000" style={es.inputNoMargin} />
+              </div>
+              <button onClick={onUpdateUtm} style={es.btnSquare}>
+                <RefreshCw size={18} />
+              </button>
             </div>
           )}
-        </div>
-
-        {geoMode === 'gps' && (
-          <>
-            <div style={es.grid2}>
-              <div>
-                <label style={styles.label}>Latitud</label>
-                <div style={es.inputReadOnly}>{displayLat.toFixed(6)}</div>
-              </div>
-              <div>
-                <label style={styles.label}>Longitud</label>
-                <div style={es.inputReadOnly}>{displayLng.toFixed(6)}</div>
-              </div>
-            </div>
-            <button onClick={onCaptureGps} disabled={isFetchingGps} style={styles.btnSecondary}>
-              {isFetchingGps ? <RefreshCw className="spin" size={16} /> : <Navigation size={16} />}
-              <span style={{ marginLeft: '8px' }}>{isFetchingGps ? "TRIANGULANDO..." : "ACTUALIZAR POSICION"}</span>
-            </button>
-          </>
-        )}
-
-        {geoMode === 'utm' && (
-          <div style={es.utmRow}>
-            <div style={{ width: 'auto', minWidth: '100px', marginRight: '10px' }}>
-              <label style={styles.label}>ZONA</label>
-              <select value={utmZone} onChange={(e) => setUtmZone(e.target.value)} style={styles.selects}>
-                <option value="17">Zona 17S</option><option value="18">Zona 18S</option><option value="19">Zona 19S</option>
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>ESTE (X)</label>
-              <input type="number" value={utmEast} onChange={e => setUtmEast(e.target.value)} onFocus={ensureFieldVisibility} placeholder="Ej: 280500" style={es.inputNoMargin} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>NORTE (Y)</label>
-              <input type="number" value={utmNorth} onChange={e => setUtmNorth(e.target.value)} onFocus={ensureFieldVisibility} placeholder="Ej: 8665000" style={es.inputNoMargin} />
-            </div>
-            <button onClick={onUpdateUtm} style={es.btnSquare}>
-              <RefreshCw size={18} />
-            </button>
           </div>
         )}
-        </div>
 
         <div style={formCardStyle}>
-          <h3 style={styles.subheading}>2. Evidencia de Campo</h3>
+          <h3 style={styles.subheading}>Evidencia de Campo</h3>
 
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCaptureFile} style={{ display: 'none' }} />
           <input ref={galleryInputRef} type="file" accept="image/*" multiple onChange={onCaptureFile} style={{ display: 'none' }} />
