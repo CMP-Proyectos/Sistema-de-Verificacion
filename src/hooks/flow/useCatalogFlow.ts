@@ -434,9 +434,6 @@ export function useCatalogFlow(isOnline: boolean) {
     setGroupSearch("");
     setDetailSearch("");
     setExpandedGroups({});
-    setFronts([]);
-    setLocalities([]);
-    setDetails([]);
   }, []);
 
   return {

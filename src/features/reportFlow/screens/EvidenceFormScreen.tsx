@@ -265,7 +265,7 @@ export const EvidenceFormScreen = ({
               )}
             </div>
           )}
-
+          
           <label style={styles.label}>Observaciones Tecnicas</label>
           <textarea
             value={note}

@@ -401,7 +401,8 @@ export const createRegistroImagenes = async (payload: RegistroImagenPayload[]) =
   return { data, error };
 };
 
-export const fetchUserRecords = async (userId: string, isEspecialista: boolean|undefined, isSupervisor: boolean|undefined): Promise<UserRecord[]> => {  if (!userId) return [];
+export const fetchUserRecords = async (userId: string, isEspecialista: boolean|undefined, isSupervisor: boolean|undefined): Promise<UserRecord[]> => {  
+  if (!userId) return [];
 
   let query = supabase
     .from("Registros")

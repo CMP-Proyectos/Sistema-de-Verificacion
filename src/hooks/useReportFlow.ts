@@ -413,10 +413,14 @@ export function useReportFlow() {
       setIsMenuOpen(false);
   };
 
-    const handleFinRegistro = (idLocalidad: number | null) => {
+    const handleFinRegistro = (idLocalidad: number, idProyecto: number, idFrente: number, Item: string) => {
       catalog.resetFinRegistro(idLocalidad);
       evidence.resetEvidence();
-      setStep("locality");
+      catalog.selectProject(idProyecto);
+      catalog.selectItem(Item);
+      catalog.selectFront(idFrente);
+      catalog.selectLocality(idLocalidad);
+      setStep(catalog.hasSubstationsForLocality(idLocalidad) ? "substation" : "detail");
       setIsMenuOpen(false);
   };
 
@@ -548,7 +552,9 @@ export function useReportFlow() {
         files: pendingRecord.meta.fileNames?.length || 0,
       });
       showToast("Guardado localmente (Pendiente)", "info");
-      handleFinRegistro(catalog.selectedLocalityId);
+      if (catalog.selectedLocalityId !== null && catalog.selectedProjectId !== null && catalog.selectedFrontId !== null && catalog.selectedItem !== null) {
+        handleFinRegistro(catalog.selectedLocalityId, catalog.selectedProjectId, catalog.selectedFrontId, catalog.selectedItem);
+      }
     };
 
     try {
@@ -579,7 +585,9 @@ export function useReportFlow() {
       } else {
         showToast("Reporte guardado exitosamente", "success");
       }
-      handleFinRegistro(catalog.selectedLocalityId);
+      if (catalog.selectedLocalityId !== null && catalog.selectedProjectId !== null && catalog.selectedFrontId !== null && catalog.selectedItem !== null) {
+        handleFinRegistro(catalog.selectedLocalityId, catalog.selectedProjectId, catalog.selectedFrontId, catalog.selectedItem);
+      }
     } catch (err) {
       if (isNetworkUnavailableError(err)) {
         console.warn("[SAVE] Error de red detectado; aplicando fallback a pendingUploads", err);
@@ -767,7 +775,8 @@ export function useReportFlow() {
     isPhotoModalOpen: records.isPhotoModalOpen,
     openEditModal: records.openEditModal,
     closeEditModal: () => records.setIsPhotoModalOpen(false),
-    editLatitud: records.editLatitud, setEditLatitud: records.setEditLatitud, editLongitud : records.editLongitud, setEditLongitud: records.setEditLongitud,
+    editLatitud: records.editLatitud, setEditLatitud: records.setEditLatitud, editLongitud : records.editLongitud, setEditLongitud: records.setEditLongitud, editEspecificacion: records.editEspecificacion, setEditEspecificacion: records.setEditEspecificacion,
+    editActividad: records.Actividad, editGrupo: records.Grupo,
     editComment: records.editComment, setEditComment: records.setEditComment, editPreviewUrl: records.editPreviewUrl, handleEditFileSelect: (e:any) => { if(e.target.files?.[0]) { records.setEditEvidenceFile(e.target.files[0]); records.setEditPreviewUrl(URL.createObjectURL(e.target.files[0])); } },
     saveRecordEdits: records.saveRecordEdits,
     handleGoHome, goBack,

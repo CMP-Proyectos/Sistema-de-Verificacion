@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { styles } from '../../../theme/styles';
+import { normalizeText } from "../../../utils/activity";
 
 interface Props {
   open: boolean;
@@ -7,8 +8,12 @@ interface Props {
   comment: string;
   latitud : number | null;
   longitud : number | null;
+  Actividad: string;
+  Grupo: string;
+  especificacion: string;
   onLatitudChange: (val: number | null) => void;
   onLongitudChange: (val: number | null) => void;
+  onEspecificacionChange: (val: string) =>void;
   onCommentChange: (val: string) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClose: () => void;
@@ -21,14 +26,61 @@ export const PhotoEditModal = ({
   comment,
   latitud,
   longitud,
+  Actividad,
+  Grupo,
+  especificacion,
   onLatitudChange,
   onLongitudChange,
+  onEspecificacionChange,
   onCommentChange,
   onFileSelect,
   onClose,
   onSave,
 }: Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isCuadroTexto = (
+    Nombre_Actividad: string,
+    Grupo: string
+  ) => {
+    const grupo = normalizeText(Grupo);
+    const nombre = normalizeText(Nombre_Actividad);
+
+    return (
+      nombre.includes("instalacion de pat") ||
+      grupo.includes("conductores") ||
+      grupo.includes("acometida")
+    );
+  };
+
+  const getOpcionesSeleccion = (
+    Nombre_Actividad: string,
+    Grupo: string
+  ) => {
+    const grupo = normalizeText(Grupo);
+    const nombre = normalizeText(Nombre_Actividad);
+
+    // Caso 1: Armados
+    if (grupo.includes("armados")) {
+      return [
+        { value: "tiene_alargador", label: "Tiene alargador" },
+        { value: "no_tiene_alargador", label: "No tiene alargador" } 
+      ];
+    }
+
+    // Caso 2: PAT
+    if (nombre.includes("relleno y compactacion de pat")) {
+      return [
+        { value: "sin_cemento", label: "Sin cemento conductivo" },
+        { value: "con_cemento", label: "Con cemento conductivo" }
+      ];
+    }
+    // Si no cumple ninguna, no hay selección
+    return null; 
+  };
+
+  const isPatActivity = isCuadroTexto(Actividad, Grupo);
+  const isSeleccion = getOpcionesSeleccion(Actividad, Grupo);
 
   if (!open) return null;
 
@@ -38,8 +90,8 @@ export const PhotoEditModal = ({
       <div 
         style={{ 
           ...styles.modalCard, 
-          maxHeight: '90vh',  // Define una altura máxima para el modal (90% de la altura de la pantalla)
-          overflowY: 'auto'    // Permite el desplazamiento vertical si el contenido excede la altura máxima
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}
       >
       <div style={styles.modalCard}>
@@ -87,7 +139,6 @@ export const PhotoEditModal = ({
           value={latitud ?? ""}
           onChange={(e) => {
             const valor = e.target.value;
-            // Agregamos el signo ? antes de los paréntesis
             onLatitudChange?.(valor === "" ? null : parseFloat(valor));
           }}
           style={styles.input}
@@ -100,11 +151,44 @@ export const PhotoEditModal = ({
           value={longitud ?? ""}
           onChange={(e) => {
             const valor = e.target.value;
-            // Agregamos el signo ? antes de los paréntesis
             onLongitudChange?.(valor === "" ? null : parseFloat(valor));
           }}
           style={styles.input}
         />
+
+          {isPatActivity && (
+            <div style={{ marginTop: "14px" }}>
+              <label style={styles.label}>Resistividad</label>           
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                value={especificacion}
+                onChange={(e) => onEspecificacionChange(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+          )}
+
+          {isSeleccion && Array.isArray(isSeleccion) && (
+            <div style={{ marginTop: "14px" }}>
+              <select
+                value={especificacion}
+                onChange={(e) => onEspecificacionChange(e.target.value)}
+                style={styles.input}
+              >
+                <option value="" disabled>
+                  Seleccione una opción
+                </option>
+                {isSeleccion.map((opcion) => (
+                  <option key={opcion.value} value={opcion.value}>
+                    {opcion.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
         <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
           <button onClick={onClose} style={{ ...styles.btnSecondary, width: '50%' }}>

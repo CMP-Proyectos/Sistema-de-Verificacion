@@ -666,8 +666,12 @@ export default function ReportFlowPage() {
         comment={flow.editComment}
         latitud = {flow.editLatitud}
         longitud = {flow.editLongitud}
+        Actividad= {flow.editActividad}
+        Grupo = {flow.editGrupo}
+        especificacion={flow.editEspecificacion}
         onLatitudChange = {flow.setEditLatitud}
         onLongitudChange = {flow.setEditLongitud}
+        onEspecificacionChange={flow.setEditEspecificacion}
         onCommentChange={flow.setEditComment}
         onFileSelect={flow.handleEditFileSelect}
         onClose={flow.closeEditModal}
