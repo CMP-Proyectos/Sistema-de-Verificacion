@@ -502,6 +502,21 @@ export function useReportFlow() {
       return;
     }
 
+    let resolvedGps = evidence.gpsLocation;
+    if (isCoordenadas && !resolvedGps) {
+      if (evidence.utmEast && evidence.utmNorth) {
+        const converted = evidence.tryConvertUtm();
+        if (!converted) {
+          showToast("Las coordenadas UTM ingresadas no son válidas", "error");
+          return;
+        }
+        resolvedGps = converted;
+      } else {
+        showToast("Debe capturar coordenadas GPS o ingresar UTM válidas", "error");
+        return;
+      }
+    }
+
     session.setIsLoading(true);
     const timestamp = Date.now();
 
@@ -540,8 +555,8 @@ export function useReportFlow() {
         })),
         userId: sessionUser.id,
         detailId: selectedDetail.ID_DetallesActividad,
-        lat: evidence.gpsLocation?.latitude || selectedDetail.Latitud || 0,
-        lng: evidence.gpsLocation?.longitude || selectedDetail.Longitud || 0,
+        lat: resolvedGps?.latitude || selectedDetail.Latitud || 0,
+        lng: resolvedGps?.longitude || selectedDetail.Longitud || 0,
         comment: evidence.note,
         ohms: isSelector ? evidence.ohms : (isPatActivity ? parsedOhms : null),
       });
@@ -566,8 +581,8 @@ export function useReportFlow() {
       const saveResult = await saveReportOnline({
         bucket: MASTER_BUCKET,
         detailId: selectedDetail.ID_DetallesActividad,
-        lat: evidence.gpsLocation?.latitude || selectedDetail.Latitud,
-        lng: evidence.gpsLocation?.longitude || selectedDetail.Longitud,
+        lat: resolvedGps?.latitude || selectedDetail.Latitud,
+        lng: resolvedGps?.longitude || selectedDetail.Longitud,
         userId: sessionUser.id,
         comment: evidence.note,
         ohms: isSelector ? evidence.ohms : (isPatActivity ? parsedOhms : null),
